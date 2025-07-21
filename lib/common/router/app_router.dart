@@ -7,6 +7,7 @@ import '../../features/auth/screens/signup_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/home/screens/home_screen.dart';
+import '../../features/auth/screens/forgot_id_screen.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
@@ -17,44 +18,43 @@ class AppRouter {
         path: '/splash',
         builder: (context, state) => const SplashScreen(),
       ),
-      
+
       // 온보딩 화면
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
       ),
-      
+
       // 웰컴 화면
       GoRoute(
         path: '/welcome',
         builder: (context, state) => const WelcomeScreen(),
       ),
-      
+
       // 회원가입 화면
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignupScreen(),
       ),
-      
+
       // 로그인 화면
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+
       GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
+        path: '/forgot-id',
+        builder: (context, state) => const ForgotIdScreen(),
       ),
-      
+
       // 비밀번호 찾기 화면
       GoRoute(
         path: '/forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
-      
+
       // 메인 홈 화면
-      GoRoute(
-        path: '/home',
-        builder: (context, state) => const HomeScreen(),
-      ),
+      GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
     ],
   );
 
   static GoRouter get router => _router;
-} 
+}

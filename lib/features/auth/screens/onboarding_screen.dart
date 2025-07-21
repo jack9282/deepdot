@@ -27,7 +27,7 @@ class OnboardingScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 40),
-              
+
               // 기능 소개 리스트
               _buildFeatureItem(
                 '아이젠하워 매트릭스',
@@ -52,32 +52,29 @@ class OnboardingScreen extends StatelessWidget {
                 '매일 반복할 습관들을 체크하고 관리',
                 Icons.checklist,
               ),
-              
+
               const Spacer(),
-              
+
               // 일러스트레이션 영역 (간단한 아이콘들로 구현)
-              Container(
-                height: 120,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildIllustrationIcon(Icons.person, Colors.blue),
-                    _buildIllustrationIcon(Icons.schedule, Colors.orange),
-                    _buildIllustrationIcon(Icons.check_circle, Colors.green),
-                    _buildIllustrationIcon(Icons.star, Colors.purple),
-                  ],
+              Center(
+                child: SizedBox(
+                  height: 150,
+                  child: Image.asset(
+                    'assets/images/onboarding_screen_image.png',
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
-              
+
               const SizedBox(height: 40),
-              
+
               // 시작하기 버튼
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () {
-                    context.go('/welcome');
+                    context.go('/login');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
@@ -89,14 +86,11 @@ class OnboardingScreen extends StatelessWidget {
                   ),
                   child: const Text(
                     '시작하기',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 16),
             ],
           ),
@@ -115,11 +109,7 @@ class OnboardingScreen extends StatelessWidget {
             color: AppTheme.secondaryColor,
             shape: BoxShape.circle,
           ),
-          child: const Icon(
-            Icons.check,
-            color: Colors.white,
-            size: 16,
-          ),
+          child: const Icon(Icons.check, color: Colors.white, size: 16),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -148,20 +138,4 @@ class OnboardingScreen extends StatelessWidget {
       ],
     );
   }
-
-  Widget _buildIllustrationIcon(IconData icon, Color color) {
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        icon,
-        size: 30,
-        color: color,
-      ),
-    );
-  }
-} 
+}

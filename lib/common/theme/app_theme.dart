@@ -6,6 +6,7 @@ class AppTheme {
   static const Color secondaryColor = Color(0xFF4CAF50); // 초록색 계열
   static const Color backgroundColor = Color(0xFFF8F9FA);
   static const Color cardColor = Color(0xFFFFFFFF);
+  static const Color darkColor = Color(0xFF000000);
   static const Color textPrimaryColor = Color(0xFF2D3748);
   static const Color textSecondaryColor = Color(0xFF718096);
   static const Color borderColor = Color(0xFFE2E8F0);

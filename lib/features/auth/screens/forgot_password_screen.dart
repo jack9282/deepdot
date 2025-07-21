@@ -33,7 +33,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             if (context.canPop()) {
               context.pop();
             } else {
-              context.go('/welcome');
+              context.go('/login');
             }
           },
         ),
