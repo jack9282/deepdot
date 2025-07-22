@@ -8,6 +8,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/auth/screens/forgot_id_screen.dart';
+import '../../features/auth/screens/reset_password_screen.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
@@ -49,6 +50,12 @@ class AppRouter {
       GoRoute(
         path: '/forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+
+      // 비밀번호 재설정 화면
+      GoRoute(
+        path: '/reset-password',
+        builder: (context, state) => ResetPasswordScreen(),
       ),
 
       // 메인 홈 화면
