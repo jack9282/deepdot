@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../common/theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import '../view_models/auth_view_model.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   // 생성자에 'token' 또는 'email' 등 비밀번호 재설정을 위한 식별자를 받을 수 있도록 추가
@@ -16,7 +18,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  bool _isLoading = false;
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
@@ -27,57 +28,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     super.dispose();
   }
 
-  void _resetPassword() async {
-    if (!_formKey.currentState!.validate()) {
-      // 유효성 검사 실패 시 스낵바 메시지
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('비밀번호를 올바르게 입력해주세요.')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    // TODO: 여기에 실제 비밀번호 재설정 API 호출 로직을 구현합니다.
-    // _passwordController.text를 백엔드로 전송합니다.
-    await Future.delayed(const Duration(seconds: 2)); // 2초 지연 시뮬레이션
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    // 재설정 성공 시 다이얼로그 표시
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false, // 사용자가 외부 탭으로 닫을 수 없게 설정
-        builder: (context) => AlertDialog(
-          title: const Text('비밀번호 재설정 완료'),
-          content: const Text(
-            '비밀번호가 성공적으로 재설정되었습니다.\n새로운 비밀번호로 로그인해주세요.',
-            style: TextStyle(height: 1.4),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // 다이얼로그 닫기
-                context.go('/login'); // 로그인 화면으로 이동
-              },
-              child: const Text(
-                '확인',
-                style: TextStyle(color: AppTheme.primaryColor),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-  }
+  // 아래 중복 함수 삭제
+  // void _resetPassword() async { ... }
 
   @override
   Widget build(BuildContext context) {
+    final authViewModel = Provider.of<AuthViewModel>(context);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -116,9 +72,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 40),
-
                 // New Password Input
                 const Text(
                   'Password',
@@ -171,13 +125,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     if (value.length < 6) {
                       return '비밀번호는 6자 이상이어야 합니다.';
                     }
-                    // 더 강력한 비밀번호 규칙 추가 가능 (예: 숫자, 특수문자 포함)
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 20),
-
                 // Confirm New Password Input
                 const Text(
                   'Confirm New Password',
@@ -233,15 +184,55 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     return null;
                   },
                 ),
-
                 const Spacer(), // 남은 공간 채우기
-
                 // Reset Password Button
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _resetPassword, // 로딩 중에는 버튼 비활성화
+                    onPressed: authViewModel.isLoading
+                        ? null
+                        : () async {
+                            if (!_formKey.currentState!.validate()) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('비밀번호를 올바르게 입력해주세요.')),
+                              );
+                              return;
+                            }
+                            final result = await authViewModel.resetPassword(
+                              _passwordController.text.trim(),
+                              _confirmPasswordController.text.trim(),
+                            );
+                            if (result && context.mounted) {
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('비밀번호 재설정 완료'),
+                                  content: const Text(
+                                    '비밀번호가 성공적으로 재설정되었습니다.\n새로운 비밀번호로 로그인해주세요.',
+                                    style: TextStyle(height: 1.4),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                        context.go('/login');
+                                      },
+                                      child: const Text(
+                                        '확인',
+                                        style: TextStyle(color: AppTheme.primaryColor),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            } else if (authViewModel.errorMessage != null && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(authViewModel.errorMessage!)),
+                              );
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
@@ -250,7 +241,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: _isLoading
+                    child: authViewModel.isLoading
                         ? const SizedBox(
                             width: 20,
                             height: 20,

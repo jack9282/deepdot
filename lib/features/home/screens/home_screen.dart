@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
@@ -39,6 +40,12 @@ class _HomeScreenState extends State<HomeScreen> {
             appBar: AppBar(
               title: const Text('DeepDot'),
               actions: [
+                                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: () {
+                    context.push('/taking-list');
+                  },
+                ),
                 IconButton(
                   icon: const Icon(Icons.refresh),
                   onPressed: () => _viewModel.refresh(),

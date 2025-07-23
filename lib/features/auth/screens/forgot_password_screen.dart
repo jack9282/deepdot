@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../common/theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import '../view_models/auth_view_model.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -15,8 +17,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
 
-  bool _isLoadingRequest = false;
-  bool _isLoadingVerify = false;
+  // 중복 함수 및 상태 변수 삭제
 
   @override
   void dispose() {
@@ -26,51 +27,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  void _requestCode() async {
-    if (!_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('필수 정보를 올바르게 입력해주세요.')));
-      return;
-    }
-
-    setState(() {
-      _isLoadingRequest = true;
-    });
-
-    // Simulate API call for requesting verification code
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() {
-      _isLoadingRequest = false;
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('인증 코드가 전송되었습니다.')));
-  }
-
-  void _verifyCode() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    setState(() {
-      _isLoadingVerify = true;
-    });
-
-    // Simulate API call for verifying the code
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() {
-      _isLoadingVerify = false;
-    });
-
-    context.push('/reset-password');
-  }
+  // 아래 중복 함수들 삭제
+  // void _requestCode() async { ... }
+  // void _verifyCode() async { ... }
 
   @override
   Widget build(BuildContext context) {
+    final authViewModel = Provider.of<AuthViewModel>(context);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -108,9 +71,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 40),
-
                 const Text(
                   'ID',
                   style: TextStyle(
@@ -149,9 +110,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 20), 
-
                 Align(
                   alignment: Alignment.centerLeft,
                   child: const Text(
@@ -215,7 +174,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       height: 58,
                       width: 80,
                       child: ElevatedButton(
-                        onPressed: _isLoadingRequest ? null : _requestCode,
+                        onPressed: authViewModel.isLoading || authViewModel.isEmailCodeSent
+                            ? null
+                            : () async {
+                                if (!_formKey.currentState!.validate()) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('필수 정보를 올바르게 입력해주세요.')),
+                                  );
+                                  return;
+                                }
+                                final result = await authViewModel.requestEmailCode(_emailController.text.trim());
+                                if (result && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('인증 코드가 전송되었습니다.')),
+                                  );
+                                } else if (authViewModel.errorMessage != null && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(authViewModel.errorMessage!)),
+                                  );
+                                }
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           shape: const RoundedRectangleBorder(
@@ -230,7 +208,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           elevation: 0,
                           padding: EdgeInsets.zero,
                         ),
-                        child: _isLoadingRequest
+                        child: authViewModel.isLoading
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
@@ -256,7 +234,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-
                 TextFormField(
                   controller: _codeController,
                   keyboardType: TextInputType.number,
@@ -287,7 +264,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoadingVerify ? null : _verifyCode,
+                    onPressed: authViewModel.isLoading
+                        ? null
+                        : () async {
+                            if (!_formKey.currentState!.validate()) {
+                              return;
+                            }
+                            final result = await authViewModel.verifyEmailCode(_codeController.text.trim());
+                            if (result && context.mounted) {
+                              context.push('/reset-password');
+                            } else if (authViewModel.errorMessage != null && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(authViewModel.errorMessage!)),
+                              );
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
@@ -296,7 +287,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: _isLoadingVerify
+                    child: authViewModel.isLoading
                         ? const SizedBox(
                                 width: 20,
                                 height: 20,

@@ -9,6 +9,7 @@ import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/auth/screens/forgot_id_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
+import '../../features/taking/screens/taking_list.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
@@ -60,6 +61,12 @@ class AppRouter {
 
       // 메인 홈 화면
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+
+      // 복용 이력 리스트
+      GoRoute(
+        path: '/taking-list',
+        builder: (context, state) => const TakingList(),
+      ),
     ],
   );
 

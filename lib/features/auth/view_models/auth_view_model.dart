@@ -16,6 +16,105 @@ class AuthViewModel with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _currentUser != null;
 
+  // 아이디 중복 확인 (더미)
+  bool _isIdAvailable = false;
+  bool get isIdAvailable => _isIdAvailable;
+  Future<bool> checkIdDuplication(String username) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      if (username.isEmpty) {
+        _setError('아이디를 입력해주세요');
+        return false;
+      }
+      // 실제 구현에서는 서버 API 호출
+      await Future.delayed(const Duration(seconds: 1));
+      // 더미: 항상 사용 가능
+      _isIdAvailable = true;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError('아이디 중복 확인 중 오류가 발생했습니다');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // 이메일 인증 코드 요청 (더미)
+  bool _isEmailCodeSent = false;
+  bool get isEmailCodeSent => _isEmailCodeSent;
+  Future<bool> requestEmailCode(String email) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}  $').hasMatch(email)) {
+        _setError('올바른 이메일 형식을 입력해주세요');
+        return false;
+      }
+      await Future.delayed(const Duration(seconds: 1));
+      _isEmailCodeSent = true;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError('이메일 코드 요청 중 오류가 발생했습니다');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // 이메일 인증 코드 확인 (더미)
+  bool _isEmailVerified = false;
+  bool get isEmailVerified => _isEmailVerified;
+  Future<bool> verifyEmailCode(String code) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      if (code.isEmpty) {
+        _setError('인증 코드를 입력해주세요');
+        return false;
+      }
+      await Future.delayed(const Duration(seconds: 1));
+      _isEmailVerified = true;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError('이메일 인증 중 오류가 발생했습니다');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // 비밀번호 재설정 (더미)
+  Future<bool> resetPassword(String newPassword, String confirmPassword) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      if (newPassword.isEmpty || confirmPassword.isEmpty) {
+        _setError('비밀번호를 입력해주세요');
+        return false;
+      }
+      if (newPassword.length < 6) {
+        _setError('비밀번호는 6자 이상이어야 합니다');
+        return false;
+      }
+      if (newPassword != confirmPassword) {
+        _setError('비밀번호가 일치하지 않습니다');
+        return false;
+      }
+      await Future.delayed(const Duration(seconds: 2));
+      // 실제로는 서버에 비밀번호 변경 요청
+      return true;
+    } catch (e) {
+      _setError('비밀번호 재설정 중 오류가 발생했습니다');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // 로딩 상태 설정
   void _setLoading(bool loading) {
     _isLoading = loading;

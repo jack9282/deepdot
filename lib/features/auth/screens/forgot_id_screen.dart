@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../common/theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import '../view_models/auth_view_model.dart';
 
 class ForgotIdScreen extends StatefulWidget {
   const ForgotIdScreen({super.key});
@@ -86,9 +88,6 @@ class _EmailVerifyPageState extends State<EmailVerifyPage> {
   final TextEditingController _codeController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  bool _isLoadingRequest = false;
-  bool _isLoadingVerify = false;
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -96,227 +95,217 @@ class _EmailVerifyPageState extends State<EmailVerifyPage> {
     super.dispose();
   }
 
-  void _requestCode() async {
-    if (!_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('올바른 이메일 형식을 입력해주세요')));
-      return;
-    }
-
-    setState(() {
-      _isLoadingRequest = true;
-    });
-
-    // TODO: Implement your actual request code logic here
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() {
-      _isLoadingRequest = false;
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('인증 코드가 전송되었습니다.')));
-  }
-
-  void _verifyCode() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    setState(() {
-      _isLoadingVerify = true;
-    });
-
-    // TODO: Implement your actual verify code logic here
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() {
-      _isLoadingVerify = false;
-    });
-
-    if (context.mounted) {
-      final String retrievedId =
-          'user12345'; // Replace with actual retrieved ID
-      widget.onVerificationSuccess(retrievedId);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('인증이 완료되었습니다. 다음 화면으로 이동합니다.')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Form(
       key: _formKey,
-      child: Column(
-        children: [
-          const SizedBox(height: 40),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: const Text(
-              'Email',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w400,
-                color: AppTheme.textPrimaryColor,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: Builder(
+        builder: (context) {
+          final authViewModel = Provider.of<AuthViewModel>(context);
+          return Column(
             children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    hintText: '이메일 주소를 입력하세요',
-                    border: OutlineInputBorder(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        bottomLeft: Radius.circular(12),
-                        topRight: Radius.zero,
-                        bottomRight: Radius.zero,
-                      ),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        bottomLeft: Radius.circular(12),
-                        topRight: Radius.zero,
-                        bottomRight: Radius.zero,
-                      ),
-                      borderSide: const BorderSide(
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
+              const SizedBox(height: 40),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: const Text(
+                  'Email',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w400,
+                    color: AppTheme.textPrimaryColor,
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return '이메일을 입력해주세요';
-                    }
-                    if (!RegExp(
-                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                    ).hasMatch(value)) {
-                      return '올바른 이메일 형식을 입력해주세요';
-                    }
-                    return null;
-                  },
                 ),
               ),
-              SizedBox(
-                height: 58,
-                width: 80,
-                child: ElevatedButton(
-                  onPressed: _isLoadingRequest ? null : _requestCode,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    shape: const RoundedRectangleBorder(
-                      side: BorderSide(color: Colors.black, width: 1),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.zero,
-                        bottomLeft: Radius.zero,
-                        topRight: Radius.circular(12),
-                        bottomRight: Radius.circular(12),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        hintText: '이메일 주소를 입력하세요',
+                        border: OutlineInputBorder(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(12),
+                            bottomLeft: Radius.circular(12),
+                            topRight: Radius.zero,
+                            bottomRight: Radius.zero,
+                          ),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(12),
+                            bottomLeft: Radius.circular(12),
+                            topRight: Radius.zero,
+                            bottomRight: Radius.zero,
+                          ),
+                          borderSide: const BorderSide(
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                       ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return '이메일을 입력해주세요';
+                        }
+                        if (!RegExp(
+                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                        ).hasMatch(value)) {
+                          return '올바른 이메일 형식을 입력해주세요';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    height: 58,
+                    width: 80,
+                    child: ElevatedButton(
+                      onPressed: authViewModel.isLoading || authViewModel.isEmailCodeSent
+                          ? null
+                          : () async {
+                              if (!_formKey.currentState!.validate()) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('올바른 이메일 형식을 입력해주세요')),
+                                );
+                                return;
+                              }
+                              final result = await authViewModel.requestEmailCode(_emailController.text.trim());
+                              if (result && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('인증 코드가 전송되었습니다.')),
+                                );
+                              } else if (authViewModel.errorMessage != null && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(authViewModel.errorMessage!)),
+                                );
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        shape: const RoundedRectangleBorder(
+                          side: BorderSide(color: Colors.black, width: 1),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.zero,
+                            bottomLeft: Radius.zero,
+                            topRight: Radius.circular(12),
+                            bottomRight: Radius.circular(12),
+                          ),
+                        ),
+                        elevation: 0,
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: authViewModel.isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.black,
+                                ),
+                              ),
+                            )
+                          : const Text(
+                              '인증코드 요청',
+                              overflow: TextOverflow.visible,
+                              softWrap: false,
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _codeController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: '인증코드를 입력하세요',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return '인증코드를 입력해주세요';
+                  }
+                  return null;
+                },
+              ),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: authViewModel.isLoading
+                      ? null
+                      : () async {
+                          if (!_formKey.currentState!.validate()) {
+                            return;
+                          }
+                          final result = await authViewModel.verifyEmailCode(_codeController.text.trim());
+                          if (result && context.mounted) {
+                            final String retrievedId = 'user12345'; // 실제로는 서버에서 받아온 ID 사용
+                            widget.onVerificationSuccess(retrievedId);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('인증이 완료되었습니다. 다음 화면으로 이동합니다.')),
+                            );
+                          } else if (authViewModel.errorMessage != null && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(authViewModel.errorMessage!)),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     elevation: 0,
-                    padding: EdgeInsets.zero,
                   ),
-                  child: _isLoadingRequest
+                  child: authViewModel.isLoading
                       ? const SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.black,
-                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : const Text(
-                          '인증코드 요청',
-                          overflow: TextOverflow.visible,
-                          softWrap: false,
+                          '다음',
                           style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 24),
-          // Removed the '인증코드' label and SizedBox as per your request
-          TextFormField(
-            controller: _codeController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              hintText: '인증코드를 입력하세요',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey[300]!),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppTheme.primaryColor),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return '인증코드를 입력해주세요';
-              }
-              return null;
-            },
-          ),
-          const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _isLoadingVerify ? null : _verifyCode,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 0,
-              ),
-              child: _isLoadingVerify
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Text(
-                      '다음',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
