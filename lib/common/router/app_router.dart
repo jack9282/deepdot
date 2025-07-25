@@ -6,7 +6,7 @@ import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/signup_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
-import '../../features/home/screens/home_screen.dart';
+import '../../features/home/screens/main_screen.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
@@ -48,10 +48,10 @@ class AppRouter {
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
       
-      // 메인 홈 화면
+      // 메인 화면 (탭 네비게이션 포함)
       GoRoute(
         path: '/home',
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) => const MainScreen(),
       ),
     ],
   );

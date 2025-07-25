@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../view_models/home_view_model.dart';
-import '../../schedule/screens/schedule_list_screen.dart';
+import '../../schedule/screens/timeline_planner_screen.dart';
+import '../../schedule/screens/task_add_screen.dart';
+import '../../statistics/screens/statistics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,7 +16,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late HomeViewModel _viewModel;
-  bool _isMenuOpen = false;
 
   @override
   void initState() {
@@ -33,354 +34,193 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<HomeViewModel>(
       create: (_) => _viewModel,
-      child: Stack(
-        children: [
-          Scaffold(
-            appBar: AppBar(
-              title: const Text('DeepDot'),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: () => _viewModel.refresh(),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: () {
-                    // 햄버거 메뉴 동작
-                  },
-                ),
-              ],
-            ),
-            body: Consumer<HomeViewModel>(
-              builder: (context, viewModel, child) {
-                if (viewModel.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-                    ),
-                  );
-                }
-
-                if (viewModel.errorMessage != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          viewModel.errorMessage!,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: AppTheme.textSecondaryColor,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: () => viewModel.refresh(),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
-                          ),
-                          child: const Text('다시 시도'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            // 중요 & 긴급 (좌상)
-                            Expanded(
-                              child: _buildMatrixCard(
-                                context,
-                                viewModel,
-                                title: '중요 & 긴급',
-                                subtitle: '지금 해야 할 것들',
-                                color: AppTheme.urgentImportantColor,
-                                icon: Icons.warning,
-                                priority: TaskPriority.urgentImportant,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            // 중요 (우상)
-                            Expanded(
-                              child: _buildMatrixCard(
-                                context,
-                                viewModel,
-                                title: '중요',
-                                subtitle: '계획해서 해야 할 것들',
-                                color: AppTheme.importantColor,
-                                icon: Icons.star,
-                                priority: TaskPriority.important,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            // 긴급 (좌하)
-                            Expanded(
-                              child: _buildMatrixCard(
-                                context,
-                                viewModel,
-                                title: '긴급',
-                                subtitle: '위임하거나 빠르게 처리',
-                                color: AppTheme.urgentColor,
-                                icon: Icons.schedule,
-                                priority: TaskPriority.urgent,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            // 중요하지 않음 (우하)
-                            Expanded(
-                              child: _buildMatrixCard(
-                                context,
-                                viewModel,
-                                title: '중요하지 않음',
-                                subtitle: '여유가 있을 때',
-                                color: AppTheme.neitherColor,
-                                icon: Icons.more_horiz,
-                                priority: TaskPriority.neither,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            floatingActionButton: FloatingActionButton(
-              onPressed: () {
-                setState(() {
-                  _isMenuOpen = !_isMenuOpen;
-                });
-              },
-              backgroundColor: const Color(0xFF2D3748),
-              child: AnimatedRotation(
-                turns: _isMenuOpen ? 0.125 : 0.0, // 45도 회전
-                duration: const Duration(milliseconds: 200),
-                child: const Icon(
-                  Icons.add,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-          
-          // 배경 오버레이 (메뉴가 열렸을 때)
-          if (_isMenuOpen)
-            Positioned.fill(
-              child: GestureDetector(
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: Row(
+            children: [
+              // 왼쪽 사이드 통계바
+              GestureDetector(
                 onTap: () {
-                  setState(() {
-                    _isMenuOpen = false;
-                  });
+                  // 통계 화면으로 이동
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const StatisticsScreen(),
+                    ),
+                  );
                 },
                 child: Container(
-                  color: Colors.black.withOpacity(0.3),
+                  padding: const EdgeInsets.all(8),
+                  child: const Icon(
+                    Icons.bar_chart,
+                    size: 24,
+                    color: AppTheme.textPrimaryColor,
+                  ),
                 ),
               ),
-            ),
-          
-          // 플로팅 메뉴들
-          if (_isMenuOpen) ...[
-            // 복용 체크리스트 메뉴
-            Positioned(
-              bottom: 140,
-              right: 16,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 텍스트 라벨
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          spreadRadius: 0,
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '오늘의 복용 체크리스트',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimaryColor,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          '복용 이력 추가',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textSecondaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // 아이콘 버튼
-                  Material(
-                    elevation: 4,
-                    shape: const CircleBorder(),
-                    color: Colors.white,
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () {
-                        setState(() {
-                          _isMenuOpen = false;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('복용 체크리스트 기능은 곧 추가될 예정입니다!'),
-                            backgroundColor: AppTheme.primaryColor,
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                        ),
-                        child: const Icon(
-                          Icons.lock_outline,
-                          size: 24,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              const Text(
+                'DeepDot',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimaryColor,
+                ),
               ),
-            ),
-            
-            // 루틴 체크리스트 메뉴
-            Positioned(
-              bottom: 210,
-              right: 16,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 텍스트 라벨
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          spreadRadius: 0,
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '오늘의 루틴 체크리스트',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimaryColor,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          '루틴 만들기',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textSecondaryColor,
-                          ),
-                        ),
-                      ],
+            ],
+          ),
+          centerTitle: false,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () {
+                // 일정 추가 화면으로 이동
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => TaskAddScreen(
+                      priority: TaskPriority.urgentImportant,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  // 아이콘 버튼
-                  Material(
-                    elevation: 4,
-                    shape: const CircleBorder(),
-                    color: Colors.grey[200],
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () {
-                        setState(() {
-                          _isMenuOpen = false;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('루틴 체크리스트 기능은 곧 추가될 예정입니다!'),
-                            backgroundColor: AppTheme.primaryColor,
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey[200],
-                        ),
-                        child: const Icon(
-                          Icons.assignment_outlined,
-                          size: 24,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ).then((result) {
+                  if (result == true) {
+                    _viewModel.refresh();
+                    // 성공 툴팁 표시
+                    _showSuccessTooltip();
+                  }
+                });
+              },
             ),
           ],
-        ],
+        ),
+        body: Consumer<HomeViewModel>(
+          builder: (context, viewModel, child) {
+            if (viewModel.isLoading) {
+              return const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                ),
+              );
+            }
+
+            if (viewModel.errorMessage != null) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      viewModel.errorMessage!,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () => viewModel.refresh(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                      ),
+                      child: const Text('다시 시도'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // 중요 & 긴급 (좌상)
+                        Expanded(
+                          child: _buildMatrixCard(
+                            context,
+                            viewModel,
+                            title: '중요 & 긴급',
+                            subtitle: '지금 바로 해야해요',
+                            color: AppTheme.urgentImportantColor,
+                            icon: Icons.warning,
+                            priority: TaskPriority.urgentImportant,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // 중요 (우상)
+                        Expanded(
+                          child: _buildMatrixCard(
+                            context,
+                            viewModel,
+                            title: '중요',
+                            subtitle: '미리 계획해서 준비해요',
+                            color: AppTheme.importantColor,
+                            icon: Icons.star,
+                            priority: TaskPriority.important,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // 긴급 (좌하)
+                        Expanded(
+                          child: _buildMatrixCard(
+                            context,
+                            viewModel,
+                            title: '긴급',
+                            subtitle: '급하면 부탁하거나 나중에 처리해요',
+                            color: AppTheme.urgentColor,
+                            icon: Icons.schedule,
+                            priority: TaskPriority.urgent,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // 둘 다 아님 (우하)
+                        Expanded(
+                          child: _buildMatrixCard(
+                            context,
+                            viewModel,
+                            title: '둘 다 아님',
+                            subtitle: '시간 남을 때하거나 안 해도 돼요',
+                            color: AppTheme.neitherColor,
+                            icon: Icons.more_horiz,
+                            priority: TaskPriority.neither,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
-  void _navigateToScheduleList(BuildContext context, TaskPriority priority) {
+  void _navigateToTimelinePlanner(BuildContext context, TaskPriority priority) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ScheduleListScreen(priority: priority),
+        builder: (context) => TimelinePlannerScreen(priority: priority),
       ),
     ).then((result) {
       // 돌아올 때 데이터 새로고침
-      if (result == true) {
-        _viewModel.refresh();
-      }
+      _viewModel.refresh();
     });
   }
 
@@ -395,6 +235,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     final taskCount = viewModel.getTaskCountByPriority(priority);
     final tasks = viewModel.getTasksByPriority(priority);
+    // 최대 3개까지만 표시
+    final displayTasks = tasks.take(3).toList();
     
     return Card(
       elevation: 4,
@@ -403,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => _navigateToScheduleList(context, priority),
+        onTap: () => _navigateToTimelinePlanner(context, priority),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
@@ -464,14 +306,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const Spacer(),
-                // 할일 미리보기
+                // 할일 미리보기 (최대 3개)
                 Container(
                   height: 60,
                   decoration: BoxDecoration(
                     color: Colors.grey.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: tasks.isEmpty
+                  child: displayTasks.isEmpty
                       ? const Center(
                           child: Text(
                             '할일이 없습니다',
@@ -489,7 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               // 첫 번째 할일만 미리보기
                               Expanded(
                                 child: Text(
-                                  tasks[0].title,
+                                  displayTasks[0].title,
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppTheme.textPrimaryColor,
@@ -501,7 +343,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               if (tasks.length > 1)
                                 Text(
-                                  '외 ${tasks.length - 1}개',
+                                  tasks.length > 3 
+                                    ? '외 ${tasks.length - 1}개' 
+                                    : '외 ${displayTasks.length - 1}개',
                                   style: const TextStyle(
                                     fontSize: 10,
                                     color: AppTheme.textSecondaryColor,
@@ -518,4 +362,91 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  void _showSuccessTooltip() {
+    // 잠시 후 툴팁 표시
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        final overlay = Overlay.of(context);
+        late OverlayEntry overlayEntry;
+        
+        overlayEntry = OverlayEntry(
+          builder: (context) => Positioned(
+            top: MediaQuery.of(context).size.height * 0.3,
+            right: 20,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      '일정이 추가되었습니다!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 화살표 모양 추가
+                    CustomPaint(
+                      size: const Size(12, 8),
+                      painter: _ArrowPainter(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        
+        overlay.insert(overlayEntry);
+        
+        // 3초 후 툴팁 제거
+        Future.delayed(const Duration(seconds: 3), () {
+          overlayEntry.remove();
+        });
+      }
+    });
+  }
+}
+
+// 화살표 그리기를 위한 CustomPainter
+class _ArrowPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    path.moveTo(0, 0);
+    path.lineTo(size.width * 0.7, size.height * 0.5);
+    path.lineTo(0, size.height);
+    
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 } 
