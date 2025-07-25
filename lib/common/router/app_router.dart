@@ -10,6 +10,7 @@ import '../../features/home/screens/home_screen.dart';
 import '../../features/auth/screens/forgot_id_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/taking/screens/taking_list.dart';
+import '../../features/home/screens/main_screen.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
@@ -59,8 +60,14 @@ class AppRouter {
         builder: (context, state) => ResetPasswordScreen(),
       ),
 
-      // 메인 홈 화면
+      // 메인 홈 화면 (기존 홈)
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+
+      // 메인 화면 (탭 네비게이션 포함)
+      GoRoute(
+        path: '/main',
+        builder: (context, state) => const MainScreen(),
+      ),
 
       // 복용 이력 리스트
       GoRoute(

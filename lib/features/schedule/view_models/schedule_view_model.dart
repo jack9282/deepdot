@@ -72,8 +72,11 @@ class ScheduleViewModel with ChangeNotifier {
     required String title,
     String? description,
     DateTime? dueDate,
+    TaskPriority? priority,
   }) async {
-    if (_currentPriority == null) {
+    final taskPriority = priority ?? _currentPriority;
+    
+    if (taskPriority == null) {
       _setError('우선순위가 설정되지 않았습니다');
       return false;
     }
@@ -91,7 +94,7 @@ class ScheduleViewModel with ChangeNotifier {
         id: 'task_${DateTime.now().millisecondsSinceEpoch}',
         title: title,
         description: description,
-        priority: _currentPriority!,
+        priority: taskPriority,
         createdAt: DateTime.now(),
         dueDate: dueDate,
       );
