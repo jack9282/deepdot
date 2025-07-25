@@ -1,33 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../common/theme/app_theme.dart';
-import '../widgets/taking_list_item.dart';
+import 'package:provider/provider.dart';
+import '../view_models/taking_view_model.dart';
 
-class TakingList extends StatefulWidget {
-  const TakingList({super.key});
+class TakingListScreen extends StatelessWidget {
+  const TakingListScreen({super.key});
 
   @override
-  State<TakingList> createState() => _TakingListState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider<TakingViewModel>(
+      create: (_) => TakingViewModel(),
+      child: const _TakingListScreenBody(),
+    );
+  }
 }
 
-class _TakingListState extends State<TakingList> {
-  // 더미 데이터
-  final List<Map<String, dynamic>> _takingList = [
-    {
-      'name': '약 이름1',
-      'checks': [true, true, true],
-    },
-    {
-      'name': '약 이름2',
-      'checks': [true, true, true],
-    },
-    {
-      'name': '약 이름3',
-      'checks': [true, true, true],
-    },
-  ];
-
-  final List<String> _times = ['아침', '점심', '저녁'];
+class _TakingListScreenBody extends StatelessWidget {
+  const _TakingListScreenBody();
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +34,7 @@ class _TakingListState extends State<TakingList> {
           IconButton(
             icon: const Icon(Icons.add, color: Colors.black, size: 28),
             onPressed: () {
-              context.push('/taking/add');
+              context.push('/taking-add');
             },
           ),
         ],
@@ -67,19 +56,68 @@ class _TakingListState extends State<TakingList> {
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _takingList.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 16),
-                itemBuilder: (context, idx) {
-                  final item = _takingList[idx];
-                  return TakingListItem(
-                    name: item['name'],
-                    checks: List<bool>.from(item['checks']),
-                    times: _times,
-                    onMorePressed: () {},
+              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+              child: Consumer<TakingViewModel>(
+                builder: (context, takingVM, _) {
+                  final takingList = takingVM.takingList;
+                  return ListView.separated(
+                    itemCount: takingList.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                    itemBuilder: (context, idx) {
+                      final item = takingList[idx];
+                      final times = item['times'] as List<String>;
+                      return Container(
+                        height: 80 + 20.0 * (times.length - 1),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  item['name'],
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.more_vert),
+                                  onPressed: () {
+                                    // 삭제 예시
+                                    // takingVM.removeTaking(idx);
+                                  },
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: List.generate(times.length, (timeIdx) {
+                                return Row(
+                                  children: [
+                                    Text(
+                                      times[timeIdx],
+                                      style: const TextStyle(fontSize: 15),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Checkbox(
+                                      value: false,
+                                      onChanged: (val) {},
+                                    ),
+                                  ],
+                                );
+                              }),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   );
                 },
               ),
