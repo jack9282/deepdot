@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../common/theme/app_theme.dart';
 
-class TakingListItem extends StatelessWidget {
+class TakingListItem extends StatefulWidget {
   final String name;
   final List<bool> checks;
   final List<String> times;
   final VoidCallback? onMorePressed;
+  final Function(int index, bool value)? onCheckChanged;
 
   const TakingListItem({
     super.key,
@@ -13,12 +14,44 @@ class TakingListItem extends StatelessWidget {
     required this.checks,
     required this.times,
     this.onMorePressed,
+    this.onCheckChanged,
   });
+
+  @override
+  State<TakingListItem> createState() => _TakingListItemState();
+}
+
+class _TakingListItemState extends State<TakingListItem> {
+  late List<bool> _checks;
+
+  @override
+  void initState() {
+    super.initState();
+    _checks = List<bool>.from(widget.checks);
+  }
+
+  @override
+  void didUpdateWidget(TakingListItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.checks != widget.checks) {
+      _checks = List<bool>.from(widget.checks);
+    }
+  }
+
+  void _onCheckChanged(int index, bool value) {
+    setState(() {
+      _checks[index] = value;
+    });
+    
+    if (widget.onCheckChanged != null) {
+      widget.onCheckChanged!(index, value);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: const Color(0xFFE0E0E0),
+      color: AppTheme.buttonColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -31,7 +64,7 @@ class TakingListItem extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  name,
+                  widget.name,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -40,32 +73,32 @@ class TakingListItem extends StatelessWidget {
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.more_vert, color: Colors.black54),
-                  onPressed: onMorePressed,
+                  onPressed: widget.onMorePressed,
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
-              children: List.generate(times.length, (i) {
+              children: List.generate(widget.times.length, (i) {
                 return Padding(
                   padding: const EdgeInsets.only(right: 24),
                   child: Row(
                     children: [
                       Text(
-                        times[i],
+                        widget.times[i],
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Icon(
-                        checks[i]
-                            ? Icons.check_box
-                            : Icons.check_box_outline_blank,
-                        color: AppTheme.textPrimaryColor,
-                        size: 22,
+                      Checkbox(
+                        value: _checks[i],
+                        onChanged: (value) {
+                          _onCheckChanged(i, value ?? false);
+                        },
+                        activeColor: AppTheme.textPrimaryColor,
                       ),
                     ],
                   ),

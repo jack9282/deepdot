@@ -33,45 +33,53 @@ class _AddCompleteScreenBody extends StatelessWidget {
           children: [
             // "생성 완료!" button/text
             Container(
+              width: 150,
+              height: 60,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.black,
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text(
-                '생성 완료!',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+              child: const Center(
+                child: Text(
+                  '생성 완료!',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 50),
+            const SizedBox(height: 40),
             // Clover image
-            Image.asset(
-              'assets/clover.png',
-              width: 120,
-              height: 120,
-            ),
-            const SizedBox(height: 50),
+            Image.asset('assets/images/clover.png', width: 120, height: 120),
+            const SizedBox(height: 40),
             // "확인" button
             GestureDetector(
               onTap: () {
                 context.go('/taking-list');
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                width: 110,
+                height: 50,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 15,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF232B3A),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text(
-                  '확인',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                child: const Center(
+                  child: Text(
+                    overflow: TextOverflow.visible,
+                    '확인',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),

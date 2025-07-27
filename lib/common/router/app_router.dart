@@ -10,7 +10,7 @@ import '../../features/home/screens/home_screen.dart';
 import '../../features/auth/screens/forgot_id_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/taking/screens/taking_list.dart';
-import '../../features/taking/screens/add_taking.dart';
+import '../../features/taking/screens/set_taking.dart';
 import '../../features/taking/screens/add_complete.dart';
 import '../../features/home/screens/main_screen.dart';
 
@@ -79,7 +79,16 @@ class AppRouter {
 
       GoRoute(
         path: '/taking-add',
-        builder: (context, state) => const AddTakingScreen(),
+        builder: (context, state) => const SetTakingScreen(),
+      ),
+
+      // 약 수정 화면 (파라미터 포함)
+      GoRoute(
+        path: '/taking-edit/:index',
+        builder: (context, state) {
+          final index = int.parse(state.pathParameters['index'] ?? '0');
+          return SetTakingScreen(editIndex: index);
+        },
       ),
 
       GoRoute(

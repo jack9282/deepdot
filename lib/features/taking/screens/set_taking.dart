@@ -3,20 +3,24 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/taking_view_model.dart';
 
-class AddTakingScreen extends StatelessWidget {
-  const AddTakingScreen({super.key});
+class SetTakingScreen extends StatelessWidget {
+  final int? editIndex;
+  
+  const SetTakingScreen({super.key, this.editIndex});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<TakingViewModel>(
       create: (_) => TakingViewModel(),
-      child: const _AddTakingScreenBody(),
+      child: _AddTakingScreenBody(editIndex: editIndex),
     );
   }
 }
 
 class _AddTakingScreenBody extends StatefulWidget {
-  const _AddTakingScreenBody();
+  final int? editIndex;
+  
+  const _AddTakingScreenBody({this.editIndex});
 
   @override
   State<_AddTakingScreenBody> createState() => _AddTakingScreenBodyState();
@@ -59,6 +63,24 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
     super.initState();
     _nameController.addListener(_onSearchChanged);
     _searchFocusNode.addListener(_onFocusChange);
+    
+    // 수정 모드일 때 기존 데이터 불러오기
+    if (widget.editIndex != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadExistingData();
+      });
+    }
+  }
+
+  void _loadExistingData() {
+    final takingVM = context.read<TakingViewModel>();
+    if (widget.editIndex! < takingVM.takingList.length) {
+      final item = takingVM.takingList[widget.editIndex!];
+      setState(() {
+        _nameController.text = item['name'];
+        _takingTimes = List<String>.from(item['times']);
+      });
+    }
   }
 
   @override
@@ -126,10 +148,27 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
       );
       return;
     }
-    context.read<TakingViewModel>().addTaking(
-      _nameController.text.trim(),
-      List<String>.from(_takingTimes),
-    );
+
+    final takingVM = context.read<TakingViewModel>();
+    
+    if (widget.editIndex != null) {
+      // 수정 모드: 기존 항목 업데이트
+      takingVM.updateTaking(
+        widget.editIndex!,
+        _nameController.text.trim(),
+        List<String>.from(_takingTimes),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('약 정보가 수정되었습니다')),
+      );
+    } else {
+      // 추가 모드: 새 항목 추가
+      takingVM.addTaking(
+        _nameController.text.trim(),
+        List<String>.from(_takingTimes),
+      );
+    }
+
     context.push('/taking-complete');
   }
 
@@ -150,6 +189,11 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
             }
           },
         ),
+        title: Text(
+          widget.editIndex != null ? '약 수정' : '약 추가',
+          style: const TextStyle(color: Colors.black),
+        ),
+        centerTitle: true,
         toolbarHeight: 56,
       ),
       body: Stack(
