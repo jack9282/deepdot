@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'common/theme/app_theme.dart';
 import 'common/router/app_router.dart';
@@ -24,6 +25,16 @@ class DeepDotApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         routerConfig: AppRouter.router,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('ko', 'KR'),
+          Locale('en', 'US'),
+        ],
+        locale: const Locale('ko', 'KR'),
       ),
     );
   }
