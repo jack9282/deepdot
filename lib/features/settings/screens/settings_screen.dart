@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../common/theme/app_theme.dart';
+import '../../tab_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -9,6 +10,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  
   // 알림 설정 상태
   bool _scheduleNotification = true;
   bool _medicationNotification = true;
@@ -39,167 +41,178 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 사용자 정보
-            const Padding(
-              padding: EdgeInsets.only(left: 2, bottom: 30),
-              child: Text(
-                '아이디(123@naver.com)',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w400,
-                  height: 1.10,
-                ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 사용자 정보
+                  const Padding(
+                    padding: EdgeInsets.only(left: 2, bottom: 30),
+                    child: Text(
+                      '아이디(123@naver.com)',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w400,
+                        height: 1.10,
+                      ),
+                    ),
+                  ),
+                  
+                  // 알림 섹션
+                  const Padding(
+                    padding: EdgeInsets.only(left: 2, bottom: 16),
+                    child: Text(
+                      '알림',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        height: 1.10,
+                      ),
+                    ),
+                  ),
+                  
+                  // 일정 알림 받기
+                  _buildSettingItem(
+                    title: '일정 알림 받기',
+                    value: _scheduleNotification,
+                    onChanged: (value) {
+                      setState(() {
+                        _scheduleNotification = value;
+                      });
+                    },
+                  ),
+                  
+                  const SizedBox(height: 28),
+                  
+                  // 복약 알림 받기
+                  _buildSettingItem(
+                    title: '복약 알림 받기',
+                    value: _medicationNotification,
+                    onChanged: (value) {
+                      setState(() {
+                        _medicationNotification = value;
+                      });
+                    },
+                  ),
+                  
+                  const SizedBox(height: 28),
+                  
+                  // 루틴 알림 받기
+                  _buildSettingItem(
+                    title: '루틴 알림 받기',
+                    value: _routineNotification,
+                    onChanged: (value) {
+                      setState(() {
+                        _routineNotification = value;
+                      });
+                    },
+                  ),
+                  
+                  const SizedBox(height: 45),
+                  
+                  // 동기화 섹션
+                  const Padding(
+                    padding: EdgeInsets.only(left: 2, bottom: 16),
+                    child: Text(
+                      '동기화',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        height: 1.10,
+                      ),
+                    ),
+                  ),
+                  
+                  // 기기간 동기화
+                  _buildSettingItem(
+                    title: '기기간 동기화',
+                    value: _deviceSync,
+                    onChanged: (value) {
+                      setState(() {
+                        _deviceSync = value;
+                      });
+                    },
+                  ),
+                  
+                  const SizedBox(height: 45),
+                  
+                  // AI 루틴 추천 섹션
+                  const Padding(
+                    padding: EdgeInsets.only(left: 2, bottom: 4),
+                    child: Text(
+                      'AI 루틴 추천',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        height: 1.10,
+                      ),
+                    ),
+                  ),
+                  
+                  // AI 설명 텍스트
+                  const Padding(
+                    padding: EdgeInsets.only(left: 2, bottom: 16),
+                    child: Text(
+                      'AI가 반복되는 일정을 감지해 루틴으로 만들어줘요',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w300,
+                        height: 2.20,
+                      ),
+                    ),
+                  ),
+                  
+                  // AI 루틴 추천 기능 켜기
+                  _buildSettingItem(
+                    title: 'AI 루틴 추천 기능 켜기',
+                    value: _aiRoutineRecommendation,
+                    onChanged: (value) {
+                      setState(() {
+                        _aiRoutineRecommendation = value;
+                      });
+                    },
+                  ),
+                  
+                  const SizedBox(height: 30),
+                  
+                  // 로그아웃
+                  _buildActionItem(
+                    title: '로그아웃',
+                    onTap: () {
+                      _showLogoutDialog();
+                    },
+                  ),
+                  
+                  const SizedBox(height: 26),
+                  
+                  // 회원 탈퇴
+                  _buildActionItem(
+                    title: '회원 탈퇴',
+                    onTap: () {
+                      _showDeleteAccountDialog();
+                    },
+                  ),
+                  
+                  const SizedBox(height: 40),
+                ],
               ),
             ),
-            
-            // 알림 섹션
-            const Padding(
-              padding: EdgeInsets.only(left: 2, bottom: 16),
-              child: Text(
-                '알림',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w500,
-                  height: 1.10,
-                ),
-              ),
-            ),
-            
-            // 일정 알림 받기
-            _buildSettingItem(
-              title: '일정 알림 받기',
-              value: _scheduleNotification,
-              onChanged: (value) {
-                setState(() {
-                  _scheduleNotification = value;
-                });
-              },
-            ),
-            
-            const SizedBox(height: 28),
-            
-            // 복약 알림 받기
-            _buildSettingItem(
-              title: '복약 알림 받기',
-              value: _medicationNotification,
-              onChanged: (value) {
-                setState(() {
-                  _medicationNotification = value;
-                });
-              },
-            ),
-            
-            const SizedBox(height: 28),
-            
-            // 루틴 알림 받기
-            _buildSettingItem(
-              title: '루틴 알림 받기',
-              value: _routineNotification,
-              onChanged: (value) {
-                setState(() {
-                  _routineNotification = value;
-                });
-              },
-            ),
-            
-            const SizedBox(height: 45),
-            
-            // 동기화 섹션
-            const Padding(
-              padding: EdgeInsets.only(left: 2, bottom: 16),
-              child: Text(
-                '동기화',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w500,
-                  height: 1.10,
-                ),
-              ),
-            ),
-            
-            // 기기간 동기화
-            _buildSettingItem(
-              title: '기기간 동기화',
-              value: _deviceSync,
-              onChanged: (value) {
-                setState(() {
-                  _deviceSync = value;
-                });
-              },
-            ),
-            
-            const SizedBox(height: 45),
-            
-            // AI 루틴 추천 섹션
-            const Padding(
-              padding: EdgeInsets.only(left: 2, bottom: 4),
-              child: Text(
-                'AI 루틴 추천',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w500,
-                  height: 1.10,
-                ),
-              ),
-            ),
-            
-            // AI 설명 텍스트
-            const Padding(
-              padding: EdgeInsets.only(left: 2, bottom: 16),
-              child: Text(
-                'AI가 반복되는 일정을 감지해 루틴으로 만들어줘요',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w300,
-                  height: 2.20,
-                ),
-              ),
-            ),
-            
-            // AI 루틴 추천 기능 켜기
-            _buildSettingItem(
-              title: 'AI 루틴 추천 기능 켜기',
-              value: _aiRoutineRecommendation,
-              onChanged: (value) {
-                setState(() {
-                  _aiRoutineRecommendation = value;
-                });
-              },
-            ),
-            
-            const SizedBox(height: 30),
-            
-            // 로그아웃
-            _buildActionItem(
-              title: '로그아웃',
-              onTap: () {
-                _showLogoutDialog();
-              },
-            ),
-            
-            const SizedBox(height: 26),
-            
-            // 회원 탈퇴
-            _buildActionItem(
-              title: '회원 탈퇴',
-              onTap: () {
-                _showDeleteAccountDialog();
-              },
-            ),
-            
-            const SizedBox(height: 40),
-          ],
-        ),
+          ),
+          // 탭 바 추가
+          TakingTabBar(
+            currentIndex: 3,
+            onTabChanged: (_) {},
+          ),
+        ],
       ),
     );
   }

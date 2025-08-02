@@ -9,10 +9,14 @@ import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/auth/screens/forgot_id_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
-import '../../features/taking/screens/taking_list.dart';
+import '../../features/taking/screens/taking_list_screen.dart';
 import '../../features/taking/screens/set_taking.dart';
 import '../../features/taking/screens/add_complete.dart';
 import '../../features/home/screens/main_screen.dart';
+import '../../features/routine/screens/add_complete.dart';
+import '../../features/routine/screens/routine_screen.dart';
+import '../../features/routine/screens/set_routine.dart';
+import '../../features/settings/screens/settings_screen.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
@@ -65,12 +69,6 @@ class AppRouter {
       // 메인 홈 화면 (기존 홈)
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
 
-      // 메인 화면 (탭 네비게이션 포함)
-      GoRoute(
-        path: '/main',
-        builder: (context, state) => const MainScreen(),
-      ),
-
       // 복용 이력 리스트
       GoRoute(
         path: '/taking-list',
@@ -93,7 +91,27 @@ class AppRouter {
 
       GoRoute(
         path: '/taking-complete',
-        builder: (context, state) => const AddCompleteScreen(),
+        builder: (context, state) => const TakingAddCompleteScreen(),
+      ),
+
+      GoRoute(
+        path: '/routine-complete',
+        builder: (context, state) => const RoutineCompleteScreen(),
+      ),
+
+      GoRoute(
+        path: '/routine',
+        builder: (context, state) => const RoutineScreen(),
+      ),
+
+      GoRoute(
+        path: '/routine-add',
+        builder: (context, state) => const SetRoutineScreen(),
+      ),
+
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
       ),
     ],
   );

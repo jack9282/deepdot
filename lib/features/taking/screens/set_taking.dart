@@ -196,246 +196,239 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
         centerTitle: true,
         toolbarHeight: 56,
       ),
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 32),
-                const Align(
-                  alignment: Alignment.center,
-                  child: Text(
-                    '복용 이력',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 32),
+            const Align(
+              alignment: Alignment.center,
+              child: Text(
+                '복용 이력',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              '어떤 약을 복용하고 계신가요?',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2F2F2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: TextField(
+                controller: _nameController,
+                focusNode: _searchFocusNode,
+                style: const TextStyle(fontSize: 18, color: Colors.black),
+                decoration: InputDecoration(
+                  hintText: '예시) 타이레놀, 이지엔6',
+                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  border: InputBorder.none,
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.search, color: Colors.black),
+                    onPressed: () {
+                      _searchFocusNode.unfocus();
+                    },
                   ),
                 ),
-                const SizedBox(height: 24),
-                const Text(
-                  '어떤 약을 복용하고 계신가요?',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF2F2F2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: TextField(
-                    controller: _nameController,
-                    focusNode: _searchFocusNode,
-                    style: const TextStyle(fontSize: 18, color: Colors.black),
-                    decoration: InputDecoration(
-                      hintText: '예시) 타이레놀, 이지엔6',
-                      hintStyle: TextStyle(color: Colors.grey[600]),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                      border: InputBorder.none,
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.search, color: Colors.black),
-                        onPressed: () {
-                          _searchFocusNode.unfocus();
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                if (_filteredMedications.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          spreadRadius: 2,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: LimitedBox(
-                      maxHeight: 200,
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        padding: EdgeInsets.zero,
-                        itemCount: _filteredMedications.length,
-                        itemBuilder: (context, index) {
-                          return ListTile(
-                            title: Text(
-                              _filteredMedications[index],
-                              style: const TextStyle(color: Colors.black),
-                            ),
-                            onTap: () => _selectMedication(_filteredMedications[index]),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 48),
-                const Text(
-                  '하루 중 언제 먹나요?',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // 시간 리스트 표시
-                Column(
-                  children: List.generate(_takingTimes.length, (idx) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          Container(
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(color: Colors.black, width: 1.5),
-                              ),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                            child: Text(
-                              _takingTimes[idx],
-                              style: const TextStyle(color: Colors.black, fontSize: 18),
-                            ),
-                          ),
-                          if (_takingTimes.length > 1)
-                            IconButton(
-                              icon: const Icon(Icons.remove_circle, color: Colors.red),
-                              onPressed: () => _removeTime(idx),
-                            ),
-                        ],
-                      ),
-                    );
-                  }),
-                ),
-                // 시간 추가
-                if (_takingTimes.length < 3)
-                  Row(
-                    children: [
-                      const Text('시간 추가', style: TextStyle(fontSize: 16)),
-                      const SizedBox(width: 12),
-                      Container(
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(color: Colors.black, width: 1.5),
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedHour,
-                            dropdownColor: Colors.white,
-                            iconEnabledColor: Colors.black,
-                            style: const TextStyle(color: Colors.black, fontSize: 18),
-                            items: _hourOptions.map((hour) => DropdownMenuItem(
-                              value: hour,
-                              child: Text(hour, style: const TextStyle(color: Colors.black)),
-                            )).toList(),
-                            onChanged: (val) {
-                              if (val != null) setState(() => _selectedHour = val);
-                            },
-                          ),
-                        ),
-                      ),
-                      const Text('시', style: TextStyle(color: Colors.black, fontSize: 18)),
-                      const SizedBox(width: 8),
-                      Container(
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(color: Colors.black, width: 1.5),
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedMinute,
-                            dropdownColor: Colors.white,
-                            iconEnabledColor: Colors.black,
-                            style: const TextStyle(color: Colors.black, fontSize: 18),
-                            items: _minuteOptions.map((minute) => DropdownMenuItem(
-                              value: minute,
-                              child: Text(minute, style: const TextStyle(color: Colors.black)),
-                            )).toList(),
-                            onChanged: (val) {
-                              if (val != null) setState(() => _selectedMinute = val);
-                            },
-                          ),
-                        ),
-                      ),
-                      const Text('분', style: TextStyle(color: Colors.black, fontSize: 18)),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFE0E0E0),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.add, color: Colors.black, size: 20),
-                          onPressed: _addTime,
-                        ),
-                      ),
-                    ],
-                  ),
-                const SizedBox(height: 16),
-                const Text(
-                  '시간은 0~23시 사이, 분은 30분 단위로 입력할 수 있어요',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-                const Text(
-                  '먹는 시간은 + 버튼을 눌러 3개까지 설정할 수 있어요',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-                const SizedBox(height: 48),
-                const Text(
-                  '복용 전 알림을 받을까요?',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      '알림',
-                      style: TextStyle(fontSize: 18, color: Colors.black),
-                    ),
-                    Transform.scale(
-                      scale: 1.2,
-                      child: Switch(
-                        value: _alarmOn,
-                        onChanged: (val) => setState(() => _alarmOn = val),
-                        activeColor: Colors.black,
-                        inactiveThumbColor: Colors.grey,
-                        inactiveTrackColor: Colors.grey[300],
-                      ),
+              ),
+            ),
+            if (_filteredMedications.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
+                child: LimitedBox(
+                  maxHeight: 200,
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    itemCount: _filteredMedications.length,
+                    itemBuilder: (context, index) {
+                      return ListTile(
+                        title: Text(
+                          _filteredMedications[index],
+                          style: const TextStyle(color: Colors.black),
+                        ),
+                        onTap: () => _selectMedication(_filteredMedications[index]),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            const SizedBox(height: 48),
+            const Text(
+              '하루 중 언제 먹나요?',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // 시간 리스트 표시
+            Column(
+              children: List.generate(_takingTimes.length, (idx) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: Colors.black, width: 1.5),
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        child: Text(
+                          _takingTimes[idx],
+                          style: const TextStyle(color: Colors.black, fontSize: 18),
+                        ),
+                      ),
+                      if (_takingTimes.length > 1)
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle, color: Colors.red),
+                          onPressed: () => _removeTime(idx),
+                        ),
+                    ],
+                  ),
+                );
+              }),
+            ),
+            // 시간 추가
+            if (_takingTimes.length < 3)
+              Row(
+                children: [
+                  const Text('시간 추가', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 12),
+                  Container(
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Colors.black, width: 1.5),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedHour,
+                        dropdownColor: Colors.white,
+                        iconEnabledColor: Colors.black,
+                        style: const TextStyle(color: Colors.black, fontSize: 18),
+                        items: _hourOptions.map((hour) => DropdownMenuItem(
+                          value: hour,
+                          child: Text(hour, style: const TextStyle(color: Colors.black)),
+                        )).toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _selectedHour = val);
+                        },
+                      ),
+                    ),
+                  ),
+                  const Text('시', style: TextStyle(color: Colors.black, fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Colors.black, width: 1.5),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedMinute,
+                        dropdownColor: Colors.white,
+                        iconEnabledColor: Colors.black,
+                        style: const TextStyle(color: Colors.black, fontSize: 18),
+                        items: _minuteOptions.map((minute) => DropdownMenuItem(
+                          value: minute,
+                          child: Text(minute, style: const TextStyle(color: Colors.black)),
+                        )).toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _selectedMinute = val);
+                        },
+                      ),
+                    ),
+                  ),
+                  const Text('분', style: TextStyle(color: Colors.black, fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFE0E0E0),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.add, color: Colors.black, size: 20),
+                      onPressed: _addTime,
+                    ),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 16),
+            const Text(
+              '시간은 0~23시 사이, 분은 30분 단위로 입력할 수 있어요',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const Text(
+              '먹는 시간은 + 버튼을 눌러 3개까지 설정할 수 있어요',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 48),
+            const Text(
+              '복용 전 알림을 받을까요?',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  '알림',
+                  style: TextStyle(fontSize: 18, color: Colors.black),
+                ),
+                Transform.scale(
+                  scale: 1.2,
+                  child: Switch(
+                    value: _alarmOn,
+                    onChanged: (val) => setState(() => _alarmOn = val),
+                    activeColor: Colors.black,
+                    inactiveThumbColor: Colors.grey,
+                    inactiveTrackColor: Colors.grey[300],
+                  ),
+                ),
               ],
             ),
-          ),
-          Positioned(
-            bottom: 48,
-            left: 0,
-            right: 0,
-            child: Center(
+            const Spacer(),
+            // 확인 버튼
+            Center(
               child: GestureDetector(
                 onTap: _onComplete,
                 child: Container(
@@ -449,8 +442,9 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                 ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 48),
+          ],
+        ),
       ),
     );
   }

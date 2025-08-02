@@ -7,6 +7,7 @@ import '../view_models/home_view_model.dart';
 import '../../schedule/screens/timeline_planner_screen.dart';
 import '../../schedule/screens/task_add_screen.dart';
 import '../../statistics/screens/statistics_screen.dart';
+import '../../tab_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,26 +17,26 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late HomeViewModel _viewModel;
   bool _isMenuOpen = false;
 
   @override
   void initState() {
     super.initState();
-    _viewModel = HomeViewModel();
-    _viewModel.loadTasks();
   }
 
   @override
   void dispose() {
-    _viewModel.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<HomeViewModel>(
-      create: (_) => _viewModel,
+      create: (_) {
+        final viewModel = HomeViewModel();
+        viewModel.loadTasks();
+        return viewModel;
+      },
       child: Stack(
         children: [
           Scaffold(
@@ -84,9 +85,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     context.push('/taking-list');
                   },
                 ),
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: () => _viewModel.refresh(),
+                Consumer<HomeViewModel>(
+                  builder: (context, viewModel, _) => IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () => viewModel.refresh(),
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.menu),
@@ -101,7 +104,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (viewModel.isLoading) {
                   return const Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppTheme.primaryColor,
+                      ),
                     ),
                   );
                 }
@@ -138,75 +143,86 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
-                return Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: Row(
+                return Column(
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
                           children: [
-                            // 중요 & 긴급 (좌상)
                             Expanded(
-                              child: _buildMatrixCard(
-                                context,
-                                viewModel,
-                                title: '중요 & 긴급',
-                                subtitle: '지금 바로 해야해요',
-                                color: AppTheme.urgentImportantColor,
-                                icon: Icons.warning,
-                                priority: TaskPriority.urgentImportant,
+                              child: Row(
+                                children: [
+                                  // 중요 & 긴급 (좌상)
+                                  Expanded(
+                                    child: _buildMatrixCard(
+                                      context,
+                                      viewModel,
+                                      title: '중요 & 긴급',
+                                      subtitle: '지금 바로 해야해요',
+                                      color: AppTheme.urgentImportantColor,
+                                      icon: Icons.warning,
+                                      priority: TaskPriority.urgentImportant,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  // 중요 (우상)
+                                  Expanded(
+                                    child: _buildMatrixCard(
+                                      context,
+                                      viewModel,
+                                      title: '중요',
+                                      subtitle: '미리 계획해서 준비해요',
+                                      color: AppTheme.importantColor,
+                                      icon: Icons.star,
+                                      priority: TaskPriority.important,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            // 중요 (우상)
+                            const SizedBox(height: 12),
                             Expanded(
-                              child: _buildMatrixCard(
-                                context,
-                                viewModel,
-                                title: '중요',
-                                subtitle: '미리 계획해서 준비해요',
-                                color: AppTheme.importantColor,
-                                icon: Icons.star,
-                                priority: TaskPriority.important,
+                              child: Row(
+                                children: [
+                                  // 긴급 (좌하)
+                                  Expanded(
+                                    child: _buildMatrixCard(
+                                      context,
+                                      viewModel,
+                                      title: '긴급',
+                                      subtitle: '급하면 부탁하거나 나중에 처리해요',
+                                      color: AppTheme.urgentColor,
+                                      icon: Icons.schedule,
+                                      priority: TaskPriority.urgent,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  // 둘 다 아님 (우하)
+                                  Expanded(
+                                    child: _buildMatrixCard(
+                                      context,
+                                      viewModel,
+                                      title: '둘 다 아님',
+                                      subtitle: '시간 남을 때하거나 안 해도 돼요',
+                                      color: AppTheme.neitherColor,
+                                      icon: Icons.more_horiz,
+                                      priority: TaskPriority.neither,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            // 긴급 (좌하)
-                            Expanded(
-                              child: _buildMatrixCard(
-                                context,
-                                viewModel,
-                                title: '긴급',
-                                subtitle: '급하면 부탁하거나 나중에 처리해요',
-                                color: AppTheme.urgentColor,
-                                icon: Icons.schedule,
-                                priority: TaskPriority.urgent,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            // 둘 다 아님 (우하)
-                            Expanded(
-                              child: _buildMatrixCard(
-                                context,
-                                viewModel,
-                                title: '둘 다 아님',
-                                subtitle: '시간 남을 때하거나 안 해도 돼요',
-                                color: AppTheme.neitherColor,
-                                icon: Icons.more_horiz,
-                                priority: TaskPriority.neither,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    // 탭 바 추가
+                    TakingTabBar(
+                      currentIndex: 0,
+                      onTabChanged: (_) {},
+                    ),
+                  ],
                 );
               },
             ),
@@ -220,14 +236,11 @@ class _HomeScreenState extends State<HomeScreen> {
               child: AnimatedRotation(
                 turns: _isMenuOpen ? 0.125 : 0.0, // 45도 회전
                 duration: const Duration(milliseconds: 200),
-                child: const Icon(
-                  Icons.add,
-                  color: Colors.white,
-                ),
+                child: const Icon(Icons.add, color: Colors.white),
               ),
             ),
           ),
-          
+
           // 배경 오버레이 (메뉴가 열렸을 때)
           if (_isMenuOpen)
             Positioned.fill(
@@ -237,12 +250,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     _isMenuOpen = false;
                   });
                 },
-                child: Container(
-                  color: Colors.black.withOpacity(0.3),
-                ),
+                child: Container(color: Colors.black.withOpacity(0.3)),
               ),
             ),
-          
+
           // 플로팅 메뉴들
           if (_isMenuOpen) ...[
             // 일정 추가 버튼
@@ -257,15 +268,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     _isMenuOpen = false;
                   });
                   // 일정 추가 화면으로 이동
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => TaskAddScreen(
-                        priority: TaskPriority.urgentImportant,
-                      ),
-                    ),
-                  ).then((result) {
+                  Navigator.of(context)
+                      .push(
+                        MaterialPageRoute(
+                          builder: (context) => TaskAddScreen(
+                            priority: TaskPriority.urgentImportant,
+                          ),
+                        ),
+                      )
+                                        .then((result) {
                     if (result == true) {
-                      _viewModel.refresh();
                       // 성공 툴팁 표시
                       _showSuccessTooltip();
                     }
@@ -273,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
             ),
-            
+
             // 통계 보기 버튼
             Positioned(
               bottom: 200,
@@ -347,11 +359,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              child: Icon(
-                icon,
-                color: Colors.white,
-                size: 24,
-              ),
+              child: Icon(icon, color: Colors.white, size: 24),
             ),
           ],
         ),
@@ -360,14 +368,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateToTimelinePlanner(BuildContext context, TaskPriority priority) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => TimelinePlannerScreen(priority: priority),
-      ),
-    ).then((result) {
-      // 돌아올 때 데이터 새로고침
-      _viewModel.refresh();
-    });
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (context) => TimelinePlannerScreen(priority: priority),
+          ),
+        )
+        .then((result) {
+          // 돌아올 때 데이터 새로고침은 자동으로 처리됨
+        });
   }
 
   Widget _buildMatrixCard(
@@ -383,12 +392,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final tasks = viewModel.getTasksByPriority(priority);
     // 최대 3개까지만 표시
     final displayTasks = tasks.take(3).toList();
-    
+
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => _navigateToTimelinePlanner(context, priority),
@@ -398,10 +405,7 @@ class _HomeScreenState extends State<HomeScreen> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                color.withOpacity(0.1),
-                color.withOpacity(0.05),
-              ],
+              colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
             ),
           ),
           child: Padding(
@@ -417,11 +421,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: color.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(
-                        icon,
-                        color: color,
-                        size: 20,
-                      ),
+                      child: Icon(icon, color: color, size: 20),
                     ),
                     const Spacer(),
                     Text(
@@ -489,9 +489,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               if (tasks.length > 1)
                                 Text(
-                                  tasks.length > 3 
-                                    ? '외 ${tasks.length - 1}개' 
-                                    : '외 ${displayTasks.length - 1}개',
+                                  tasks.length > 3
+                                      ? '외 ${tasks.length - 1}개'
+                                      : '외 ${displayTasks.length - 1}개',
                                   style: const TextStyle(
                                     fontSize: 10,
                                     color: AppTheme.textSecondaryColor,
@@ -515,7 +515,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         final overlay = Overlay.of(context);
         late OverlayEntry overlayEntry;
-        
+
         overlayEntry = OverlayEntry(
           builder: (context) => Positioned(
             top: MediaQuery.of(context).size.height * 0.3,
@@ -523,7 +523,10 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Material(
               color: Colors.transparent,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black87,
                   borderRadius: BorderRadius.circular(8),
@@ -564,9 +567,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         );
-        
+
         overlay.insert(overlayEntry);
-        
+
         // 3초 후 툴팁 제거
         Future.delayed(const Duration(seconds: 3), () {
           overlayEntry.remove();
@@ -589,10 +592,10 @@ class _ArrowPainter extends CustomPainter {
     path.moveTo(0, 0);
     path.lineTo(size.width * 0.7, size.height * 0.5);
     path.lineTo(0, size.height);
-    
+
     canvas.drawPath(path, paint);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-} 
+}

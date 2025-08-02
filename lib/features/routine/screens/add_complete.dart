@@ -1,22 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import '../view_models/taking_view_model.dart';
 
-class TakingAddCompleteScreen extends StatelessWidget {
-  const TakingAddCompleteScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider<TakingViewModel>(
-      create: (_) => TakingViewModel(),
-      child: const _AddCompleteScreenBody(),
-    );
-  }
-}
-
-class _AddCompleteScreenBody extends StatelessWidget {
-  const _AddCompleteScreenBody();
+class RoutineCompleteScreen extends StatelessWidget {
+  const RoutineCompleteScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +44,7 @@ class _AddCompleteScreenBody extends StatelessWidget {
             // "확인" button
             TextButton(
               onPressed: () {
-                context.go('/taking-list');
+                context.go('/routine');
               },
               style: TextButton.styleFrom(
                 backgroundColor: const Color(0xFF232B3A),

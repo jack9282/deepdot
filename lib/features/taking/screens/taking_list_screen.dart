@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/taking_view_model.dart';
 import '../../../common/theme/app_theme.dart';
+import '../../tab_bar.dart';
 
 class TakingListScreen extends StatelessWidget {
   const TakingListScreen({super.key});
@@ -24,6 +25,7 @@ class _TakingListScreenBody extends StatefulWidget {
 }
 
 class _TakingListScreenBodyState extends State<_TakingListScreenBody> {
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -235,6 +237,11 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody> {
                 },
               ),
             ),
+          ),
+          // 탭 바 추가
+          TakingTabBar(
+            currentIndex: 1,
+            onTabChanged: (_) {},
           ),
         ],
       ),
