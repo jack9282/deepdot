@@ -1,0 +1,5 @@
+[33mf30a069[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdevelop[m[33m, [m[1;31morigin/develop[m[33m)[m feat: 일정/설정 기능과 루틴/복용 기능 통합 병합
+[33m3d1c972[m[33m ([m[1;31morigin/minjae_develop[m[33m)[m 병합 오류 해결
+[33ma81d298[m Resolve merge conflict in routine_list_item.dart
+[33m3ed83de[m 뒤로가기 오류 해결
+[33m9abe1d8[m 루틴 화면 예시 완료

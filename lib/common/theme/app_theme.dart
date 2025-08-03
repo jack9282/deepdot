@@ -10,6 +10,10 @@ class AppTheme {
   static const Color textSecondaryColor = Color(0xFF718096);
   static const Color borderColor = Color(0xFFE2E8F0);
   
+  // 민재님 코드에서 사용하는 색상들 추가
+  static const Color darkColor = Color(0xFF2D3748);
+  static const Color buttonColor = Color(0xFF6C63FF);
+  
   // 아이젠하워 매트릭스 색상
   static const Color urgentImportantColor = Color(0xFFE53E3E); // 빨간색
   static const Color importantColor = Color(0xFFD69E2E); // 노란색

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../../common/theme/app_theme.dart';
 import '../../tab_bar.dart';
 import '../view_models/routine_view_model.dart';
 import '../widgets/routine_list_item.dart';
@@ -15,8 +13,6 @@ class RoutineScreen extends StatefulWidget {
 }
 
 class _RoutineScreenState extends State<RoutineScreen> {
-  int _selectedTabIndex = 2; // 루틴 탭이므로 2번 인덱스
-
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<RoutineViewModel>(

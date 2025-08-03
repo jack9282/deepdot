@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../common/theme/app_theme.dart';
 
 // 루틴 뷰모델
 class RoutineViewModel extends ChangeNotifier {

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
@@ -12,7 +11,7 @@ import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/taking/screens/taking_list_screen.dart';
 import '../../features/taking/screens/set_taking.dart';
 import '../../features/taking/screens/add_complete.dart';
-import '../../features/home/screens/main_screen.dart';
+
 import '../../features/routine/screens/add_complete.dart';
 import '../../features/routine/screens/routine_screen.dart';
 import '../../features/routine/screens/set_routine.dart';

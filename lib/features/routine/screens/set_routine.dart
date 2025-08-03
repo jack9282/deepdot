@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
-import '../../../common/theme/app_theme.dart';
-import 'add_complete.dart';
 
 class SetRoutineScreen extends StatefulWidget {
   final Map<String, dynamic>? existingRoutine; // 기존 루틴 데이터 (수정 시 사용)

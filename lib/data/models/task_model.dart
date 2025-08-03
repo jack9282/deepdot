@@ -13,6 +13,7 @@ class TaskModel {
   final bool isCompleted;
   final DateTime createdAt;
   final DateTime? dueDate;
+  final DateTime? startDate; // 일정 시작 날짜 추가
   final DateTime? completedAt;
 
   const TaskModel({
@@ -23,6 +24,7 @@ class TaskModel {
     this.isCompleted = false,
     required this.createdAt,
     this.dueDate,
+    this.startDate,
     this.completedAt,
   });
 
@@ -34,6 +36,7 @@ class TaskModel {
     bool? isCompleted,
     DateTime? createdAt,
     DateTime? dueDate,
+    DateTime? startDate,
     DateTime? completedAt,
   }) {
     return TaskModel(
@@ -44,6 +47,7 @@ class TaskModel {
       isCompleted: isCompleted ?? this.isCompleted,
       createdAt: createdAt ?? this.createdAt,
       dueDate: dueDate ?? this.dueDate,
+      startDate: startDate ?? this.startDate,
       completedAt: completedAt ?? this.completedAt,
     );
   }
@@ -57,6 +61,7 @@ class TaskModel {
       'isCompleted': isCompleted,
       'createdAt': createdAt.millisecondsSinceEpoch,
       'dueDate': dueDate?.millisecondsSinceEpoch,
+      'startDate': startDate?.millisecondsSinceEpoch,
       'completedAt': completedAt?.millisecondsSinceEpoch,
     };
   }
@@ -71,6 +76,9 @@ class TaskModel {
       createdAt: DateTime.fromMillisecondsSinceEpoch(json['createdAt'] as int),
       dueDate: json['dueDate'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['dueDate'] as int)
+          : null,
+      startDate: json['startDate'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(json['startDate'] as int)
           : null,
       completedAt: json['completedAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['completedAt'] as int)
