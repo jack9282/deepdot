@@ -5,7 +5,14 @@ import '../../../common/theme/app_theme.dart';
 import 'add_complete.dart';
 
 class SetRoutineScreen extends StatefulWidget {
-  const SetRoutineScreen({super.key});
+  final Map<String, dynamic>? existingRoutine; // 기존 루틴 데이터 (수정 시 사용)
+  final int? routineIndex; // 수정할 루틴의 인덱스
+
+  const SetRoutineScreen({
+    super.key,
+    this.existingRoutine,
+    this.routineIndex,
+  });
 
   @override
   State<SetRoutineScreen> createState() => _SetRoutineScreenState();
@@ -36,6 +43,27 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.existingRoutine != null) {
+      _routineNameController.text = widget.existingRoutine!['name'] ?? '';
+      _routineItems.addAll(widget.existingRoutine!['items'] ?? []);
+      _selectedDays.fillRange(0, 7, false); // 기존 데이터의 요일 선택 상태로 초기화
+      for (int i = 0; i < _selectedDays.length; i++) {
+        if (widget.existingRoutine!['days']?.contains(_days[i]) ?? false) {
+          _selectedDays[i] = true;
+        }
+      }
+      _notificationEnabled = widget.existingRoutine!['notificationEnabled'] ?? false;
+      _selectedTime = TimeOfDay(
+        hour: widget.existingRoutine!['hour'] ?? 7,
+        minute: widget.existingRoutine!['minute'] ?? 0,
+      );
+      _isAM = widget.existingRoutine!['isAM'] ?? true;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -55,7 +83,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
           children: [
             Center(
               child: Text(
-                '루틴 생성',
+                widget.existingRoutine != null ? '루틴 수정' : '루틴 생성',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
@@ -200,8 +228,27 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
             Center(
               child: GestureDetector(
                 onTap: () {
-                  // 루틴 생성 완료 후 완료 화면으로 이동
-                  context.push('/routine-complete');
+                  // 수정된 루틴 데이터 생성
+                  final updatedRoutine = {
+                    'name': _routineNameController.text,
+                    'items': List<String>.from(_routineItems),
+                    'days': _days.where((day) => _selectedDays[_days.indexOf(day)]).toList(),
+                    'notificationEnabled': _notificationEnabled,
+                    'hour': _selectedTime.hour,
+                    'minute': _selectedTime.minute,
+                    'isAM': _isAM,
+                  };
+                  
+                  // 수정 모드인 경우 이전 화면으로 결과 반환
+                  if (widget.existingRoutine != null) {
+                    Navigator.of(context).pop({
+                      'routine': updatedRoutine,
+                      'index': widget.routineIndex,
+                    });
+                  } else {
+                    // 새 루틴 생성인 경우 완료 화면으로 이동
+                    context.push('/routine-complete');
+                  }
                 },
                 child: Container(
                   width: 56,

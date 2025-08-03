@@ -36,24 +36,69 @@ class _RoutineScreenBody extends StatefulWidget {
 class _RoutineScreenBodyState extends State<_RoutineScreenBody> {
 
   // 루틴 데이터
-  final List<Map<String, dynamic>> _routines = [
+  List<Map<String, dynamic>> _routines = [
     {
       'name': '아침에 물 한 잔',
       'checks': List.generate(7, (_) => false),
+      'items': ['아침에 물 한 잔'],
+      'days': ['월', '화', '수', '목', '금', '토', '일'],
+      'notificationEnabled': false,
+      'hour': 7,
+      'minute': 0,
+      'isAM': true,
     },
     {
       'name': '매일 5천 보 이상 걷기',
       'checks': List.generate(7, (_) => false),
+      'items': ['매일 5천 보 이상 걷기'],
+      'days': ['월', '화', '수', '목', '금', '토', '일'],
+      'notificationEnabled': false,
+      'hour': 18,
+      'minute': 0,
+      'isAM': false,
     },
     {
       'name': '선크림 꼭 바르기',
       'checks': List.generate(7, (_) => false),
+      'items': ['선크림 꼭 바르기'],
+      'days': ['월', '화', '수', '목', '금', '토', '일'],
+      'notificationEnabled': false,
+      'hour': 8,
+      'minute': 0,
+      'isAM': true,
     },
     {
       'name': '공복 유산소',
       'checks': List.generate(7, (_) => false),
+      'items': ['공복 유산소'],
+      'days': ['월', '화', '수', '목', '금', '토', '일'],
+      'notificationEnabled': false,
+      'hour': 6,
+      'minute': 0,
+      'isAM': true,
     },
   ];
+
+  // 루틴 수정 메서드
+  void _updateRoutine(int index, String newName) {
+    setState(() {
+      _routines[index]['name'] = newName;
+    });
+  }
+
+  // 전체 루틴 데이터 수정 메서드
+  void _updateRoutineData(int index, Map<String, dynamic> updatedRoutine) {
+    setState(() {
+      _routines[index] = updatedRoutine;
+    });
+  }
+
+  // 루틴 삭제 메서드
+  void _deleteRoutine(int index) {
+    setState(() {
+      _routines.removeAt(index);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +155,9 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> {
                               index: index,
                               routineVM: routineVM,
                               routines: _routines,
+                              onUpdate: (index, newName) => _updateRoutine(index, newName),
+                              onUpdateData: (index, updatedRoutine) => _updateRoutineData(index, updatedRoutine),
+                              onDelete: (index) => _deleteRoutine(index),
                             );
                           },
                         );
