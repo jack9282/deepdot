@@ -77,7 +77,7 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody> {
                       final checks = item['checks'] as List<bool>? ?? List.generate(times.length, (_) => false);
                       
                       return Container(
-                        height: 80 + 20.0 * (times.length - 1),
+                        height: 85 + 20.0 * (times.length - 1),
                         decoration: BoxDecoration(
                           color: Colors.grey[300],
                           borderRadius: BorderRadius.circular(12),
