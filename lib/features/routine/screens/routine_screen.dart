@@ -115,8 +115,15 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: Colors.black, size: 28),
-            onPressed: () {
-              context.go('/routine-add');
+            onPressed: () async {
+              await Future.delayed(const Duration(milliseconds: 100));
+              if (context.mounted) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const SetRoutineScreen(),
+                  ),
+                );
+              }
             },
           ),
         ],

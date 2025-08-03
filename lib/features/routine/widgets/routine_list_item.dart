@@ -35,18 +35,21 @@ class RoutineListItem extends StatelessWidget {
             width: 120,
             child: PopupMenuButton<String>(
               offset: const Offset(0, 40),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               itemBuilder: (BuildContext context) => [
                 const PopupMenuItem<String>(
                   value: 'edit',
                   child: Row(
                     children: [
-                      Icon(Icons.edit, size: 18, color: Colors.black),
+                      Icon(Icons.edit, size: 18, color: Colors.black54),
                       SizedBox(width: 8),
                       Text(
                         '수정',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.black,
+                          color: Colors.black54,
                         ),
                       ),
                     ],
@@ -56,25 +59,26 @@ class RoutineListItem extends StatelessWidget {
                   value: 'delete',
                   child: Row(
                     children: [
-                      Icon(Icons.delete, size: 18, color: Colors.black),
+                      Icon(Icons.delete, size: 18, color: Colors.red),
                       SizedBox(width: 8),
                       Text(
                         '삭제',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.black,
+                          color: Colors.red,
                         ),
                       ),
                     ],
                   ),
                 ),
               ],
-              onSelected: (String value) {
+              onSelected: (String value) async {
                 if (value == 'edit') {
-                  // 수정 기능 구현
-                  _showEditDialog(context);
+                  await Future.delayed(const Duration(milliseconds: 100));
+                  if (context.mounted) {
+                    _navigateToEditScreen(context);
+                  }
                 } else if (value == 'delete') {
-                  // 삭제 기능 구현
                   _showDeleteDialog(context);
                 }
               },
@@ -109,7 +113,7 @@ class RoutineListItem extends StatelessWidget {
   }
 
   // 수정 화면으로 이동
-  void _showEditDialog(BuildContext context) {
+  void _navigateToEditScreen(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => SetRoutineScreen(

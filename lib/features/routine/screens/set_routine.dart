@@ -37,6 +37,28 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
   final List<String> _days = ['월', '화', '수', '목', '금', '토', '일'];
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.existingRoutine != null) {
+      _routineNameController.text = widget.existingRoutine!['name'] ?? '';
+      _routineItems.clear();
+      _routineItems.addAll(widget.existingRoutine!['items'] ?? []);
+      _selectedDays.fillRange(0, 7, false); // 기존 데이터의 요일 선택 상태로 초기화
+      for (int i = 0; i < _selectedDays.length; i++) {
+        if (widget.existingRoutine!['days']?.contains(_days[i]) ?? false) {
+          _selectedDays[i] = true;
+        }
+      }
+      _notificationEnabled = widget.existingRoutine!['notificationEnabled'] ?? false;
+      _selectedTime = TimeOfDay(
+        hour: widget.existingRoutine!['hour'] ?? 7,
+        minute: widget.existingRoutine!['minute'] ?? 0,
+      );
+      _isAM = widget.existingRoutine!['isAM'] ?? true;
+    }
+  }
+
+  @override
   void dispose() {
     _routineNameController.dispose();
     super.dispose();
