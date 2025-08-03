@@ -67,10 +67,27 @@ class ScheduleViewModel with ChangeNotifier {
     }
   }
 
+  // 모든 할일들 로드
+  Future<void> loadAllTasks() async {
+    _setLoading(true);
+    _setError(null);
+    _currentPriority = null;
+
+    try {
+      await _taskRepository.loadTasksFromStorage();
+      _setTasks(_taskRepository.tasks);
+    } catch (e) {
+      _setError('할일 목록을 불러오는데 실패했습니다: ${e.toString()}');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // 할일 추가
   Future<bool> addTask({
     required String title,
     String? description,
+    DateTime? startDate,
     DateTime? dueDate,
     TaskPriority? priority,
   }) async {
@@ -96,6 +113,7 @@ class ScheduleViewModel with ChangeNotifier {
         description: description,
         priority: taskPriority,
         createdAt: DateTime.now(),
+        startDate: startDate,
         dueDate: dueDate,
       );
 
@@ -226,6 +244,8 @@ class ScheduleViewModel with ChangeNotifier {
   Future<void> refresh() async {
     if (_currentPriority != null) {
       await loadTasksByPriority(_currentPriority!);
+    } else {
+      await loadAllTasks();
     }
   }
 } 

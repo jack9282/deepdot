@@ -4,7 +4,7 @@ import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../view_models/schedule_view_model.dart';
 import '../widgets/task_list_item.dart';
-import 'task_edit_screen.dart';
+import 'task_add_screen.dart';
 
 class TimelinePlannerScreen extends StatefulWidget {
   final TaskPriority priority;
@@ -234,7 +234,10 @@ class _TimelinePlannerScreenState extends State<TimelinePlannerScreen> {
                         onEdit: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (context) => TaskEditScreen(task: task),
+                              builder: (context) => TaskAddScreen(
+                                priority: task.priority,
+                                taskToEdit: task,
+                              ),
                             ),
                           ).then((result) {
                             if (result == true) {

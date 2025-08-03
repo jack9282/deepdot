@@ -6,11 +6,9 @@ class AppTheme {
   static const Color secondaryColor = Color(0xFF4CAF50); // 초록색 계열
   static const Color backgroundColor = Color(0xFFF8F9FA);
   static const Color cardColor = Color(0xFFFFFFFF);
-  static const Color darkColor = Color(0xFF000000);
   static const Color textPrimaryColor = Color(0xFF2D3748);
   static const Color textSecondaryColor = Color(0xFF718096);
   static const Color borderColor = Color(0xFFE2E8F0);
-  static const Color buttonColor = Color(0xFFD9D9D9);
   
   // 아이젠하워 매트릭스 색상
   static const Color urgentImportantColor = Color(0xFFE53E3E); // 빨간색
@@ -26,43 +24,63 @@ class AppTheme {
         brightness: Brightness.light,
       ),
       scaffoldBackgroundColor: backgroundColor,
-      appBarTheme: const AppBarTheme(
+      // Pretendard 폰트를 기본 폰트로 설정
+      fontFamily: 'Pretendard',
+      appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: textPrimaryColor),
-        titleTextStyle: TextStyle(
+        iconTheme: const IconThemeData(color: textPrimaryColor),
+        titleTextStyle: const TextStyle(
+          fontFamily: 'Pretendard',
           color: textPrimaryColor,
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
       ),
       textTheme: const TextTheme(
+        // Headline (32px, 24px)
         headlineLarge: TextStyle(
+          fontFamily: 'Pretendard',
           fontSize: 32,
           fontWeight: FontWeight.bold,
           color: textPrimaryColor,
         ),
         headlineMedium: TextStyle(
+          fontFamily: 'Pretendard',
           fontSize: 24,
           fontWeight: FontWeight.w600,
           color: textPrimaryColor,
         ),
+        // Title (20px)
         titleLarge: TextStyle(
+          fontFamily: 'Pretendard',
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: textPrimaryColor,
         ),
         titleMedium: TextStyle(
+          fontFamily: 'Pretendard',
           fontSize: 16,
           fontWeight: FontWeight.w500,
           color: textPrimaryColor,
         ),
+        // Body (18px, 16px, 14px)
         bodyLarge: TextStyle(
-          fontSize: 16,
+          fontFamily: 'Pretendard',
+          fontSize: 18,
+          fontWeight: FontWeight.normal,
           color: textPrimaryColor,
         ),
         bodyMedium: TextStyle(
+          fontFamily: 'Pretendard',
+          fontSize: 16,
+          fontWeight: FontWeight.normal,
+          color: textPrimaryColor,
+        ),
+        bodySmall: TextStyle(
+          fontFamily: 'Pretendard',
           fontSize: 14,
+          fontWeight: FontWeight.normal,
           color: textSecondaryColor,
         ),
       ),
