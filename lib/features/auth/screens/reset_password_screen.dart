@@ -194,9 +194,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         ? null
                         : () async {
                             if (!_formKey.currentState!.validate()) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('비밀번호를 올바르게 입력해주세요.')),
-                              );
+                              // 모든 ScaffoldMessenger.of(context).showSnackBar 관련 코드 제거
                               return;
                             }
                             final result = await authViewModel.resetPassword(
@@ -228,9 +226,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 ),
                               );
                             } else if (authViewModel.errorMessage != null && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(authViewModel.errorMessage!)),
-                              );
+                              // 모든 ScaffoldMessenger.of(context).showSnackBar 관련 코드 제거
                             }
                           },
                     style: ElevatedButton.styleFrom(

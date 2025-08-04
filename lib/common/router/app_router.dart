@@ -1,12 +1,11 @@
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
-import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/signup_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
-import '../../features/auth/screens/forgot_password_screen.dart';
+
 import '../../features/home/screens/home_screen.dart';
-import '../../features/auth/screens/forgot_id_screen.dart';
+import '../../features/auth/screens/forgot_account_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/taking/screens/taking_list_screen.dart';
 import '../../features/taking/screens/set_taking.dart';
@@ -33,12 +32,6 @@ class AppRouter {
         builder: (context, state) => const OnboardingScreen(),
       ),
 
-      // 웰컴 화면
-      GoRoute(
-        path: '/welcome',
-        builder: (context, state) => const WelcomeScreen(),
-      ),
-
       // 회원가입 화면
       GoRoute(
         path: '/signup',
@@ -50,13 +43,17 @@ class AppRouter {
 
       GoRoute(
         path: '/forgot-id',
-        builder: (context, state) => const ForgotIdScreen(),
+        builder: (context, state) => const ForgotAccountScreen(),
       ),
 
-      // 비밀번호 찾기 화면
+      // 비밀번호 찾기 화면 (통합된 스크린 사용)
       GoRoute(
         path: '/forgot-password',
-        builder: (context, state) => const ForgotPasswordScreen(),
+        builder: (context, state) {
+          final tabParam = state.uri.queryParameters['tab'];
+          final initialTabIndex = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
+          return ForgotAccountScreen(initialTabIndex: initialTabIndex);
+        },
       ),
 
       // 비밀번호 재설정 화면
