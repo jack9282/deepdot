@@ -6,11 +6,7 @@ class SetRoutineScreen extends StatefulWidget {
   final Map<String, dynamic>? existingRoutine; // 기존 루틴 데이터 (수정 시 사용)
   final int? routineIndex; // 수정할 루틴의 인덱스
 
-  const SetRoutineScreen({
-    super.key,
-    this.existingRoutine,
-    this.routineIndex,
-  });
+  const SetRoutineScreen({super.key, this.existingRoutine, this.routineIndex});
 
   @override
   State<SetRoutineScreen> createState() => _SetRoutineScreenState();
@@ -47,7 +43,8 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
           _selectedDays[i] = true;
         }
       }
-      _notificationEnabled = widget.existingRoutine!['notificationEnabled'] ?? false;
+      _notificationEnabled =
+          widget.existingRoutine!['notificationEnabled'] ?? false;
       _selectedTime = TimeOfDay(
         hour: widget.existingRoutine!['hour'] ?? 7,
         minute: widget.existingRoutine!['minute'] ?? 0,
@@ -88,7 +85,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                   fontWeight: FontWeight.w600,
                   color: Colors.black,
                 ),
-              )
+              ),
             ),
             const SizedBox(height: 24),
             // 루틴 이름 입력
@@ -231,13 +228,15 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                   final updatedRoutine = {
                     'name': _routineNameController.text,
                     'items': List<String>.from(_routineItems),
-                    'days': _days.where((day) => _selectedDays[_days.indexOf(day)]).toList(),
+                    'days': _days
+                        .where((day) => _selectedDays[_days.indexOf(day)])
+                        .toList(),
                     'notificationEnabled': _notificationEnabled,
                     'hour': _selectedTime.hour,
                     'minute': _selectedTime.minute,
                     'isAM': _isAM,
                   };
-                  
+
                   // 수정 모드인 경우 이전 화면으로 결과 반환
                   if (widget.existingRoutine != null) {
                     Navigator.of(context).pop({

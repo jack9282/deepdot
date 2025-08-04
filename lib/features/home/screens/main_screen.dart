@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../common/theme/app_theme.dart';
 import 'home_screen.dart';
-import '../../medication/screens/medication_screen.dart';
+import '../../taking/screens/taking_list_screen.dart';
 import '../../routine/screens/routine_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 
@@ -17,7 +17,7 @@ class _MainScreenState extends State<MainScreen> {
   
   final List<Widget> _screens = [
     const HomeScreen(),
-    const MedicationScreen(),
+    const TakingListScreen(),
     const RoutineScreen(),
     const SettingsScreen(),
   ];
@@ -25,6 +25,15 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // 스캐폴드 배경색을 흰색으로 설정
+      extendBody: true, // body를 화면 하단 끝까지 확장
+      body: SafeArea(
+        top: false, // 상단 영역(AppBar)에는 영향을 주지 않음
+        bottom: true, // 하단 영역만 침범하지 않도록 설정
+        child: IndexedStack(
+          index: _currentIndex,
+          children: _screens,
+        ),
       backgroundColor: Colors.white, // 스캐폴드 배경색을 흰색으로 설정
       extendBody: true, // body를 화면 하단 끝까지 확장
       body: SafeArea(
@@ -113,4 +122,5 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
+}
 }

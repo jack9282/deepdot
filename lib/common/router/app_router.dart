@@ -25,7 +25,7 @@ class AppRouter {
         path: '/splash',
         builder: (context, state) => const SplashScreen(),
       ),
-
+      
       // 온보딩 화면
       GoRoute(
         path: '/onboarding',
@@ -37,10 +37,14 @@ class AppRouter {
         path: '/signup',
         builder: (context, state) => const SignupScreen(),
       ),
-
+      
       // 로그인 화면
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
 
+      // 아이디 찾기 화면
       GoRoute(
         path: '/forgot-id',
         builder: (context, state) => const ForgotAccountScreen(),
@@ -55,16 +59,20 @@ class AppRouter {
           return ForgotAccountScreen(initialTabIndex: initialTabIndex);
         },
       ),
+      
 
       // 비밀번호 재설정 화면
       GoRoute(
         path: '/reset-password',
-        builder: (context, state) => ResetPasswordScreen(),
+        builder: (context, state) => const ResetPasswordScreen(),
       ),
-
-      // 메인 홈 화면 (기존 홈)
-      GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
-
+      
+      // 메인 화면 (탭 네비게이션 포함)
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => const MainScreen(),
+      ),
+      
       // 복용 이력 리스트
       GoRoute(
         path: '/taking-list',
@@ -105,6 +113,7 @@ class AppRouter {
         builder: (context, state) => const SetRoutineScreen(),
       ),
 
+      // 설정 화면
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
@@ -113,4 +122,4 @@ class AppRouter {
   );
 
   static GoRouter get router => _router;
-}
+} 
