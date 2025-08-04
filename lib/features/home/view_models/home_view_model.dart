@@ -15,9 +15,19 @@ class HomeViewModel with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  // 우선순위별 할일 목록 가져오기
+  // 우선순위별 할일 목록 가져오기 (시간순 정렬)
   List<TaskModel> getTasksByPriority(TaskPriority priority) {
-    return _tasks.where((task) => task.priority == priority && !task.isCompleted).toList();
+    final filteredTasks = _tasks.where((task) => task.priority == priority && !task.isCompleted).toList();
+    
+    // 시간순으로 정렬 (이른 시간부터)
+    filteredTasks.sort((a, b) {
+      if (a.dueDate == null && b.dueDate == null) return 0;
+      if (a.dueDate == null) return 1; // null은 뒤로
+      if (b.dueDate == null) return -1; // null은 뒤로
+      return a.dueDate!.compareTo(b.dueDate!);
+    });
+    
+    return filteredTasks;
   }
 
   // 우선순위별 할일 개수 가져오기

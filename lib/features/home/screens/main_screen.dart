@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../common/theme/app_theme.dart';
 import 'home_screen.dart';
-import '../../medication/screens/medication_screen.dart';
+import '../../taking/screens/taking_list_screen.dart';
 import '../../routine/screens/routine_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 
@@ -17,7 +17,7 @@ class _MainScreenState extends State<MainScreen> {
   
   final List<Widget> _screens = [
     const HomeScreen(),
-    const MedicationScreen(),
+    const TakingListScreen(),
     const RoutineScreen(),
     const SettingsScreen(),
   ];
@@ -61,50 +61,50 @@ class _MainScreenState extends State<MainScreen> {
               child: Container(
                 height: 90, // 🎯 여기서 하단바 높이 조절! (60~100 추천)
                 child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
-            elevation: 0,
-            selectedItemColor: AppTheme.primaryColor,
-            unselectedItemColor: AppTheme.textSecondaryColor,
-            selectedFontSize: 14,
-            unselectedFontSize: 14,
-            iconSize: 26,
-            selectedLabelStyle: const TextStyle(
-              fontFamily: 'Pretendard',
-              fontWeight: FontWeight.w600,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontFamily: 'Pretendard',
-              fontWeight: FontWeight.w400,
-            ),
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home),
-                label: '홈',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.medication_outlined),
-                activeIcon: Icon(Icons.medication),
-                label: '복용',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.assignment_outlined),
-                activeIcon: Icon(Icons.assignment),
-                label: '루틴',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.settings_outlined),
-                activeIcon: Icon(Icons.settings),
-                label: '설정',
-              ),
-            ],
+                  currentIndex: _currentIndex,
+                  onTap: (index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
+                  type: BottomNavigationBarType.fixed,
+                  backgroundColor: Colors.white,
+                  elevation: 0,
+                  selectedItemColor: AppTheme.primaryColor,
+                  unselectedItemColor: AppTheme.textSecondaryColor,
+                  selectedFontSize: 14,
+                  unselectedFontSize: 14,
+                  iconSize: 26,
+                  selectedLabelStyle: const TextStyle(
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w600,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w400,
+                  ),
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.home_outlined),
+                      activeIcon: Icon(Icons.home),
+                      label: '홈',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.medication_outlined),
+                      activeIcon: Icon(Icons.medication),
+                      label: '복용',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.assignment_outlined),
+                      activeIcon: Icon(Icons.assignment),
+                      label: '루틴',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.settings_outlined),
+                      activeIcon: Icon(Icons.settings),
+                      label: '설정',
+                    ),
+                  ],
                 ),
               ),
             ),

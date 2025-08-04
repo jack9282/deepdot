@@ -12,8 +12,9 @@ class TaskModel {
   final TaskPriority priority;
   final bool isCompleted;
   final DateTime createdAt;
-  final DateTime? dueDate;
-  final DateTime? startDate; // 일정 시작 날짜 추가
+
+  final DateTime? startDate;  // 일정 시작 시간
+  final DateTime? dueDate;    // 일정 종료 시간
   final DateTime? completedAt;
 
   const TaskModel({
@@ -23,8 +24,8 @@ class TaskModel {
     required this.priority,
     this.isCompleted = false,
     required this.createdAt,
-    this.dueDate,
     this.startDate,
+    this.dueDate,
     this.completedAt,
   });
 
@@ -35,8 +36,8 @@ class TaskModel {
     TaskPriority? priority,
     bool? isCompleted,
     DateTime? createdAt,
-    DateTime? dueDate,
     DateTime? startDate,
+    DateTime? dueDate,
     DateTime? completedAt,
   }) {
     return TaskModel(
@@ -46,8 +47,8 @@ class TaskModel {
       priority: priority ?? this.priority,
       isCompleted: isCompleted ?? this.isCompleted,
       createdAt: createdAt ?? this.createdAt,
-      dueDate: dueDate ?? this.dueDate,
       startDate: startDate ?? this.startDate,
+      dueDate: dueDate ?? this.dueDate,
       completedAt: completedAt ?? this.completedAt,
     );
   }
@@ -60,8 +61,8 @@ class TaskModel {
       'priority': priority.index,
       'isCompleted': isCompleted,
       'createdAt': createdAt.millisecondsSinceEpoch,
-      'dueDate': dueDate?.millisecondsSinceEpoch,
       'startDate': startDate?.millisecondsSinceEpoch,
+      'dueDate': dueDate?.millisecondsSinceEpoch,
       'completedAt': completedAt?.millisecondsSinceEpoch,
     };
   }
@@ -74,11 +75,11 @@ class TaskModel {
       priority: TaskPriority.values[json['priority'] as int],
       isCompleted: json['isCompleted'] as bool,
       createdAt: DateTime.fromMillisecondsSinceEpoch(json['createdAt'] as int),
-      dueDate: json['dueDate'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(json['dueDate'] as int)
-          : null,
       startDate: json['startDate'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['startDate'] as int)
+          : null,
+      dueDate: json['dueDate'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(json['dueDate'] as int)
           : null,
       completedAt: json['completedAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['completedAt'] as int)

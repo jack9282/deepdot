@@ -5,6 +5,11 @@ import 'dart:convert';
 class TaskRepository {
   static const String _tasksKey = 'tasks';
   
+  // Singleton 패턴 구현
+  static final TaskRepository _instance = TaskRepository._internal();
+  factory TaskRepository() => _instance;
+  TaskRepository._internal();
+  
   // 메모리에 캐시된 할일 목록
   List<TaskModel> _tasks = [];
 
@@ -134,7 +139,8 @@ class TaskRepository {
         description: '내일까지 제출해야 하는 중요한 프로젝트',
         priority: TaskPriority.urgentImportant,
         createdAt: now.subtract(const Duration(hours: 2)),
-        dueDate: now.add(const Duration(days: 1)),
+        startDate: now.add(const Duration(hours: 8)),
+        dueDate: now.add(const Duration(hours: 10)),
       ),
       TaskModel(
         id: 'sample_2',
@@ -142,6 +148,8 @@ class TaskRepository {
         description: '주 3회 운동 루틴 만들기',
         priority: TaskPriority.important,
         createdAt: now.subtract(const Duration(hours: 1)),
+        startDate: now.add(const Duration(hours: 14)),
+        dueDate: now.add(const Duration(hours: 15)),
       ),
       TaskModel(
         id: 'sample_3',
@@ -149,7 +157,8 @@ class TaskRepository {
         description: '이번 주 토요일이 생일',
         priority: TaskPriority.urgent,
         createdAt: now.subtract(const Duration(minutes: 30)),
-        dueDate: now.add(const Duration(days: 3)),
+        startDate: now.add(const Duration(hours: 16)),
+        dueDate: now.add(const Duration(hours: 17)),
       ),
       TaskModel(
         id: 'sample_4',
@@ -157,6 +166,8 @@ class TaskRepository {
         description: '관심있는 영상들 보기',
         priority: TaskPriority.neither,
         createdAt: now.subtract(const Duration(minutes: 15)),
+        startDate: now.add(const Duration(hours: 19)),
+        dueDate: now.add(const Duration(hours: 20)),
       ),
     ];
 

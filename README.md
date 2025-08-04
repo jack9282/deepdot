@@ -97,7 +97,6 @@ assets/
  │   ├── backgrounds/
  │   │   ├── bg1.jpg
  │   │   ├── bg2.jpg
-
 ```
 
 ## 🚀 시작하기 (Getting Started)
