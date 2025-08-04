@@ -15,6 +15,7 @@ import '../../features/routine/screens/routine_screen.dart';
 import '../../features/routine/screens/set_routine.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/home/screens/main_screen.dart';
+import '../../features/home/screens/home_screen.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
@@ -76,9 +77,20 @@ class AppRouter {
       // 복용 이력 리스트
       GoRoute(
         path: '/taking-list',
-        builder: (context, state) => const TakingListScreen(),
+        builder: (context, state) => const MainScreen(),
       ),
 
+      GoRoute(
+        path: '/routine',
+        builder: (context, state) => const MainScreen(),
+      ),
+
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const MainScreen(),
+      ),
+      
+      // 복용 관련 화면들 (탭바 밖에서 열림)
       GoRoute(
         path: '/taking-add',
         builder: (context, state) => const SetTakingScreen(),
@@ -104,19 +116,8 @@ class AppRouter {
       ),
 
       GoRoute(
-        path: '/routine',
-        builder: (context, state) => const RoutineScreen(),
-      ),
-
-      GoRoute(
         path: '/routine-add',
         builder: (context, state) => const SetRoutineScreen(),
-      ),
-
-      // 설정 화면
-      GoRoute(
-        path: '/settings',
-        builder: (context, state) => const SettingsScreen(),
       ),
     ],
   );

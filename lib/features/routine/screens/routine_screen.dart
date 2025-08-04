@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../tab_bar.dart';
 import '../view_models/routine_view_model.dart';
 import '../widgets/routine_list_item.dart';
 import 'set_routine.dart';
@@ -15,10 +14,7 @@ class RoutineScreen extends StatefulWidget {
 class _RoutineScreenState extends State<RoutineScreen> {
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<RoutineViewModel>(
-      create: (_) => RoutineViewModel(),
-      child: const _RoutineScreenBody(),
-    );
+    return const _RoutineScreenBody();
   }
 }
 
@@ -29,69 +25,37 @@ class _RoutineScreenBody extends StatefulWidget {
   State<_RoutineScreenBody> createState() => _RoutineScreenBodyState();
 }
 
-class _RoutineScreenBodyState extends State<_RoutineScreenBody> {
-  // 루틴 데이터
-  List<Map<String, dynamic>> _routines = [
-    {
-      'name': '아침에 물 한 잔',
-      'checks': List.generate(7, (_) => false),
-      'items': ['아침에 물 한 잔'],
-      'days': ['월', '화', '수', '목', '금', '토', '일'],
-      'notificationEnabled': false,
-      'hour': 7,
-      'minute': 0,
-      'isAM': true,
-    },
-    {
-      'name': '매일 5천 보 이상 걷기',
-      'checks': List.generate(7, (_) => false),
-      'items': ['매일 5천 보 이상 걷기'],
-      'days': ['월', '화', '수', '목', '금', '토', '일'],
-      'notificationEnabled': false,
-      'hour': 18,
-      'minute': 0,
-      'isAM': false,
-    },
-    {
-      'name': '선크림 꼭 바르기',
-      'checks': List.generate(7, (_) => false),
-      'items': ['선크림 꼭 바르기'],
-      'days': ['월', '화', '수', '목', '금', '토', '일'],
-      'notificationEnabled': false,
-      'hour': 8,
-      'minute': 0,
-      'isAM': true,
-    },
-    {
-      'name': '공복 유산소',
-      'checks': List.generate(7, (_) => false),
-      'items': ['공복 유산소'],
-      'days': ['월', '화', '수', '목', '금', '토', '일'],
-      'notificationEnabled': false,
-      'hour': 6,
-      'minute': 0,
-      'isAM': true,
-    },
-  ];
-
-  // 루틴 수정 메서드
-  void _updateRoutine(int index, String newName) {
-    setState(() {
-      _routines[index]['name'] = newName;
+class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // 초기 데이터 로드
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RoutineViewModel>().initialize();
     });
   }
 
-  // 전체 루틴 데이터 수정 메서드
-  void _updateRoutineData(int index, Map<String, dynamic> updatedRoutine) {
-    setState(() {
-      _routines[index] = updatedRoutine;
-    });
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
-  // 루틴 삭제 메서드
-  void _deleteRoutine(int index) {
-    setState(() {
-      _routines.removeAt(index);
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App came back to foreground, refresh data
+      context.read<RoutineViewModel>().initialize();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh data when dependencies change (e.g., when navigating back)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RoutineViewModel>().initialize();
     });
   }
 
@@ -100,6 +64,16 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        title: Center(
+          child: Text(
+            '루틴 체크리스트',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
@@ -125,46 +99,82 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> {
       ),
       body: Column(
         children: [
-          Center(
-            child: Text(
-              '루틴 체크리스트',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-          ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(30.0),
               child: Column(
                 children: [
-                  // 요일 헤더
-                  _buildDaysHeader(),
-                  const SizedBox(height: 8),
                   // 루틴 목록
                   Expanded(
                     child: Consumer<RoutineViewModel>(
                       builder: (context, routineVM, _) {
-                        return ListView.separated(
-                          itemCount: _routines.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 8),
-                          itemBuilder: (context, index) {
-                            final routine = _routines[index];
-                            return RoutineListItem(
-                              routine: routine,
-                              index: index,
-                              routineVM: routineVM,
-                              routines: _routines,
-                              onUpdate: (index, newName) =>
-                                  _updateRoutine(index, newName),
-                              onUpdateData: (index, updatedRoutine) =>
-                                  _updateRoutineData(index, updatedRoutine),
-                              onDelete: (index) => _deleteRoutine(index),
-                            );
-                          },
+                        final routineList = routineVM.routineList;
+                        
+                        // 데이터가 없을 때 빈 상태 UI
+                        if (routineList.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.assignment_outlined,
+                                  size: 80,
+                                  color: Colors.grey[400],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  '루틴이 없습니다',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '오른쪽 상단의 + 버튼을 눌러\n루틴을 추가해보세요',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[500],
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        
+                        return Column(
+                          children: [
+                            // 요일 헤더 (루틴이 있을 때만 표시)
+                            _buildDaysHeader(),
+                            const SizedBox(height: 8),
+                            // 루틴 목록
+                            Expanded(
+                              child: ListView.separated(
+                                itemCount: routineList.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 8),
+                                itemBuilder: (context, index) {
+                                  final routine = routineList[index];
+                                  final checks = routineVM.getChecksForItem(index);
+                                  
+                                  // 체크 상태를 루틴 데이터에 추가
+                                  final routineWithChecks = Map<String, dynamic>.from(routine);
+                                  routineWithChecks['checks'] = checks;
+                                  
+                                  return RoutineListItem(
+                                    routine: routineWithChecks,
+                                    index: index,
+                                    routineVM: routineVM,
+                                    onDelete: (index) {
+                                      routineVM.removeRoutine(index);
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         );
                       },
                     ),

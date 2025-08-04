@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../view_models/routine_view_model.dart';
 
 class SetRoutineScreen extends StatefulWidget {
   final Map<String, dynamic>? existingRoutine; // 기존 루틴 데이터 (수정 시 사용)
@@ -29,6 +31,9 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
   bool _isAM = true;
 
   final List<String> _days = ['월', '화', '수', '목', '금', '토', '일'];
+  
+  // 추가: 루틴 이름 에러 상태
+  bool _showNameError = false;
 
   @override
   void initState() {
@@ -101,22 +106,45 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: TextField(
-                    controller: _routineNameController,
-                    decoration: InputDecoration(
-                      hintText: '아침 루틴',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _showNameError ? Colors.red : Colors.transparent,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _routineNameController,
+                          decoration: InputDecoration(
+                            hintText: '아침 루틴',
+                            hintStyle: TextStyle(color: Colors.grey[400]),
+                            filled: true,
+                            fillColor: Colors.transparent,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
+                      if (_showNameError)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4, top: 4),
+                          child: Text(
+                            '루틴 이름을 입력해주세요',
+                            style: TextStyle(color: Colors.red, fontSize: 12),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -223,7 +251,18 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
             // 확인 버튼
             Center(
               child: GestureDetector(
-                onTap: () {
+                onTap: () async {
+                  // 루틴 이름 검증
+                  if (_routineNameController.text.trim().isEmpty) {
+                    setState(() {
+                      _showNameError = true;
+                    });
+                    return;
+                  }
+                  setState(() {
+                    _showNameError = false;
+                  });
+
                   // 수정된 루틴 데이터 생성
                   final updatedRoutine = {
                     'name': _routineNameController.text,
@@ -237,6 +276,8 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     'isAM': _isAM,
                   };
 
+                  final routineVM = context.read<RoutineViewModel>();
+
                   // 수정 모드인 경우 이전 화면으로 결과 반환
                   if (widget.existingRoutine != null) {
                     Navigator.of(context).pop({
@@ -244,8 +285,18 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                       'index': widget.routineIndex,
                     });
                   } else {
-                    // 새 루틴 생성인 경우 완료 화면으로 이동
-                    context.push('/routine-complete');
+                    // 새 루틴 생성인 경우 DataManager에 저장
+                    await routineVM.addRoutine(
+                      _routineNameController.text,
+                      List<String>.from(_routineItems),
+                      _days.where((day) => _selectedDays[_days.indexOf(day)]).toList(),
+                      _notificationEnabled,
+                      _selectedTime.hour,
+                      _selectedTime.minute,
+                      _isAM,
+                    );
+                    // 완료 화면으로 이동
+                    context.go('/routine-complete');
                   }
                 },
                 child: Container(

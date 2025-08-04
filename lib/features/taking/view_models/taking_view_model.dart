@@ -1,83 +1,60 @@
 import 'package:flutter/material.dart';
+import '../../../manager/data_manager.dart';
 
 class TakingViewModel with ChangeNotifier {
-  // 약 리스트 (name, times, checks)
-  final List<Map<String, dynamic>> _takingList = [
-    {
-      'name': '약 이름1',
-      'times': ['07:00', '12:00', '18:00'],
-      'checks': [false, false, false],
-    },
-    {
-      'name': '약 이름2',
-      'times': ['07:00', '12:00', '18:00'],
-      'checks': [false, false, false],
-    },
-    {
-      'name': '약 이름3',
-      'times': ['07:00', '12:00', '18:00'],
-      'checks': [false, false, false],
-    },
-  ];
+  List<Map<String, dynamic>> _takingList = [];
 
   List<Map<String, dynamic>> get takingList => List.unmodifiable(_takingList);
 
-  // 약 추가
-  void addTaking(String name, List<String> times) {
-    _takingList.add({
-      'name': name,
-      'times': List<String>.from(times),
-      'checks': List.generate(times.length, (_) => false),
-    });
+  // 초기화
+  Future<void> initialize() async {
+    await DataManager.initialize();
+    _loadTakingList();
+  }
+
+  // 데이터 로드
+  void _loadTakingList() {
+    _takingList = DataManager.getTakingList();
     notifyListeners();
+  }
+
+  // 약 추가
+  Future<void> addTaking(String name, List<String> times) async {
+    await DataManager.addTaking(name, times);
+    _loadTakingList();
   }
 
   // 약 수정
-  void updateTaking(int index, String name, List<String> times) {
-    if (index >= 0 && index < _takingList.length) {
-      final existingChecks = _takingList[index]['checks'] as List<bool>? ?? [];
-      final newChecks = List.generate(times.length, (i) {
-        return i < existingChecks.length ? existingChecks[i] : false;
-      });
-      
-      _takingList[index] = {
-        'name': name,
-        'times': List<String>.from(times),
-        'checks': newChecks,
-      };
-      notifyListeners();
-    }
+  Future<void> updateTaking(int index, String name, List<String> times) async {
+    await DataManager.updateTaking(index, name, times);
+    _loadTakingList();
   }
 
   // 체크박스 상태 업데이트
-  void updateCheck(int itemIndex, int checkIndex, bool value) {
-    if (itemIndex >= 0 && itemIndex < _takingList.length) {
-      final item = _takingList[itemIndex];
-      final checks = List<bool>.from(item['checks'] as List<bool>);
-      
-      if (checkIndex >= 0 && checkIndex < checks.length) {
-        checks[checkIndex] = value;
-        _takingList[itemIndex] = {
-          ...item,
-          'checks': checks,
-        };
-        notifyListeners();
-      }
-    }
+  Future<void> updateCheck(int itemIndex, int checkIndex, bool value) async {
+    await DataManager.updateCheckByIndex(itemIndex, checkIndex, value);
+    _loadTakingList();
   }
 
   // 약 삭제
-  void removeTaking(int index) {
-    if (index >= 0 && index < _takingList.length) {
-      _takingList.removeAt(index);
-      notifyListeners();
-    }
+  Future<void> removeTaking(int index) async {
+    await DataManager.removeTaking(index);
+    _loadTakingList();
   }
 
   // 리스트 초기화 (테스트용)
-  void clearAll() {
-    _takingList.clear();
-    notifyListeners();
+  Future<void> clearAll() async {
+    await DataManager.clearAllData();
+    _loadTakingList();
+  }
+
+  // 체크 상태 가져오기
+  List<bool> getChecksForItem(int index) {
+    if (index >= 0 && index < _takingList.length) {
+      final id = _takingList[index]['id'] as String;
+      return DataManager.getTakingChecks(id);
+    }
+    return [];
   }
 
   // 시간 추가/삭제 등은 스크린에서 관리하거나, 필요시 추가 구현 가능

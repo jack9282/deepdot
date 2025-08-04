@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/taking_view_model.dart';
+import '../../../common/theme/app_theme.dart';
 
 class TakingAddCompleteScreen extends StatelessWidget {
   const TakingAddCompleteScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<TakingViewModel>(
-      create: (_) => TakingViewModel(),
-      child: const _AddCompleteScreenBody(),
-    );
+    return const _AddCompleteScreenBody();
   }
 }
 
@@ -27,59 +25,78 @@ class _AddCompleteScreenBody extends StatelessWidget {
         elevation: 0,
         toolbarHeight: 0, // Remove app bar space
       ),
-      body: Center(
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // "생성 완료!" button/text
+            const Spacer(),
+            // 성공 아이콘 (중앙 상단)
             Container(
-              width: 150,
-              height: 60,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(10),
+                color: const Color(0xFFE0E0E0),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFFE0E0E0),
+                  width: 1,
+                ),
               ),
-              child: const Center(
-                child: Text(
-                  '생성 완료!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+              child: const Icon(
+                Icons.check,
+                color: Colors.white,
+                size: 60,
+                weight: 900,
+              ),
+            ),
+            const SizedBox(height: 45),
+            // 메인 메시지
+            const Text(
+              '복용이력이 생성되었습니다!',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            // 서브 메시지
+            const Text(
+              '매번 체크해서 잊지말고 복용해요',
+              style: TextStyle(
+                color: Color(0xFF999999),
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const Spacer(),
+            // 완료 버튼
+            GestureDetector(
+              onTap: () {
+                context.go('/taking-list');
+              },
+              child: Container(
+                width: double.infinity,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Text(
+                    '완료',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 40),
-            // Clover image
-            Image.asset('assets/images/clover.png', width: 120, height: 120),
-            const SizedBox(height: 40),
-            // "확인" button
-            TextButton(
-              onPressed: () {
-                context.go('/taking-list');
-              },
-              style: TextButton.styleFrom(
-                backgroundColor: const Color(0xFF232B3A),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 15,
-                ),
-                minimumSize: const Size(110, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text(
-                '확인',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
+            const SizedBox(height: 48),
           ],
         ),
       ),

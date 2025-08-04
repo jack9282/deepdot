@@ -3,15 +3,17 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/taking_view_model.dart';
 import '../../../common/theme/app_theme.dart';
+import '../widgets/taking_list_item.dart';
 
 class TakingListScreen extends StatelessWidget {
   const TakingListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<TakingViewModel>(
-      create: (_) => TakingViewModel(),
-      child: const _TakingListScreenBody(),
+    return Consumer<TakingViewModel>(
+      builder: (context, takingVM, child) {
+        return const _TakingListScreenBody();
+      },
     );
   }
 }
@@ -23,13 +25,52 @@ class _TakingListScreenBody extends StatefulWidget {
   State<_TakingListScreenBody> createState() => _TakingListScreenBodyState();
 }
 
-class _TakingListScreenBodyState extends State<_TakingListScreenBody> {
+class _TakingListScreenBodyState extends State<_TakingListScreenBody> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TakingViewModel>().initialize();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App came back to foreground, refresh data
+      context.read<TakingViewModel>().initialize();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh data when dependencies change (e.g., when navigating back)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TakingViewModel>().initialize();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        title: const Text(
+          '복용 체크리스트',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+          ),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
@@ -50,16 +91,6 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody> {
         children: [
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Center(
-              child: Text(
-                '복용 체크리스트',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-            ),
           ),
           Expanded(
             child: Padding(
@@ -67,169 +98,160 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody> {
               child: Consumer<TakingViewModel>(
                 builder: (context, takingVM, _) {
                   final takingList = takingVM.takingList;
+                  
+                  // 데이터가 없을 때 빈 상태 UI
+                  if (takingList.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.medication_outlined,
+                            size: 80,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            '복용할 약이 없습니다',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '오른쪽 상단의 + 버튼을 눌러\n복용할 약을 추가해보세요',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  
                   return ListView.separated(
                     itemCount: takingList.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                    separatorBuilder: (_, __) => const SizedBox(height: 20),
                     itemBuilder: (context, idx) {
                       final item = takingList[idx];
-                      final times = item['times'] as List<String>;
-                      final checks = item['checks'] as List<bool>? ?? List.generate(times.length, (_) => false);
-                      
-                      return Container(
-                        height: 85 + 20.0 * (times.length - 1),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.all(10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  item['name'],
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
+                      final times = List<String>.from(item['times'] as List<dynamic>);
+                      final checks = takingVM.getChecksForItem(idx);
+
+                                                                   return TakingListItem(
+                        name: item['name'],
+                        times: times,
+                        checks: checks,
+                        onCheckChanged: (timeIdx, val) {
+                          takingVM.updateCheck(
+                            idx,
+                            timeIdx,
+                            val ?? false,
+                          );
+                        },
+                        onEditPressed: () {
+                          // 수정 화면으로 이동
+                          context.push('/taking-edit/$idx');
+                        },
+                        onDeletePressed: () {
+                          // 삭제 확인 다이얼로그
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return Dialog(
+                                backgroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Container(
+                                  width: 280,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // 메시지 영역
+                                      Padding(
+                                        padding: const EdgeInsets.all(24),
+                                        child: Text(
+                                          "'${item['name']}'를 삭제하시겠습니까?",
+                                          style: const TextStyle(
+                                            color: Colors.black,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w400,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      // 구분선
+                                      Container(
+                                        height: 1,
+                                        color: const Color(0xFFE0E0E0),
+                                      ),
+                                      // 버튼 영역
+                                      Row(
+                                        children: [
+                                          // 취소 버튼
+                                          Expanded(
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                Navigator.of(context).pop();
+                                              },
+                                              child: Container(
+                                                height: 48,
+                                                decoration: const BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                      color: Color(0xFFE0E0E0),
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                ),
+                                                child: const Center(
+                                                  child: Text(
+                                                    '취소',
+                                                    style: TextStyle(
+                                                      color: Color(0xFF666666),
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w400,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          // 삭제 버튼
+                                          Expanded(
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                Navigator.of(context).pop();
+                                                takingVM.removeTaking(idx);
+                                              },
+                                              child: Container(
+                                                height: 48,
+                                                child: const Center(
+                                                  child: Text(
+                                                    '삭제하기',
+                                                    style: TextStyle(
+                                                      color: Colors.red,
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w400,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                PopupMenuButton<String>(
-                                  icon: const Icon(Icons.more_vert),
-                                  onSelected: (value) {
-                                    if (value == 'edit') {
-                                      // 수정 기능: set_taking.dart로 이동
-                                      context.push('/taking-edit/$idx');
-                                    } else if (value == 'delete') {
-                                      // 삭제 확인 다이얼로그
-                                      showDialog(
-                                        context: context,
-                                        builder: (BuildContext context) {
-                                          return AlertDialog(
-                                            backgroundColor: Colors.white,
-                                            shape: RoundedRectangleBorder(
-                                              side: BorderSide(color: Colors.black, width: 3),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            content: SizedBox(
-                                              width: 200,
-                                              height: 100,
-                                              child: Center(child: Text(
-                                                "'${item['name']}'을 삭제하시겠습니까?",
-                                                style: const TextStyle(
-                                                  color: Colors.black,
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),)
-                                            ),
-                                            actions: [
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                                children: [
-                                                  Expanded(
-                                                    child: TextButton(
-                                                      style: TextButton.styleFrom(
-                                                        backgroundColor: AppTheme.buttonColor,
-                                                        shape: RoundedRectangleBorder(
-                                                          borderRadius: BorderRadius.circular(10),
-                                                        ),
-                                                      ),
-                                                      onPressed: () {
-                                                        Navigator.of(context).pop();
-                                                      },
-                                                      child: const Text(
-                                                        '아니오',
-                                                        style: TextStyle(
-                                                          color: Colors.black,
-                                                          fontSize: 16,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-
-                                                  const SizedBox(width: 10),
-                                                  Expanded(
-                                                    child: TextButton(
-                                                      style: TextButton.styleFrom(
-                                                        backgroundColor: AppTheme.buttonColor,
-                                                        shape: RoundedRectangleBorder(
-                                                          borderRadius: BorderRadius.circular(10),
-                                                        ),
-                                                      ),
-                                                      onPressed: () {
-                                                        Navigator.of(context).pop();
-                                                        takingVM.removeTaking(idx);
-                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                          SnackBar(content: Text('${item['name']} 삭제됨')),
-                                                        );
-                                                      },
-                                                      child: const Text(
-                                                        '네',
-                                                        style: TextStyle(
-                                                          color: Colors.black,
-                                                          fontSize: 16,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    }
-                                  },
-                                  itemBuilder: (BuildContext context) => [
-                                    const PopupMenuItem<String>(
-                                      value: 'edit',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.edit, size: 20),
-                                          SizedBox(width: 8),
-                                          Text('수정'),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem<String>(
-                                      value: 'delete',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.delete, size: 20),
-                                          SizedBox(width: 8),
-                                          Text('삭제'),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 5),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: List.generate(times.length, (timeIdx) {
-                                return Row(
-                                  children: [
-                                    Text(
-                                      times[timeIdx],
-                                      style: const TextStyle(fontSize: 15),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Checkbox(
-                                      value: checks[timeIdx],
-                                      onChanged: (val) {
-                                        takingVM.updateCheck(idx, timeIdx, val ?? false);
-                                      },
-                                    ),
-                                  ],
-                                );
-                              }),
-                            ),
-                          ],
-                        ),
+                              );
+                            },
+                          );
+                        },
                       );
                     },
                   );

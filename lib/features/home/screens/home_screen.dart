@@ -19,13 +19,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late HomeViewModel _viewModel;
-
   @override
   void initState() {
     super.initState();
-    _viewModel = HomeViewModel();
-    _viewModel.loadTasks();
     _setStatusBarStyle();
   }
 
@@ -39,19 +35,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _viewModel.dispose();
-    super.dispose();
-  }
-
   @override 
   Widget build(BuildContext context) {
     // 화면이 빌드될 때마다 상태바 스타일 설정
     _setStatusBarStyle();
     
     return ChangeNotifierProvider<HomeViewModel>(
-      create: (_) => _viewModel,
+      create: (_) => HomeViewModel()..loadTasks(),
       child: Scaffold(
         backgroundColor: Colors.white,
         body: Column(
@@ -130,10 +120,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                       title: '전체 일정',
                                     ),
                                   ),
-                                                              ).then((result) {
-                                _viewModel.refresh();
-                                _setStatusBarStyle(); // 돌아올 때 상태바 스타일 재설정
-                              });
+                                ).then((result) {
+                                  final viewModel = context.read<HomeViewModel>();
+                                  viewModel.refresh();
+                                  _setStatusBarStyle(); // 돌아올 때 상태바 스타일 재설정
+                                });
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(8),
@@ -156,7 +147,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ).then((result) {
                                   if (result == true) {
-                                    _viewModel.refresh();
+                                    final viewModel = context.read<HomeViewModel>();
+                                    viewModel.refresh();
                                     _showSuccessTooltip();
                                   }
                                   _setStatusBarStyle(); // 돌아올 때 상태바 스타일 재설정
@@ -323,7 +315,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ).then((result) {
       // 돌아올 때 데이터 새로고침
-      _viewModel.refresh();
+      final viewModel = context.read<HomeViewModel>();
+      viewModel.refresh();
       _setStatusBarStyle(); // 돌아올 때 상태바 스타일 재설정
     });
   }

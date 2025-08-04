@@ -7,9 +7,6 @@ class RoutineListItem extends StatelessWidget {
   final Map<String, dynamic> routine;
   final int index;
   final RoutineViewModel routineVM;
-  final List<Map<String, dynamic>> routines;
-  final Function(int index, String newName)? onUpdate;
-  final Function(int index, Map<String, dynamic> updatedRoutine)? onUpdateData;
   final Function(int index)? onDelete;
 
   const RoutineListItem({
@@ -17,9 +14,6 @@ class RoutineListItem extends StatelessWidget {
     required this.routine,
     required this.index,
     required this.routineVM,
-    required this.routines,
-    this.onUpdate,
-    this.onUpdateData,
     this.onDelete,
   });
 
@@ -98,7 +92,7 @@ class RoutineListItem extends StatelessWidget {
               child: Checkbox(
                 value: checks[dayIndex],
                 onChanged: (value) {
-                  routineVM.updateCheck(routines, index, dayIndex, value ?? false);
+                  routineVM.updateCheck(index, dayIndex, value ?? false);
                 },
                 activeColor: AppTheme.primaryColor,
                 shape: RoundedRectangleBorder(
@@ -126,9 +120,18 @@ class RoutineListItem extends StatelessWidget {
         // 수정된 루틴 데이터로 업데이트
         final updatedRoutine = result['routine'] as Map<String, dynamic>;
         final routineIndex = result['index'] as int;
-        // 기존 체크 상태 유지
-        updatedRoutine['checks'] = routine['checks'];
-        onUpdateData?.call(routineIndex, updatedRoutine);
+        
+        // RoutineViewModel을 통해 업데이트
+        routineVM.updateRoutine(
+          routineIndex,
+          updatedRoutine['name'],
+          List<String>.from(updatedRoutine['items']),
+          List<String>.from(updatedRoutine['days']),
+          updatedRoutine['notificationEnabled'],
+          updatedRoutine['hour'],
+          updatedRoutine['minute'],
+          updatedRoutine['isAM'],
+        );
       }
     });
   }

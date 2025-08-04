@@ -1,3 +1,4 @@
+import 'package:deepdot/common/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -5,21 +6,18 @@ import '../view_models/taking_view_model.dart';
 
 class SetTakingScreen extends StatelessWidget {
   final int? editIndex;
-  
+
   const SetTakingScreen({super.key, this.editIndex});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<TakingViewModel>(
-      create: (_) => TakingViewModel(),
-      child: _AddTakingScreenBody(editIndex: editIndex),
-    );
+    return _AddTakingScreenBody(editIndex: editIndex);
   }
 }
 
 class _AddTakingScreenBody extends StatefulWidget {
   final int? editIndex;
-  
+
   const _AddTakingScreenBody({this.editIndex});
 
   @override
@@ -32,12 +30,32 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
   String _selectedMinute = '00';
   bool _alarmOn = false;
   final List<String> _hourOptions = [
-    '00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11',
-    '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23',
+    '00',
+    '01',
+    '02',
+    '03',
+    '04',
+    '05',
+    '06',
+    '07',
+    '08',
+    '09',
+    '10',
+    '11',
+    '12',
+    '13',
+    '14',
+    '15',
+    '16',
+    '17',
+    '18',
+    '19',
+    '20',
+    '21',
+    '22',
+    '23',
   ];
-  final List<String> _minuteOptions = [
-    '00', '30',
-  ];
+  final List<String> _minuteOptions = ['00', '30'];
 
   // 시간 리스트 (최대 3개)
   List<String> _takingTimes = ['08:00'];
@@ -58,12 +76,50 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
   List<String> _filteredMedications = [];
   FocusNode _searchFocusNode = FocusNode();
 
+  // 최근 검색어: [{name: '콘서타', date: '07.28'}]
+  List<Map<String, String>> _recentSearches = [
+    {'name': '콘서타', 'date': '07.28'},
+    {'name': '캄베이서', 'date': '07.26'},
+    {'name': '페니드', 'date': '07.24'},
+    {'name': '페로스핀', 'date': '07.20'},
+  ];
+
+  // 추가: 약 이름 에러 상태
+  bool _showNameError = false;
+
+  void _addRecentSearch(String name) {
+    final now = DateTime.now();
+    final date =
+        now.month.toString().padLeft(2, '0') +
+        '.' +
+        now.day.toString().padLeft(2, '0');
+    setState(() {
+      _recentSearches.removeWhere((item) => item['name'] == name);
+      _recentSearches.insert(0, {'name': name, 'date': date});
+      if (_recentSearches.length > 10) {
+        _recentSearches = _recentSearches.sublist(0, 10);
+      }
+    });
+  }
+
+  void _removeRecentSearch(int idx) {
+    setState(() {
+      _recentSearches.removeAt(idx);
+    });
+  }
+
+  void _clearAllRecentSearches() {
+    setState(() {
+      _recentSearches.clear();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _nameController.addListener(_onSearchChanged);
     _searchFocusNode.addListener(_onFocusChange);
-    
+
     // 수정 모드일 때 기존 데이터 불러오기
     if (widget.editIndex != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -98,8 +154,8 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
       _filteredMedications = query.isEmpty
           ? []
           : _medicationTemplates
-              .where((med) => med.toLowerCase().contains(query))
-              .toList();
+                .where((med) => med.toLowerCase().contains(query))
+                .toList();
     });
   }
 
@@ -117,12 +173,15 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
       _filteredMedications = [];
       _searchFocusNode.unfocus();
     });
+    _addRecentSearch(medication);
   }
 
   void _addTime() {
     if (_takingTimes.length < 3) {
       setState(() {
-        _takingTimes.add('${_selectedHour.padLeft(2, '0')}:${_selectedMinute.padLeft(2, '0')}');
+        _takingTimes.add(
+          '${_selectedHour.padLeft(2, '0')}:${_selectedMinute.padLeft(2, '0')}',
+        );
       });
     }
   }
@@ -135,41 +194,42 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
     }
   }
 
-  void _onComplete() {
+  void _onComplete() async {
     if (_nameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('약 이름을 입력해주세요')),
-      );
+      setState(() {
+        _showNameError = true;
+      });
       return;
     }
+    setState(() {
+      _showNameError = false;
+    });
     if (_takingTimes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('복용 시간을 1개 이상 추가해주세요')),
-      );
       return;
     }
 
     final takingVM = context.read<TakingViewModel>();
-    
-    if (widget.editIndex != null) {
-      // 수정 모드: 기존 항목 업데이트
-      takingVM.updateTaking(
-        widget.editIndex!,
-        _nameController.text.trim(),
-        List<String>.from(_takingTimes),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('약 정보가 수정되었습니다')),
-      );
-    } else {
-      // 추가 모드: 새 항목 추가
-      takingVM.addTaking(
-        _nameController.text.trim(),
-        List<String>.from(_takingTimes),
-      );
-    }
 
-    context.push('/taking-complete');
+    try {
+      if (widget.editIndex != null) {
+        // 수정 모드: 기존 항목 업데이트
+        await takingVM.updateTaking(
+          widget.editIndex!,
+          _nameController.text.trim(),
+          List<String>.from(_takingTimes),
+        );
+      } else {
+        // 추가 모드: 새 항목 추가
+        await takingVM.addTaking(
+          _nameController.text.trim(),
+          List<String>.from(_takingTimes),
+        );
+      }
+      
+      context.push('/taking-complete');
+    } catch (e) {
+      print('Error saving data: $e');
+    }
   }
 
   @override
@@ -190,7 +250,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
           },
         ),
         title: Text(
-          widget.editIndex != null ? '약 수정' : '약 추가',
+          widget.editIndex != null ? '복용이력 수정' : '복용이력 작성',
           style: const TextStyle(color: Colors.black),
         ),
         centerTitle: true,
@@ -201,18 +261,6 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 32),
-            const Align(
-              alignment: Alignment.center,
-              child: Text(
-                '복용 이력',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-            ),
             const SizedBox(height: 24),
             const Text(
               '어떤 약을 복용하고 계신가요?',
@@ -227,6 +275,10 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
               decoration: BoxDecoration(
                 color: const Color(0xFFF2F2F2),
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _showNameError ? Colors.red : Colors.transparent,
+                  width: 1.5,
+                ),
               ),
               child: TextField(
                 controller: _nameController,
@@ -235,17 +287,103 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                 decoration: InputDecoration(
                   hintText: '예시) 타이레놀, 이지엔6',
                   hintStyle: TextStyle(color: Colors.grey[600]),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
                   border: InputBorder.none,
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.search, color: Colors.black),
                     onPressed: () {
                       _searchFocusNode.unfocus();
+                      if (_nameController.text.trim().isNotEmpty) {
+                        _addRecentSearch(_nameController.text.trim());
+                      }
                     },
                   ),
                 ),
               ),
             ),
+            if (_showNameError)
+              Padding(
+                padding: const EdgeInsets.only(left: 4, top: 4),
+                child: Text(
+                  '약 이름을 입력해주세요',
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ),
+            // 최근 검색어 UI
+            if (_recentSearches.isNotEmpty && _searchFocusNode.hasFocus) ...[
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '최근 검색어',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _clearAllRecentSearches,
+                    child: const Text(
+                      '전체삭제',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _recentSearches.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 2),
+                itemBuilder: (context, idx) {
+                  final item = _recentSearches[idx];
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            _nameController.text = item['name']!;
+                            _searchFocusNode.unfocus();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Text(
+                              item['name']!,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        item['date'] ?? '',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _removeRecentSearch(idx),
+                        child: const Icon(
+                          Icons.close,
+                          size: 18,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
             if (_filteredMedications.isNotEmpty)
               Container(
                 margin: const EdgeInsets.only(top: 8),
@@ -273,7 +411,8 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                           _filteredMedications[index],
                           style: const TextStyle(color: Colors.black),
                         ),
-                        onTap: () => _selectMedication(_filteredMedications[index]),
+                        onTap: () =>
+                            _selectMedication(_filteredMedications[index]),
                       );
                     },
                   ),
@@ -289,113 +428,174 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
               ),
             ),
             const SizedBox(height: 16),
-            // 시간 리스트 표시
-            Column(
-              children: List.generate(_takingTimes.length, (idx) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(color: Colors.black, width: 1.5),
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                        child: Text(
-                          _takingTimes[idx],
-                          style: const TextStyle(color: Colors.black, fontSize: 18),
-                        ),
-                      ),
-                      if (_takingTimes.length > 1)
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle, color: Colors.red),
-                          onPressed: () => _removeTime(idx),
-                        ),
-                    ],
-                  ),
-                );
-              }),
+            const Text(
+              '먹는시간',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF666666),
+              ),
             ),
+            const SizedBox(height: 12),
             // 시간 추가
             if (_takingTimes.length < 3)
               Row(
                 children: [
-                  const Text('시간 추가', style: TextStyle(fontSize: 16)),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border(
+                          bottom: BorderSide(color: AppTheme.primaryColor, width: 1),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedHour,
+                          dropdownColor: Colors.white,
+                          iconEnabledColor: Colors.black,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                          ),
+                          items: _hourOptions
+                              .map(
+                                (hour) => DropdownMenuItem(
+                                  value: hour,
+                                  child: Text(
+                                    '${hour}시',
+                                    style: const TextStyle(color: Colors.black),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) setState(() => _selectedHour = val);
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border(
+                          bottom: BorderSide(color: AppTheme.primaryColor, width: 1),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedMinute,
+                          dropdownColor: Colors.white,
+                          iconEnabledColor: Colors.black,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                          ),
+                          items: _minuteOptions
+                              .map(
+                                (minute) => DropdownMenuItem(
+                                  value: minute,
+                                  child: Text(
+                                    '${minute}분',
+                                    style: const TextStyle(color: Colors.black),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null)
+                              setState(() => _selectedMinute = val);
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Container(
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Colors.black, width: 1.5),
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedHour,
-                        dropdownColor: Colors.white,
-                        iconEnabledColor: Colors.black,
-                        style: const TextStyle(color: Colors.black, fontSize: 18),
-                        items: _hourOptions.map((hour) => DropdownMenuItem(
-                          value: hour,
-                          child: Text(hour, style: const TextStyle(color: Colors.black)),
-                        )).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedHour = val);
-                        },
-                      ),
-                    ),
-                  ),
-                  const Text('시', style: TextStyle(color: Colors.black, fontSize: 18)),
-                  const SizedBox(width: 8),
-                  Container(
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Colors.black, width: 1.5),
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedMinute,
-                        dropdownColor: Colors.white,
-                        iconEnabledColor: Colors.black,
-                        style: const TextStyle(color: Colors.black, fontSize: 18),
-                        items: _minuteOptions.map((minute) => DropdownMenuItem(
-                          value: minute,
-                          child: Text(minute, style: const TextStyle(color: Colors.black)),
-                        )).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedMinute = val);
-                        },
-                      ),
-                    ),
-                  ),
-                  const Text('분', style: TextStyle(color: Colors.black, fontSize: 18)),
-                  const SizedBox(width: 8),
                   Container(
                     width: 36,
                     height: 36,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE0E0E0),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor,
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.add, color: Colors.black, size: 20),
+                      icon: const Icon(
+                        Icons.add,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       onPressed: _addTime,
                     ),
                   ),
                 ],
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             const Text(
               '시간은 0~23시 사이, 분은 30분 단위로 입력할 수 있어요',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              style: TextStyle(fontSize: 14, color: Color(0xFF999999)),
             ),
             const Text(
-              '먹는 시간은 + 버튼을 눌러 3개까지 설정할 수 있어요',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              '먹는 시간은 +버튼을 눌러 3개까지 설정할 수 있어요',
+              style: TextStyle(fontSize: 14, color: Color(0xFF999999)),
+            ),
+            const SizedBox(height: 20),
+            // 시간 리스트 표시 (카드 형태)
+            Column(
+              children: List.generate(_takingTimes.length, (idx) {
+                final timeParts = _takingTimes[idx].split(':');
+                final hour = timeParts[0];
+                final minute = timeParts[1];
+                
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE0E0E0)),
+                  ),
+                  child: Row(
+                    children: [
+                                             Text(
+                         '${hour}시 ${minute}분',
+                         style: TextStyle(
+                           color: AppTheme.primaryColor,
+                           fontSize: 16,
+                           fontWeight: FontWeight.w500,
+                         ),
+                       ),
+                      const Spacer(),
+                                             if (_takingTimes.length > 1)
+                         GestureDetector(
+                           onTap: () => _removeTime(idx),
+                           child: Container(
+                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                             decoration: BoxDecoration(
+                               color: Colors.white,
+                               borderRadius: BorderRadius.circular(16),
+                               border: Border.all(color: Colors.red),
+                             ),
+                             child: const Text(
+                               '삭제',
+                               style: TextStyle(
+                                 color: Colors.red,
+                                 fontSize: 14,
+                                 fontWeight: FontWeight.w500,
+                               ),
+                             ),
+                           ),
+                         ),
+                    ],
+                  ),
+                );
+              }),
             ),
             const SizedBox(height: 48),
             const Text(
@@ -427,18 +627,27 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
               ],
             ),
             const Spacer(),
-            // 확인 버튼
-            Center(
-              child: GestureDetector(
-                onTap: _onComplete,
-                child: Container(
-                  width: 56,
-                  height: 56,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF232B3A),
-                    shape: BoxShape.circle,
+            // 저장하기 버튼
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _onComplete,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.check, color: Colors.white, size: 32),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  '저장하기',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),

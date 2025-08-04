@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../common/theme/app_theme.dart';
 import 'home_screen.dart';
 import '../../taking/screens/taking_list_screen.dart';
@@ -6,7 +7,9 @@ import '../../routine/screens/routine_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final Widget? child;
+  
+  const MainScreen({super.key, this.child});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -23,6 +26,46 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // initState에서는 context를 사용할 수 없으므로 제거
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _setCurrentIndexFromPath();
+  }
+
+  void _setCurrentIndexFromPath() {
+    final location = GoRouterState.of(context).uri.path;
+    int newIndex = 0;
+    
+    switch (location) {
+      case '/home':
+        newIndex = 0;
+        break;
+      case '/taking-list':
+        newIndex = 1;
+        break;
+      case '/routine':
+        newIndex = 2;
+        break;
+      case '/settings':
+        newIndex = 3;
+        break;
+      default:
+        newIndex = 0;
+    }
+    
+    if (_currentIndex != newIndex) {
+      setState(() {
+        _currentIndex = newIndex;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white, // 스캐폴드 배경색을 흰색으로 설정
@@ -30,7 +73,7 @@ class _MainScreenState extends State<MainScreen> {
       body: SafeArea(
         top: false, // 상단 영역(AppBar)에는 영향을 주지 않음
         bottom: true, // 하단 영역만 침범하지 않도록 설정
-        child: IndexedStack(
+        child: widget.child ?? IndexedStack(
           index: _currentIndex,
           children: _screens,
         ),
@@ -66,6 +109,21 @@ class _MainScreenState extends State<MainScreen> {
                     setState(() {
                       _currentIndex = index;
                     });
+                    // 탭 변경 시 해당 경로로 이동
+                    switch (index) {
+                      case 0:
+                        context.go('/home');
+                        break;
+                      case 1:
+                        context.go('/taking-list');
+                        break;
+                      case 2:
+                        context.go('/routine');
+                        break;
+                      case 3:
+                        context.go('/settings');
+                        break;
+                    }
                   },
                   type: BottomNavigationBarType.fixed,
                   backgroundColor: Colors.white,

@@ -5,6 +5,11 @@ import 'package:provider/provider.dart';
 import 'common/theme/app_theme.dart';
 import 'common/router/app_router.dart';
 import 'features/auth/view_models/auth_view_model.dart';
+import 'features/taking/view_models/taking_view_model.dart';
+import 'features/routine/view_models/routine_view_model.dart';
+import 'features/home/view_models/home_view_model.dart';
+import 'features/schedule/view_models/schedule_view_model.dart';
+import 'features/statistics/view_models/statistics_view_model.dart';
 
 void main() {
   // Edge-to-Edge 활성화
@@ -39,6 +44,21 @@ class DeepDotApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(
           create: (_) => AuthViewModel()..checkAuthStatus(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => TakingViewModel(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => RoutineViewModel(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => HomeViewModel(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ScheduleViewModel(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => StatisticsViewModel(),
         ),
       ],
       child: MaterialApp.router(

@@ -282,12 +282,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () {
                 Navigator.of(context).pop();
                 // 로그아웃 로직 구현
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('로그아웃되었습니다.'),
-                    backgroundColor: AppTheme.primaryColor,
-                  ),
-                );
               },
               style: TextButton.styleFrom(
                 foregroundColor: Colors.red,

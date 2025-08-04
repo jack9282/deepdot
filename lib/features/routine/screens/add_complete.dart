@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../view_models/routine_view_model.dart';
 
 class RoutineCompleteScreen extends StatelessWidget {
   const RoutineCompleteScreen({super.key});
@@ -43,8 +45,13 @@ class RoutineCompleteScreen extends StatelessWidget {
             const SizedBox(height: 40),
             // "확인" button
             TextButton(
-              onPressed: () {
-                context.go('/routine');
+              onPressed: () async {
+                // 데이터 새로고침 후 루틴 화면으로 이동
+                final routineVM = context.read<RoutineViewModel>();
+                await routineVM.refresh();
+                if (context.mounted) {
+                  context.go('/routine');
+                }
               },
               style: TextButton.styleFrom(
                 backgroundColor: const Color(0xFF232B3A),
