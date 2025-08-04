@@ -4,7 +4,6 @@ import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/auth/screens/signup_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 
-import '../../features/home/screens/home_screen.dart';
 import '../../features/auth/screens/forgot_account_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/taking/screens/taking_list_screen.dart';
@@ -15,6 +14,7 @@ import '../../features/routine/screens/add_complete.dart';
 import '../../features/routine/screens/routine_screen.dart';
 import '../../features/routine/screens/set_routine.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/home/screens/main_screen.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(

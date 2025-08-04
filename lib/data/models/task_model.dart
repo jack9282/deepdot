@@ -12,13 +12,9 @@ class TaskModel {
   final TaskPriority priority;
   final bool isCompleted;
   final DateTime createdAt;
-<<<<<<< HEAD
-  final DateTime? dueDate;
-  final DateTime? startDate; // 일정 시작 날짜 추가
-=======
+
   final DateTime? startDate;  // 일정 시작 시간
   final DateTime? dueDate;    // 일정 종료 시간
->>>>>>> cf764ec2a969d95e3882336ccdd24dc879acc991
   final DateTime? completedAt;
 
   const TaskModel({
@@ -30,7 +26,6 @@ class TaskModel {
     required this.createdAt,
     this.startDate,
     this.dueDate,
-    this.startDate,
     this.completedAt,
   });
 
@@ -43,7 +38,6 @@ class TaskModel {
     DateTime? createdAt,
     DateTime? startDate,
     DateTime? dueDate,
-    DateTime? startDate,
     DateTime? completedAt,
   }) {
     return TaskModel(
@@ -55,7 +49,6 @@ class TaskModel {
       createdAt: createdAt ?? this.createdAt,
       startDate: startDate ?? this.startDate,
       dueDate: dueDate ?? this.dueDate,
-      startDate: startDate ?? this.startDate,
       completedAt: completedAt ?? this.completedAt,
     );
   }
@@ -70,7 +63,6 @@ class TaskModel {
       'createdAt': createdAt.millisecondsSinceEpoch,
       'startDate': startDate?.millisecondsSinceEpoch,
       'dueDate': dueDate?.millisecondsSinceEpoch,
-      'startDate': startDate?.millisecondsSinceEpoch,
       'completedAt': completedAt?.millisecondsSinceEpoch,
     };
   }
@@ -88,9 +80,6 @@ class TaskModel {
           : null,
       dueDate: json['dueDate'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['dueDate'] as int)
-          : null,
-      startDate: json['startDate'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(json['startDate'] as int)
           : null,
       completedAt: json['completedAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['completedAt'] as int)
