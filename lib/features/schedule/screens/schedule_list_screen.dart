@@ -6,7 +6,6 @@ import '../../../data/models/task_model.dart';
 import '../view_models/schedule_view_model.dart';
 import '../widgets/task_list_item.dart';
 import 'task_add_screen.dart';
-import 'task_edit_screen.dart';
 
 class ScheduleListScreen extends StatefulWidget {
   final TaskPriority priority;
@@ -350,7 +349,10 @@ class _ScheduleListScreenState extends State<ScheduleListScreen> {
   void _editTask(TaskModel task) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => TaskEditScreen(task: task),
+        builder: (context) => TaskAddScreen(
+          priority: task.priority,
+          taskToEdit: task,
+        ),
       ),
     ).then((result) {
       if (result == true) {

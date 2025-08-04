@@ -26,43 +26,63 @@ class AppTheme {
         brightness: Brightness.light,
       ),
       scaffoldBackgroundColor: backgroundColor,
-      appBarTheme: const AppBarTheme(
+      // Pretendard 폰트를 기본 폰트로 설정
+      fontFamily: 'Pretendard',
+      appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: textPrimaryColor),
-        titleTextStyle: TextStyle(
+        iconTheme: const IconThemeData(color: textPrimaryColor),
+        titleTextStyle: const TextStyle(
+          fontFamily: 'Pretendard',
           color: textPrimaryColor,
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
       ),
       textTheme: const TextTheme(
+        // Headline (32px, 24px)
         headlineLarge: TextStyle(
+          fontFamily: 'Pretendard',
           fontSize: 32,
           fontWeight: FontWeight.bold,
           color: textPrimaryColor,
         ),
         headlineMedium: TextStyle(
+          fontFamily: 'Pretendard',
           fontSize: 24,
           fontWeight: FontWeight.w600,
           color: textPrimaryColor,
         ),
+        // Title (20px)
         titleLarge: TextStyle(
+          fontFamily: 'Pretendard',
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: textPrimaryColor,
         ),
         titleMedium: TextStyle(
+          fontFamily: 'Pretendard',
           fontSize: 16,
           fontWeight: FontWeight.w500,
           color: textPrimaryColor,
         ),
+        // Body (18px, 16px, 14px)
         bodyLarge: TextStyle(
-          fontSize: 16,
+          fontFamily: 'Pretendard',
+          fontSize: 18,
+          fontWeight: FontWeight.normal,
           color: textPrimaryColor,
         ),
         bodyMedium: TextStyle(
+          fontFamily: 'Pretendard',
+          fontSize: 16,
+          fontWeight: FontWeight.normal,
+          color: textPrimaryColor,
+        ),
+        bodySmall: TextStyle(
+          fontFamily: 'Pretendard',
           fontSize: 14,
+          fontWeight: FontWeight.normal,
           color: textSecondaryColor,
         ),
       ),
@@ -72,4 +92,4 @@ class AppTheme {
       ),
     );
   }
-} 
+}

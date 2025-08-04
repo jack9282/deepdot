@@ -14,5 +14,18 @@
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
+        <!-- 갤럭시 S10 등 최신 기종을 위한 하단 검은 공간 제거 설정 -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowTranslucentNavigation">false</item>
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <!-- 디스플레이 컷아웃(노치) 영역까지 확장 -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <!-- 전체 화면 확장을 위한 추가 설정 -->
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
     </style>
 </resources>

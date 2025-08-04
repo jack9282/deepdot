@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
-import '../../tab_bar.dart';
 import '../view_models/routine_view_model.dart';
 import '../widgets/routine_list_item.dart';
 import 'set_routine.dart';
@@ -34,7 +33,6 @@ class _RoutineScreenBody extends StatefulWidget {
 }
 
 class _RoutineScreenBodyState extends State<_RoutineScreenBody> {
-
   // 루틴 데이터
   List<Map<String, dynamic>> _routines = [
     {
@@ -131,15 +129,15 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> {
       body: Column(
         children: [
           Center(
-              child: Text(
-                '루틴 체크리스트',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              )
+            child: Text(
+              '루틴 체크리스트',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
             ),
+          ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(30.0),
@@ -154,7 +152,8 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> {
                       builder: (context, routineVM, _) {
                         return ListView.separated(
                           itemCount: _routines.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final routine = _routines[index];
                             return RoutineListItem(
@@ -162,8 +161,10 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> {
                               index: index,
                               routineVM: routineVM,
                               routines: _routines,
-                              onUpdate: (index, newName) => _updateRoutine(index, newName),
-                              onUpdateData: (index, updatedRoutine) => _updateRoutineData(index, updatedRoutine),
+                              onUpdate: (index, newName) =>
+                                  _updateRoutine(index, newName),
+                              onUpdateData: (index, updatedRoutine) =>
+                                  _updateRoutineData(index, updatedRoutine),
                               onDelete: (index) => _deleteRoutine(index),
                             );
                           },
@@ -174,11 +175,6 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> {
                 ],
               ),
             ),
-          ),
-          // 탭 바 추가
-          TakingTabBar(
-            currentIndex: 2,
-            onTabChanged: (_) {},
           ),
         ],
       ),
@@ -196,20 +192,24 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> {
           // 빈 공간 (루틴 이름이 들어갈 자리)
           const SizedBox(width: 120),
           // 요일들
-          ...days.map((day) => Expanded(
-            child: Center(
-              child: Text(
-                day,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
+          ...days
+              .map(
+                (day) => Expanded(
+                  child: Center(
+                    child: Text(
+                      day,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          )).toList(),
+              )
+              .toList(),
         ],
       ),
     );
   }
-} 
+}
