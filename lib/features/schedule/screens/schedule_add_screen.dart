@@ -6,22 +6,23 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../view_models/schedule_view_model.dart';
+import 'schedule_add_complete_screen.dart';
 
-class TaskAddScreen extends StatefulWidget {
+class ScheduleAddScreen extends StatefulWidget {
   final TaskPriority priority;
   final TaskModel? taskToEdit; // 수정할 일정 (null이면 새로 추가)
 
-  const TaskAddScreen({
+  const ScheduleAddScreen({
     super.key,
     required this.priority,
     this.taskToEdit,
   });
 
   @override
-  State<TaskAddScreen> createState() => _TaskAddScreenState();
+  State<ScheduleAddScreen> createState() => _ScheduleAddScreenState();
 }
 
-class _TaskAddScreenState extends State<TaskAddScreen> {
+class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _locationController = TextEditingController();
@@ -967,233 +968,12 @@ class _TaskAddScreenState extends State<TaskAddScreen> {
   }
 
   void _showSuccessDialog() {
-    
     Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => _SuccessScreen(
-          startTime: DateFormat('HH:mm').format(_startDateTime),
-          taskTitle: _titleController.text.trim(),
+      MaterialPageRoute(
+        builder: (context) => ScheduleAddCompleteScreen(
           isEditMode: widget.taskToEdit != null,
-          onConfirm: () {
-            Navigator.of(context).pop(); // 성공 화면 닫기
-            Navigator.of(context).pop(true); // 일정 추가/수정 화면 닫기 (성공 결과 전달)
-          },
-        ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-      ),
-    );
-  }
-}
-
-class _SuccessScreen extends StatelessWidget {
-  final String startTime;
-  final String taskTitle;
-  final bool isEditMode;
-  final VoidCallback onConfirm;
-
-  const _SuccessScreen({
-    required this.startTime,
-    required this.taskTitle,
-    required this.isEditMode,
-    required this.onConfirm,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-                      padding: const EdgeInsets.all(20.0), // 패딩 축소: 32 → 20
-      child: Column(
-        children: [
-              const Spacer(flex: 2),
-              
-              // 제목
-              Text(
-                isEditMode ? '일정이 수정되었습니다!' : '일정이 추가되었습니다!',
-                style: const TextStyle(
-                  fontFamily: 'Pretendard',
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryColor,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              const SizedBox(height: 20), // 간격 대폭 축소: 40 → 20
-              
-              // 일정 정보 카드
-              Container(
-                padding: const EdgeInsets.all(16), // 패딩 축소: 24 → 16
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Column(
-              children: [
-                    Text(
-                      '오늘의 일정',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontSize: 12, // 폰트 크기 대폭 축소: 14 → 12
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                Text(
-                      startTime,
-                  style: const TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                      Text(
-                      taskTitle,
-                        style: const TextStyle(
-                        fontFamily: 'Pretendard',
-                          fontSize: 12, // 폰트 크기 대폭 축소: 14 → 12
-                        color: Colors.black,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 20), // 간격 대폭 축소: 40 → 20
-              
-              // 클로버 아이콘
-              Container(
-                width: 80,
-                height: 80,
-                child: CustomPaint(
-                  painter: CloverPainter(),
-                  size: const Size(80, 80),
-                ),
-              ),
-              
-              const Spacer(flex: 3),
-              
-              // 확인 버튼
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: onConfirm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12), // 패딩 축소: 16 → 12
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    '확인',
-                          style: TextStyle(
-                      fontFamily: 'Pretendard',
-                            fontSize: 12, // 폰트 크기 대폭 축소: 14 → 12
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              
-                              const SizedBox(height: 12), // 간격 대폭 축소: 20 → 12
-            ],
-          ),
         ),
       ),
     );
   }
-}
-
-class CloverPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.green[600]!
-      ..style = PaintingStyle.fill;
-
-    final center = Offset(size.width / 2, size.height / 2);
-    final leafSize = size.width * 0.15;
-
-    // 클로버 잎 4개 그리기
-    // 위쪽 잎
-    _drawLeaf(canvas, paint, center + Offset(0, -leafSize * 1.2), leafSize);
-    
-    // 아래쪽 잎
-    _drawLeaf(canvas, paint, center + Offset(0, leafSize * 1.2), leafSize);
-    
-    // 왼쪽 잎
-    _drawLeaf(canvas, paint, center + Offset(-leafSize * 1.2, 0), leafSize);
-    
-    // 오른쪽 잎
-    _drawLeaf(canvas, paint, center + Offset(leafSize * 1.2, 0), leafSize);
-
-    // 중앙 원
-    canvas.drawCircle(center, leafSize * 0.3, paint);
-
-    // 줄기
-    final stemPaint = Paint()
-      ..color = Colors.green[700]!
-      ..style = PaintingStyle.fill;
-    
-    final stemPath = Path();
-    stemPath.moveTo(center.dx - 2, center.dy + leafSize * 0.3);
-    stemPath.lineTo(center.dx + 2, center.dy + leafSize * 0.3);
-    stemPath.lineTo(center.dx + 1, center.dy + leafSize * 2);
-    stemPath.lineTo(center.dx - 1, center.dy + leafSize * 2);
-    stemPath.close();
-    
-    canvas.drawPath(stemPath, stemPaint);
-  }
-
-  void _drawLeaf(Canvas canvas, Paint paint, Offset center, double size) {
-    final path = Path();
-    
-    // 하트 모양의 잎 그리기
-    path.moveTo(center.dx, center.dy + size * 0.3);
-    
-    // 왼쪽 곡선
-    path.quadraticBezierTo(
-      center.dx - size * 0.8, center.dy - size * 0.2,
-      center.dx - size * 0.3, center.dy - size * 0.8,
-    );
-    
-    // 위쪽 곡선 (왼쪽)
-    path.quadraticBezierTo(
-      center.dx - size * 0.1, center.dy - size,
-      center.dx, center.dy - size * 0.6,
-    );
-    
-    // 위쪽 곡선 (오른쪽)
-    path.quadraticBezierTo(
-      center.dx + size * 0.1, center.dy - size,
-      center.dx + size * 0.3, center.dy - size * 0.8,
-    );
-    
-    // 오른쪽 곡선
-    path.quadraticBezierTo(
-      center.dx + size * 0.8, center.dy - size * 0.2,
-      center.dx, center.dy + size * 0.3,
-    );
-    
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
 } 

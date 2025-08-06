@@ -1,24 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:table_calendar/table_calendar.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../view_models/schedule_view_model.dart';
 
-class TaskEditScreen extends StatefulWidget {
-  final TaskModel task;
+class ScheduleEditScreen extends StatefulWidget {
+  final TaskModel taskToEdit;
 
-  const TaskEditScreen({
+  const ScheduleEditScreen({
     super.key,
-    required this.task,
+    required this.taskToEdit,
   });
 
   @override
-  State<TaskEditScreen> createState() => _TaskEditScreenState();
+  State<ScheduleEditScreen> createState() => _ScheduleEditScreenState();
 }
 
-class _TaskEditScreenState extends State<TaskEditScreen> {
+class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -33,9 +35,9 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
   }
 
   void _initializeForm() {
-    _titleController.text = widget.task.title;
-    _descriptionController.text = widget.task.description ?? '';
-    _selectedDueDate = widget.task.dueDate;
+    _titleController.text = widget.taskToEdit.title;
+    _descriptionController.text = widget.taskToEdit.description ?? '';
+    _selectedDueDate = widget.taskToEdit.dueDate;
   }
 
   @override
@@ -103,10 +105,10 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: _getPriorityColor(widget.task.priority).withOpacity(0.1),
+                    color: _getPriorityColor(widget.taskToEdit.priority).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _getPriorityColor(widget.task.priority).withOpacity(0.3),
+                      color: _getPriorityColor(widget.taskToEdit.priority).withOpacity(0.3),
                       width: 1,
                     ),
                   ),
@@ -115,12 +117,12 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: _getPriorityColor(widget.task.priority).withOpacity(0.2),
+                          color: _getPriorityColor(widget.taskToEdit.priority).withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
-                          _getPriorityIcon(widget.task.priority),
-                          color: _getPriorityColor(widget.task.priority),
+                          _getPriorityIcon(widget.taskToEdit.priority),
+                          color: _getPriorityColor(widget.taskToEdit.priority),
                           size: 20,
                         ),
                       ),
@@ -130,7 +132,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _getPriorityTitle(widget.task.priority),
+                              _getPriorityTitle(widget.taskToEdit.priority),
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -138,7 +140,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                               ),
                             ),
                             Text(
-                              _getPriorityDescription(widget.task.priority),
+                              _getPriorityDescription(widget.taskToEdit.priority),
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.textSecondaryColor,
@@ -148,7 +150,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                         ),
                       ),
                       // 완료 상태 표시
-                      if (widget.task.isCompleted)
+                      if (widget.taskToEdit.isCompleted)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
@@ -199,7 +201,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                           const Icon(Icons.access_time, size: 16, color: Colors.grey),
                           const SizedBox(width: 8),
                           Text(
-                            '생성일: ${DateFormat('yyyy-MM-dd HH:mm').format(widget.task.createdAt)}',
+                            '생성일: ${DateFormat('yyyy-MM-dd HH:mm').format(widget.taskToEdit.createdAt)}',
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.grey,
@@ -207,14 +209,14 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                           ),
                         ],
                       ),
-                      if (widget.task.completedAt != null) ...[
+                      if (widget.taskToEdit.completedAt != null) ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [
                             const Icon(Icons.check_circle, size: 16, color: Colors.green),
                             const SizedBox(width: 8),
                             Text(
-                              '완료일: ${DateFormat('yyyy-MM-dd HH:mm').format(widget.task.completedAt!)}',
+                              '완료일: ${DateFormat('yyyy-MM-dd HH:mm').format(widget.taskToEdit.completedAt!)}',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.green,
@@ -249,7 +251,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: _getPriorityColor(widget.task.priority)),
+                      borderSide: BorderSide(color: _getPriorityColor(widget.taskToEdit.priority)),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -287,7 +289,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: _getPriorityColor(widget.task.priority)),
+                      borderSide: BorderSide(color: _getPriorityColor(widget.taskToEdit.priority)),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -325,7 +327,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                         Icon(
                           Icons.schedule,
                           color: _selectedDueDate != null
-                              ? _getPriorityColor(widget.task.priority)
+                              ? _getPriorityColor(widget.taskToEdit.priority)
                               : Colors.grey[500],
                         ),
                         const SizedBox(width: 12),
@@ -367,7 +369,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                       return ElevatedButton(
                         onPressed: _isLoading ? null : () => _saveTask(viewModel),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _getPriorityColor(widget.task.priority),
+                          backgroundColor: _getPriorityColor(widget.taskToEdit.priority),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(28),
@@ -412,7 +414,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: _getPriorityColor(widget.task.priority),
+              primary: _getPriorityColor(widget.taskToEdit.priority),
             ),
           ),
           child: child!,
@@ -430,7 +432,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           return Theme(
             data: Theme.of(context).copyWith(
               colorScheme: Theme.of(context).colorScheme.copyWith(
-                primary: _getPriorityColor(widget.task.priority),
+                primary: _getPriorityColor(widget.taskToEdit.priority),
               ),
             ),
             child: child!,
@@ -460,7 +462,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     });
 
     try {
-      final updatedTask = widget.task.copyWith(
+      final updatedTask = widget.taskToEdit.copyWith(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim().isEmpty 
             ? null 

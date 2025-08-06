@@ -4,21 +4,21 @@ import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../view_models/schedule_view_model.dart';
-import 'task_add_screen.dart';
+import 'schedule_add_screen.dart';
 
-class TaskTimerScreen extends StatefulWidget {
+class ScheduleTimerScreen extends StatefulWidget {
   final TaskModel task;
 
-  const TaskTimerScreen({
+  const ScheduleTimerScreen({
     super.key,
     required this.task,
   });
 
   @override
-  State<TaskTimerScreen> createState() => _TaskTimerScreenState();
+  State<ScheduleTimerScreen> createState() => _ScheduleTimerScreenState();
 }
 
-class _TaskTimerScreenState extends State<TaskTimerScreen> {
+class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
   Timer? _timer;
   bool _isRunning = false;
   
@@ -232,7 +232,7 @@ class _TaskTimerScreenState extends State<TaskTimerScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => TaskAddScreen(
+                  builder: (context) => ScheduleAddScreen(
                     priority: widget.task.priority,
                     taskToEdit: widget.task,
                   ),

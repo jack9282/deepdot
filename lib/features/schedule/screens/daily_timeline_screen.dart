@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../view_models/schedule_view_model.dart';
-import 'task_add_screen.dart';
+import 'schedule_add_screen.dart';
 
 class DailyTimelineScreen extends StatefulWidget {
   final TaskPriority? priority;
@@ -20,7 +20,6 @@ class DailyTimelineScreen extends StatefulWidget {
 }
 
 class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
-  late ScheduleViewModel _viewModel;
   DateTime _selectedDate = DateTime.now();
   DateTime _baseDate = DateTime.now(); // 7일 주간 표시의 기준 날짜
   final PageController _pageController = PageController();
@@ -28,22 +27,19 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
   @override
   void initState() {
     super.initState();
-    _viewModel = ScheduleViewModel();
-    _loadTasks();
   }
 
   @override
   void dispose() {
-    _viewModel.dispose();
     _pageController.dispose();
     super.dispose();
   }
 
-  void _loadTasks() {
+  void _loadTasks(ScheduleViewModel viewModel) {
     if (widget.priority != null) {
-      _viewModel.loadTasksByPriority(widget.priority!);
+      viewModel.loadTasksByPriority(widget.priority!);
     } else {
-      _viewModel.loadAllTasks();
+      viewModel.loadAllTasks();
     }
   }
 
@@ -66,10 +62,20 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
     return '$hour:$minute';
   }
 
+  String _getTimeStringWithAmPm(DateTime dateTime) {
+    final hour = dateTime.hour;
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    
+    String amPm = hour < 12 ? '오전' : '오후';
+    int displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    
+    return '$amPm ${displayHour.toString().padLeft(2, '0')}:$minute';
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<ScheduleViewModel>(
-      create: (_) => _viewModel,
+      create: (_) => ScheduleViewModel()..loadAllTasks(),
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
@@ -100,14 +106,14 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                 // 일정 추가 화면으로 이동
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => TaskAddScreen(
+                    builder: (context) => ScheduleAddScreen(
                       priority: TaskPriority.urgentImportant, // 기본 우선순위
                     ),
                   ),
                 ).then((result) {
                   if (result == true) {
                     // 일정 추가 성공 시 화면 새로고침
-                    _loadTasks();
+                    // Consumer 내부에서 자동으로 새로고침됨
                   }
                 });
               },
@@ -116,21 +122,6 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
         ),
         body: Column(
           children: [
-            // 월/년 헤더
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                '${_baseDate.year}년 ${_baseDate.month}월',
-                style: const TextStyle(
-                  fontFamily: 'Pretendard',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            
             // 날짜 선택 헤더 (현재 날짜 중심으로 ±3일)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -230,6 +221,11 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
             Expanded(
               child: Consumer<ScheduleViewModel>(
                 builder: (context, viewModel, child) {
+                  // 초기 로딩
+                  if (viewModel.tasks.isEmpty && !viewModel.isLoading) {
+                    _loadTasks(viewModel);
+                  }
+                  
                   if (viewModel.isLoading) {
                     return const Center(
                       child: CircularProgressIndicator(
@@ -314,7 +310,7 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                     : _getTimeString(task.dueDate ?? DateTime.now()),
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: Colors.black,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -423,24 +419,42 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  // 제목
-                  Text(
-                    task.title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: task.isCompleted 
-                          ? Colors.grey[500]
-                          : Colors.black,
-                      decoration: task.isCompleted 
-                          ? TextDecoration.lineThrough 
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // 재생 버튼
+                  // 제목과 아이콘
                   Row(
                     children: [
+                      // 아이콘
+                      Container(
+                        width: 20,
+                        height: 20,
+                        margin: const EdgeInsets.only(right: 8),
+                        child: Text(
+                          _getTaskIcon(task),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                      // 제목
+                      Expanded(
+                        child: Text(
+                          task.title,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: task.isCompleted 
+                                ? Colors.grey[500]
+                                : Colors.black,
+                            decoration: task.isCompleted 
+                                ? TextDecoration.lineThrough 
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // 하단 버튼들
+                  Row(
+                    children: [
+                      // 재생 버튼
                       Container(
                         width: 24,
                         height: 24,
@@ -466,7 +480,7 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                           if (value == 'edit') {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) => TaskAddScreen(
+                                builder: (context) => ScheduleAddScreen(
                                   priority: task.priority,
                                   taskToEdit: task,
                                 ),
@@ -503,16 +517,16 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
   }
 
   String _getTaskIcon(TaskModel task) {
-    // 우선순위에 따른 아이콘 반환
+    // 우선순위에 따른 아이콘 반환 (이미지와 동일하게)
     switch (task.priority) {
       case TaskPriority.urgentImportant:
-        return '🐰';
+        return '🛁'; // 샤워 아이콘
       case TaskPriority.important:
-        return '👨‍💼';
+        return '✏️'; // 연필 아이콘
       case TaskPriority.urgent:
-        return '✏️';
+        return '📺'; // 모니터/강의 아이콘
       case TaskPriority.neither:
-        return '⚫';
+        return '🧘'; // 명상 아이콘
     }
   }
 
@@ -594,13 +608,17 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
         durationText = '(${minutes}분)';
       }
       
-      return '${_getTimeString(startTime)} ~ ${_getTimeString(endTime)} $durationText';
+      // 오전/오후 형식으로 변경
+      String startTimeStr = _getTimeStringWithAmPm(startTime);
+      String endTimeStr = _getTimeStringWithAmPm(endTime);
+      
+      return '$startTimeStr ~ $endTimeStr $durationText';
     } else if (startTime != null) {
       // 시작시간만 있는 경우
-      return '${_getTimeString(startTime)} ~';
+      return '${_getTimeStringWithAmPm(startTime)} ~';
     } else if (endTime != null) {
       // 종료시간만 있는 경우 (기존 데이터 호환)
-      return '~ ${_getTimeString(endTime)}';
+      return '~ ${_getTimeStringWithAmPm(endTime)}';
     } else {
       // 둘 다 없는 경우
       return '시간 미정';
