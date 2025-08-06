@@ -67,8 +67,11 @@ class HomeViewModel with ChangeNotifier {
     _setError(null);
 
     try {
+      // 항상 최신 데이터를 가져오기 위해 스토리지에서 다시 로드
       await _taskRepository.loadTasksFromStorage();
       _setTasks(_taskRepository.tasks);
+      // UI 강제 업데이트
+      notifyListeners();
     } catch (e) {
       _setError('할일 목록을 불러오는데 실패했습니다: ${e.toString()}');
     } finally {
@@ -226,6 +229,19 @@ class HomeViewModel with ChangeNotifier {
 
   // 데이터 새로고침
   Future<void> refresh() async {
-    await loadTasks();
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      // 강제로 최신 데이터를 가져오기
+      await _taskRepository.forceRefresh();
+      _setTasks(_taskRepository.tasks);
+      // UI 강제 업데이트
+      notifyListeners();
+    } catch (e) {
+      _setError('할일 목록을 새로고침하는데 실패했습니다: ${e.toString()}');
+    } finally {
+      _setLoading(false);
+    }
   }
 } 

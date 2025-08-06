@@ -179,4 +179,9 @@ class TaskRepository {
     _tasks.clear();
     await _saveTasksToStorage();
   }
+
+  // 데이터 강제 새로고침
+  Future<void> forceRefresh() async {
+    await loadTasksFromStorage();
+  }
 } 

@@ -25,6 +25,22 @@ class _HomeScreenState extends State<HomeScreen> {
     _setStatusBarStyle();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 화면이 다시 포커스될 때 데이터 새로고침
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+        homeViewModel.refresh();
+      } catch (e) {
+        // Provider가 없는 경우 무시
+      }
+    });
+  }
+
+
+
   void _setStatusBarStyle() {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -136,24 +152,30 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // 일정 추가 버튼
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => ScheduleAddScreen(
-                                      priority: TaskPriority.urgentImportant,
-                                    ),
-                                  ),
-                                ).then((result) {
-                                  if (result == true) {
-                                    final viewModel = context.read<HomeViewModel>();
-                                    viewModel.refresh();
-                                    _showSuccessTooltip();
-                                  }
-                                  _setStatusBarStyle(); // 돌아올 때 상태바 스타일 재설정
-                                });
-                              },
+                                                         // 일정 추가 버튼
+                             GestureDetector(
+                               onTap: () {
+                                 Navigator.of(context).push(
+                                   MaterialPageRoute(
+                                     builder: (context) => ScheduleAddScreen(
+                                       priority: TaskPriority.urgentImportant,
+                                     ),
+                                   ),
+                                                                   ).then((result) {
+                                    // 일정 추가 화면에서 돌아올 때 항상 데이터 새로고침
+                                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                                      try {
+                                        final viewModel = context.read<HomeViewModel>();
+                                        viewModel.refresh();
+                                        // UI 강제 업데이트
+                                        viewModel.notifyListeners();
+                                      } catch (e) {
+                                        // Provider가 없는 경우 무시
+                                      }
+                                    });
+                                    _setStatusBarStyle(); // 돌아올 때 상태바 스타일 재설정
+                                  });
+                               },
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 child: const Icon(
@@ -172,40 +194,40 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            // 메인 콘텐츠
-            Expanded(
-              child: Consumer<HomeViewModel>(
-                builder: (context, viewModel, child) {
-                  if (viewModel.isLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-                      ),
-                    );
-                  }
+                         // 메인 콘텐츠
+             Expanded(
+               child: Consumer<HomeViewModel>(
+                 builder: (context, homeViewModel, child) {
+                                     if (homeViewModel.isLoading) {
+                     return const Center(
+                       child: CircularProgressIndicator(
+                         valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                       ),
+                     );
+                   }
 
-                  if (viewModel.errorMessage != null) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            viewModel.errorMessage!,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: AppTheme.textSecondaryColor,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton(
-                            onPressed: () => viewModel.refresh(),
+                   if (homeViewModel.errorMessage != null) {
+                     return Center(
+                       child: Column(
+                         mainAxisAlignment: MainAxisAlignment.center,
+                         children: [
+                           Icon(
+                             Icons.error_outline,
+                             size: 64,
+                             color: Colors.grey[400],
+                           ),
+                           const SizedBox(height: 16),
+                           Text(
+                             homeViewModel.errorMessage!,
+                             style: const TextStyle(
+                               fontSize: 16,
+                               color: AppTheme.textSecondaryColor,
+                             ),
+                             textAlign: TextAlign.center,
+                           ),
+                           const SizedBox(height: 24),
+                           ElevatedButton(
+                             onPressed: () => homeViewModel.refresh(),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.primaryColor,
                             ),
@@ -229,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
                          Expanded(
                            child: _buildMatrixCard(
                              context,
-                             viewModel,
+                             homeViewModel,
                              title: '중요 & 긴급',
                              subtitle: '지금 바로 해야해요',
                              headerColor: const Color(0xFFFF4C4C), // 헤더 색상 (진한 빨간색)
@@ -245,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
                          Expanded(
                            child: _buildMatrixCard(
                              context,
-                             viewModel,
+                             homeViewModel,
                              title: '중요',
                              subtitle: '미리 계획해서 준비해요',
                              headerColor: const Color(0xFF1F5DFF), // 헤더 색상 (진한 파란색)
@@ -267,7 +289,7 @@ class _HomeScreenState extends State<HomeScreen> {
                          Expanded(
                            child: _buildMatrixCard(
                              context,
-                             viewModel,
+                             homeViewModel,
                              title: '긴급',
                              subtitle: '나중에 처리해요',
                              headerColor: const Color(0xFFFFBC4C), // 헤더 색상 (진한 주황색)
@@ -283,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> {
                          Expanded(
                            child: _buildMatrixCard(
                              context,
-                             viewModel,
+                             homeViewModel,
                              title: '둘다 아님',
                              subtitle: '시간 남을 때 해요',
                              headerColor: const Color(0xFF74787B), // 헤더 색상 (회색)

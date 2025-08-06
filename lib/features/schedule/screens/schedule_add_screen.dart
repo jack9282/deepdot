@@ -68,6 +68,9 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   void initState() {
     super.initState();
     
+    // 기본 우선순위 설정
+    _selectedPriority = _priorityOptions[3]; // '시간이 남을 때 해요'를 기본값으로 설정
+    
     if (widget.taskToEdit != null) {
       _initializeWithExistingTask(widget.taskToEdit!);
     }
@@ -129,7 +132,8 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       case '시간이 남을 때 해요':
         return TaskPriority.neither;
       default:
-        return widget.priority;
+        // 우선순위가 선택되지 않았을 때는 기본값으로 '시간이 남을 때 해요' 설정
+        return TaskPriority.neither;
     }
   }
 
@@ -165,6 +169,16 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   void _unfocusAll() {
     _focusNode.unfocus();
     FocusScope.of(context).unfocus();
+  }
+
+  // 저장 버튼 활성화 여부 확인
+  bool _canSave() {
+    return _titleController.text.trim().isNotEmpty &&
+           _isStartTimeSelected &&
+           _isEndTimeSelected &&
+           _isStartDateSelected &&
+           _isEndDateSelected &&
+           _selectedPriority != null;
   }
 
   void _showEmojiPicker() {
@@ -555,9 +569,31 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   }
 
   Future<void> _saveTask() async {
+    // 필수 항목 검증
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('일정 제목을 입력해주세요')),
+      );
+      return;
+    }
+    
+    if (!_isStartTimeSelected || !_isEndTimeSelected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('시작 시간과 종료 시간을 선택해주세요')),
+      );
+      return;
+    }
+    
+    if (!_isStartDateSelected || !_isEndDateSelected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('시작 날짜와 종료 날짜를 선택해주세요')),
+      );
+      return;
+    }
+    
+    if (_selectedPriority == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('우선순위를 선택해주세요')),
       );
       return;
     }
@@ -1184,28 +1220,28 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 저장 버튼
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _saveTask,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  '저장하기',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
+                         // 저장 버튼
+             SizedBox(
+               width: double.infinity,
+               height: 50,
+               child: ElevatedButton(
+                 onPressed: _canSave() ? _saveTask : null,
+                 style: ElevatedButton.styleFrom(
+                   backgroundColor: _canSave() ? AppTheme.primaryColor : Colors.grey[300],
+                   shape: RoundedRectangleBorder(
+                     borderRadius: BorderRadius.circular(12),
+                   ),
+                 ),
+                 child: Text(
+                   '저장하기',
+                   style: TextStyle(
+                     color: _canSave() ? Colors.white : Colors.grey[600],
+                     fontSize: 16,
+                     fontWeight: FontWeight.w600,
+                   ),
+                 ),
+               ),
+             ),
           ],
         ),
       ),

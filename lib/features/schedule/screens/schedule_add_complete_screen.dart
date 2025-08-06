@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
+import '../../home/view_models/home_view_model.dart';
+import '../../../data/repositories/task_repository.dart';
 
 class ScheduleAddCompleteScreen extends StatelessWidget {
   final bool isEditMode;
@@ -84,7 +87,25 @@ class _AddCompleteScreenBody extends StatelessWidget {
             // 완료 버튼
             GestureDetector(
               onTap: () {
-                Navigator.of(context).pop();
+                // TaskRepository에서 데이터 강제 새로고침
+                final taskRepository = TaskRepository();
+                taskRepository.forceRefresh();
+                
+                // 홈 화면으로 돌아가면서 데이터 새로고침
+                Navigator.of(context).pop(); // 성공 화면 닫기
+                Navigator.of(context).pop(); // 일정 추가 화면 닫기
+                
+                // 홈 화면의 데이터 새로고침을 위해 잠시 후 실행
+                Future.delayed(const Duration(milliseconds: 200), () {
+                  try {
+                    final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+                    homeViewModel.refresh();
+                    // UI 강제 업데이트
+                    homeViewModel.notifyListeners();
+                  } catch (e) {
+                    // HomeViewModel이 없는 경우 무시
+                  }
+                });
               },
               child: Container(
                 width: double.infinity,
