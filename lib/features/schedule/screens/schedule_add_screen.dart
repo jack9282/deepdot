@@ -25,6 +25,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   final _titleController = TextEditingController();
   final _locationController = TextEditingController();
   final _memoController = TextEditingController();
+  final _focusNode = FocusNode(); // 포커스 관리를 위한 FocusNode 추가
   
   DateTime _startDateTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 0, 0);
   DateTime _endDateTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 1, 0);
@@ -79,9 +80,16 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     if (task.description != null && task.description!.isNotEmpty) {
       final lines = task.description!.split('\n');
       if (lines.isNotEmpty) {
-        _locationController.text = lines[0];
+        // 첫 번째 줄이 비어있지 않을 때만 장소에 설정
+        if (lines[0].trim().isNotEmpty) {
+          _locationController.text = lines[0];
+        }
+        // 두 번째 줄 이후가 있을 때만 메모에 설정
         if (lines.length > 1) {
-          _memoController.text = lines.skip(1).join('\n');
+          final memoLines = lines.skip(1).where((line) => line.trim().isNotEmpty).toList();
+          if (memoLines.isNotEmpty) {
+            _memoController.text = memoLines.join('\n');
+          }
         }
       }
     }
@@ -106,6 +114,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     _titleController.dispose();
     _locationController.dispose();
     _memoController.dispose();
+    _focusNode.dispose(); // FocusNode 해제
     super.dispose();
   }
 
@@ -150,6 +159,12 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     final day = date.day.toString().padLeft(2, '0');
     final weekday = ['월', '화', '수', '목', '금', '토', '일'][date.weekday - 1];
     return '$month월 $day일 ($weekday)';
+  }
+
+  // 포커스 해제 메서드
+  void _unfocusAll() {
+    _focusNode.unfocus();
+    FocusScope.of(context).unfocus();
   }
 
   void _showEmojiPicker() {
@@ -259,16 +274,17 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        if (isStartTime) {
-                          _isStartTimeSelected = true;
-                        } else {
-                          _isEndTimeSelected = true;
-                        }
-                      });
-                      Navigator.pop(context);
-                    },
+                                         onPressed: () {
+                       setState(() {
+                         if (isStartTime) {
+                           _isStartTimeSelected = true;
+                         } else {
+                           _isEndTimeSelected = true;
+                         }
+                       });
+                       _unfocusAll(); // 포커스 해제
+                       Navigator.pop(context);
+                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       shape: RoundedRectangleBorder(
@@ -353,15 +369,16 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                       height: 50,
                       child: ElevatedButton(
                         onPressed: selectedStartDate != null && selectedEndDate != null
-                            ? () {
-                                setState(() {
-                                  _startDate = selectedStartDate!;
-                                  _endDate = selectedEndDate!;
-                                  _isStartDateSelected = true;
-                                  _isEndDateSelected = true;
-                                });
-                                Navigator.pop(context);
-                              }
+                                                         ? () {
+                                 setState(() {
+                                   _startDate = selectedStartDate!;
+                                   _endDate = selectedEndDate!;
+                                   _isStartDateSelected = true;
+                                   _isEndDateSelected = true;
+                                 });
+                                 _unfocusAll(); // 포커스 해제
+                                 Navigator.pop(context);
+                               }
                             : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: selectedStartDate != null && selectedEndDate != null
@@ -621,17 +638,19 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: TextField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(
-                        hintText: '일정의 제목을 작성해주세요',
-                        hintStyle: TextStyle(
-                          color: Color(0xFFB4B5B6),
-                          fontSize: 16,
-                        ),
-                        border: InputBorder.none,
-                      ),
-                    ),
+                                         child: TextField(
+                       controller: _titleController,
+                       focusNode: _focusNode, // FocusNode 연결
+                       autofocus: false, // 자동 포커스 비활성화
+                       decoration: const InputDecoration(
+                         hintText: '일정의 제목을 작성해주세요',
+                         hintStyle: TextStyle(
+                           color: Color(0xFFB4B5B6),
+                           fontSize: 16,
+                         ),
+                         border: InputBorder.none,
+                       ),
+                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -662,9 +681,12 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
               children: [
                 const Icon(Icons.access_time, color: Colors.black87, size: 20),
                 const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: () => _showTimePicker(true),
-                  child: Text(
+                                 GestureDetector(
+                   onTap: () {
+                     _unfocusAll(); // 포커스 해제
+                     _showTimePicker(true);
+                   },
+                   child: Text(
                     _formatTime(_startDateTime),
                     style: TextStyle(
                       color: _isStartTimeSelected ? const Color(0xFF1F5DFF) : Colors.grey,
@@ -676,9 +698,12 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                 const SizedBox(width: 12),
                 const Text('>', style: TextStyle(color: Colors.grey)),
                 const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: () => _showTimePicker(false),
-                  child: Text(
+                                 GestureDetector(
+                   onTap: () {
+                     _unfocusAll(); // 포커스 해제
+                     _showTimePicker(false);
+                   },
+                   child: Text(
                     _formatTime(_endDateTime),
                     style: TextStyle(
                       color: _isEndTimeSelected ? const Color(0xFF1F5DFF) : Colors.grey,
@@ -697,7 +722,10 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                 const Icon(Icons.calendar_month, color: Colors.black, size: 20),
                 const SizedBox(width: 12),
                 GestureDetector(
-                  onTap: () => _showDateRangePicker(),
+                  onTap: () {
+                    _unfocusAll(); // 포커스 해제
+                    _showDateRangePicker();
+                  },
                   child: Text(
                     _formatDate(_startDate),
                     style: TextStyle(
@@ -710,7 +738,10 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                 const Text('>', style: TextStyle(color: Colors.grey)),
                 const SizedBox(width: 12),
                 GestureDetector(
-                  onTap: () => _showDateRangePicker(),
+                  onTap: () {
+                    _unfocusAll(); // 포커스 해제
+                    _showDateRangePicker();
+                  },
                   child: Text(
                     _formatDate(_endDate),
                     style: TextStyle(
