@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:table_calendar/table_calendar.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../view_models/schedule_view_model.dart';
@@ -10,7 +9,7 @@ import 'schedule_add_complete_screen.dart';
 
 class ScheduleAddScreen extends StatefulWidget {
   final TaskPriority priority;
-  final TaskModel? taskToEdit; // 수정할 일정 (null이면 새로 추가)
+  final TaskModel? taskToEdit;
 
   const ScheduleAddScreen({
     super.key,
@@ -23,120 +22,83 @@ class ScheduleAddScreen extends StatefulWidget {
 }
 
 class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _locationController = TextEditingController();
   final _memoController = TextEditingController();
   
-  DateTime _startDateTime = DateTime.now();
-  DateTime _endDateTime = DateTime.now().add(const Duration(hours: 1));
+  DateTime _startDateTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 0, 0);
+  DateTime _endDateTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 1, 0);
+  DateTime _startDate = DateTime.now();
+  DateTime _endDate = DateTime.now();
 
-  bool _isLoading = false;
-  
-  // 인라인 선택기 표시 상태
-  bool _isStartTimePickerVisible = false;
-  bool _isEndTimePickerVisible = false;
-  bool _isStartDatePickerVisible = false;
-  bool _isEndDatePickerVisible = false;
+  bool _isNotificationEnabled = false;
+  String _selectedIcon = '😊';
+  String? _selectedPriority;
+  String? _selectedNotificationTime;
+  bool _isStartTimeSelected = false;
+  bool _isEndTimeSelected = false;
+  bool _isStartDateSelected = false;
+  bool _isEndDateSelected = false;
 
-  String _notificationTime = '알림 없음'; // 기본값
-  
-  // 알림 시간 옵션
-  final List<String> _notificationOptions = [
-    '알림 없음',
-    '30분전',
-    '1시간 전'
-  ];
-  
-  // 아이콘 선택을 위한 변수
-  String _selectedIcon = '🐰';
-  
-  // 사용 가능한 아이콘 목록
-  final List<String> _availableIcons = [
-    '🐰', '☕', '🎯', '🔴', '📊', '📁', '😊', '+'
-  ];
-
-  // 추천 태그 목록
-  final List<String> _recommendedTags = [
-    '지금바로 해야 해요',
+  // 우선순위 옵션
+  final List<String> _priorityOptions = [
+    '지금 바로 해야해요',
     '미리 계획해서 준비해요',
     '나중에 처리해요',
-    '시간이 날 때 해요'
+    '시간이 남을 때 해요'
   ];
 
-  String? _selectedTag;
-
-  // 태그에 따른 우선순위 매핑
-  TaskPriority _getTaskPriorityFromTag(String? tag) {
-    switch (tag) {
-      case '지금바로 해야 해요':
-        return TaskPriority.urgentImportant;  // 먼저 처리할 일
-      case '미리 계획해서 준비해요':
-        return TaskPriority.important;        // 미리 준비해주세요
-      case '나중에 처리해요':
-        return TaskPriority.urgent;           // 도움받아도 괜찮아요
-      case '시간이 날 때 해요':
-        return TaskPriority.neither;          // 나중에 봐도 괜찮아요
-      default:
-        return widget.priority; // 기본값은 전달받은 우선순위
-    }
-  }
+  // 이모지 목록
+  final List<String> _emojis = [
+    '😀', '😃', '😄', '😁', '😆', '🥹', '😅',
+    '😂', '🤣', '🥲', '☺️', '😊', '🙂', '😍',
+    '🥰', '😘', '😙', '😚', '😋', '😝', '🤨',
+    '🤓', '😎', '😏', '🙂', '🥳', '😟', '😖',
+    '😫', '🥺', '😝', '😡', '🤒', '🫠', '😱',
+    '🫢', '😪', '😮', '👍', '👎', '🙏', '🫵',
+    '⚽', '🎨', '🎟️', '🧩', '🎤', '🎬', '🖥️',
+    '💡', '⏰', '💊', '🛁', '🧻', '🚴‍♂️', '🎮',
+    '🍎', '🥗', '❤️', '💣', '🎉', '🍀', '🌙',
+    '🐶', '💪', '🎾', '🏃', '🚩', '🧶', '🔥',
+    '💼', '🍽️', '☕', '🪥', '🚗', '🏥', '📱',
+  ];
 
   @override
   void initState() {
     super.initState();
     
     if (widget.taskToEdit != null) {
-      // 수정 모드: 기존 일정 데이터로 초기화
       _initializeWithExistingTask(widget.taskToEdit!);
-    } else {
-      // 추가 모드: 기본값으로 초기화
-      _startDateTime = DateTime.now();
-      _endDateTime = _startDateTime.add(const Duration(hours: 1));
     }
   }
 
   void _initializeWithExistingTask(TaskModel task) {
     _titleController.text = task.title;
-    _locationController.text = _extractLocationFromDescription(task.description);
-    _memoController.text = _extractMemoFromDescription(task.description);
+    
+    // description에서 장소와 메모를 분리 (첫 번째 줄은 장소, 나머지는 메모)
+    if (task.description != null && task.description!.isNotEmpty) {
+      final lines = task.description!.split('\n');
+      if (lines.isNotEmpty) {
+        _locationController.text = lines[0];
+        if (lines.length > 1) {
+          _memoController.text = lines.skip(1).join('\n');
+        }
+      }
+    }
     
     _startDateTime = task.startDate ?? DateTime.now();
-    _endDateTime = task.dueDate ?? _startDateTime.add(const Duration(hours: 1));
+    _endDateTime = task.dueDate ?? DateTime.now().add(const Duration(hours: 1));
+    _startDate = task.startDate ?? DateTime.now();
+    _endDate = task.dueDate ?? DateTime.now();
     
-    _selectedIcon = _extractIconFromDescription(task.description);
-    _notificationTime = _extractNotificationFromDescription(task.description);
-    _selectedTag = _extractTagFromDescription(task.description);
-  }
-
-  String _extractLocationFromDescription(String? description) {
-    if (description == null) return '';
-    final match = RegExp(r'위치: (.+)').firstMatch(description);
-    return match?.group(1) ?? '';
-  }
-
-  String _extractMemoFromDescription(String? description) {
-    if (description == null) return '';
-    final match = RegExp(r'메모: (.+)').firstMatch(description);
-    return match?.group(1) ?? '';
-  }
-
-  String _extractIconFromDescription(String? description) {
-    if (description == null) return '🐰';
-    final match = RegExp(r'아이콘: (.+)').firstMatch(description);
-    return match?.group(1) ?? '🐰';
-  }
-
-  String _extractNotificationFromDescription(String? description) {
-    if (description == null) return '알림 없음';
-    final match = RegExp(r'알림: (.+)').firstMatch(description);
-    return match?.group(1) ?? '알림 없음';
-  }
-
-  String? _extractTagFromDescription(String? description) {
-    if (description == null) return null;
-    final match = RegExp(r'태그: (.+)').firstMatch(description);
-    return match?.group(1);
+    // 우선순위 설정
+    _selectedPriority = _getPriorityStringFromEnum(task.priority);
+    
+    // 선택 상태 플래그 설정
+    _isStartTimeSelected = task.startDate != null;
+    _isEndTimeSelected = task.dueDate != null;
+    _isStartDateSelected = task.startDate != null;
+    _isEndDateSelected = task.dueDate != null;
   }
 
   @override
@@ -147,824 +109,468 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ScheduleViewModel(),
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          toolbarHeight: 50, // AppBar 높이 축소
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 20), // 아이콘 크기 축소
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          title: Text(
-            widget.taskToEdit != null ? '일정 수정' : '일정 추가',
-            style: const TextStyle(
-              fontSize: 16, // 제목 크기 축소: 18 → 16
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
+  TaskPriority _getTaskPriorityFromString(String? priority) {
+    switch (priority) {
+      case '지금 바로 해야해요':
+        return TaskPriority.urgentImportant;
+      case '미리 계획해서 준비해요':
+        return TaskPriority.important;
+      case '나중에 처리해요':
+        return TaskPriority.urgent;
+      case '시간이 남을 때 해요':
+        return TaskPriority.neither;
+      default:
+        return widget.priority;
+    }
+  }
+
+  String? _getPriorityStringFromEnum(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.urgentImportant:
+        return '지금 바로 해야해요';
+      case TaskPriority.important:
+        return '미리 계획해서 준비해요';
+      case TaskPriority.urgent:
+        return '나중에 처리해요';
+      case TaskPriority.neither:
+        return '시간이 남을 때 해요';
+    }
+  }
+
+  String _formatTime(DateTime time) {
+    final hour = time.hour;
+    final minute = time.minute;
+    final period = hour < 12 ? '오전' : '오후';
+    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    return '$period ${displayHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  }
+
+  String _formatDate(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    final weekday = ['월', '화', '수', '목', '금', '토', '일'][date.weekday - 1];
+    return '$month월 $day일 ($weekday)';
+  }
+
+  void _showEmojiPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.4,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
             ),
           ),
-          centerTitle: true,
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0), // 좌우 여백 추가
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 제목 입력
-                const Text(
-                  '제목',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _titleController,
-                  decoration: InputDecoration(
-                    hintText: '일정 제목을 입력하세요',
-                    hintStyle: TextStyle(color: Colors.grey[400]),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.primaryColor),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return '일정 제목을 입력해주세요';
-                    }
-                    return null;
+                     child: GridView.builder(
+             padding: const EdgeInsets.all(16),
+             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+               crossAxisCount: 7,
+               crossAxisSpacing: 8,
+               mainAxisSpacing: 8,
+             ),
+             itemCount: _emojis.length,
+             itemBuilder: (context, index) {
+               return GestureDetector(
+                 onTap: () {
+                   setState(() {
+                     _selectedIcon = _emojis[index];
+                   });
+                   Navigator.pop(context);
+                 },
+                 child: Container(
+                   decoration: BoxDecoration(
+                     color: _selectedIcon == _emojis[index] 
+                         ? const Color(0xFF1F5DFF).withOpacity(0.1)
+                         : Colors.transparent,
+                     borderRadius: BorderRadius.circular(8),
+                     border: _selectedIcon == _emojis[index]
+                         ? Border.all(color: const Color(0xFF1F5DFF))
+                         : null,
+                   ),
+                   child: Center(
+                     child: Text(
+                       _emojis[index],
+                       style: const TextStyle(fontSize: 20),
+                     ),
+                   ),
+                 ),
+               );
+             },
+           ),
+        );
+      },
+    );
+  }
+
+  void _showTimePicker(bool isStartTime) {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 300,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            children: [
+              // 시간 선택기
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.time,
+                  initialDateTime: isStartTime ? _startDateTime : _endDateTime,
+                  minuteInterval: 5, // 5분 단위로 설정
+                  onDateTimeChanged: (DateTime newTime) {
+                    setState(() {
+                      if (isStartTime) {
+                        _startDateTime = DateTime(
+                          _startDateTime.year,
+                          _startDateTime.month,
+                          _startDateTime.day,
+                          newTime.hour,
+                          newTime.minute,
+                        );
+                      } else {
+                        _endDateTime = DateTime(
+                          _endDateTime.year,
+                          _endDateTime.month,
+                          _endDateTime.day,
+                          newTime.hour,
+                          newTime.minute,
+                        );
+                      }
+                    });
                   },
                 ),
-                
-                const SizedBox(height: 24),
-                
-                // 시간 설정 (시작/종료 한 줄 배치)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // 시작 시간
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isStartTimePickerVisible = !_isStartTimePickerVisible;
-                            _isEndTimePickerVisible = false;
-                            _isStartDatePickerVisible = false;
-                            _isEndDatePickerVisible = false;
-                          });
-                        },
-                        child: Row(
-                          children: [
-                            const Icon(Icons.access_time, color: Colors.black, size: 24),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '시작: ${DateFormat('HH:mm').format(_startDateTime)}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+              ),
+              // 하단 확인 버튼
+              Container(
+                padding: const EdgeInsets.all(20),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        if (isStartTime) {
+                          _isStartTimeSelected = true;
+                        } else {
+                          _isEndTimeSelected = true;
+                        }
+                      });
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    // 종료 시간
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isEndTimePickerVisible = !_isEndTimePickerVisible;
-                            _isStartTimePickerVisible = false;
-                            _isStartDatePickerVisible = false;
-                            _isEndDatePickerVisible = false;
-                          });
-                        },
-                        child: Row(
-                          children: [
-                            const Icon(Icons.access_time_filled, color: Colors.black, size: 24),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '종료: ${DateFormat('HH:mm').format(_endDateTime)}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                
-                // 시간 선택기들 (인라인)
-                if (_isStartTimePickerVisible)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    height: 150,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: CupertinoDatePicker(
-                      mode: CupertinoDatePickerMode.time,
-                      initialDateTime: _startDateTime,
-                      use24hFormat: false,
-                      onDateTimeChanged: (DateTime newDateTime) {
-                        setState(() {
-                          _startDateTime = DateTime(
-                            _startDateTime.year,
-                            _startDateTime.month,
-                            _startDateTime.day,
-                            newDateTime.hour,
-                            newDateTime.minute,
-                          );
-                          // 시작시간이 종료시간보다 늦으면 종료시간을 1시간 후로 자동 조정
-                          if (_startDateTime.isAfter(_endDateTime)) {
-                            _endDateTime = _startDateTime.add(const Duration(hours: 1));
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                
-                if (_isEndTimePickerVisible)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    height: 150,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: CupertinoDatePicker(
-                      mode: CupertinoDatePickerMode.time,
-                      initialDateTime: _endDateTime,
-                      use24hFormat: false,
-                      onDateTimeChanged: (DateTime newDateTime) {
-                        setState(() {
-                          _endDateTime = DateTime(
-                            _endDateTime.year,
-                            _endDateTime.month,
-                            _endDateTime.day,
-                            newDateTime.hour,
-                            newDateTime.minute,
-                          );
-                          // 종료시간이 시작시간보다 이전이거나 같으면 경고
-                          if (_endDateTime.isBefore(_startDateTime) || _endDateTime.isAtSameMomentAs(_startDateTime)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('종료시간은 시작시간보다 늦어야 합니다'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                
-                const SizedBox(height: 24),
-                
-                // 날짜 설정 (시작/종료 한 줄 배치)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // 시작 날짜
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isStartDatePickerVisible = !_isStartDatePickerVisible;
-                            _isEndDatePickerVisible = false;
-                            _isStartTimePickerVisible = false;
-                            _isEndTimePickerVisible = false;
-                          });
-                        },
-                        child: Row(
-                          children: [
-                            const Icon(Icons.calendar_today, color: Colors.black, size: 24),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '시작: ${DateFormat('M/d(E)', 'ko_KR').format(_startDateTime)}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // 종료 날짜
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isEndDatePickerVisible = !_isEndDatePickerVisible;
-                            _isStartDatePickerVisible = false;
-                            _isStartTimePickerVisible = false;
-                            _isEndTimePickerVisible = false;
-                          });
-                        },
-                        child: Row(
-                          children: [
-                            const Icon(Icons.event, color: Colors.black, size: 24),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '종료: ${DateFormat('M/d(E)', 'ko_KR').format(_endDateTime)}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                
-                // 시작 날짜 선택기 (인라인)
-                if (_isStartDatePickerVisible)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: TableCalendar<dynamic>(
-                      focusedDay: _startDateTime,
-                      firstDay: DateTime.utc(2020, 1, 1),
-                      lastDay: DateTime.utc(2030, 12, 31),
-                      calendarFormat: CalendarFormat.month,
-                      selectedDayPredicate: (day) {
-                        return isSameDay(_startDateTime, day);
-                      },
-                      onDaySelected: (selectedDay, focusedDay) {
-                        setState(() {
-                          _startDateTime = DateTime(
-                            selectedDay.year,
-                            selectedDay.month,
-                            selectedDay.day,
-                            _startDateTime.hour,
-                            _startDateTime.minute,
-                          );
-                          // 시작 날짜가 종료 날짜보다 늦으면 종료 날짜를 같은 날로 조정
-                          if (_startDateTime.isAfter(DateTime(_endDateTime.year, _endDateTime.month, _endDateTime.day))) {
-                            _endDateTime = DateTime(
-                              selectedDay.year,
-                              selectedDay.month,
-                              selectedDay.day,
-                              _endDateTime.hour,
-                              _endDateTime.minute,
-                            );
-                          }
-                          _isStartDatePickerVisible = false; // 선택 후 달력 닫기
-                        });
-                      },
-                      headerStyle: const HeaderStyle(
-                        formatButtonVisible: false,
-                        titleCentered: true,
-                        leftChevronIcon: Icon(Icons.chevron_left, color: Colors.black),
-                        rightChevronIcon: Icon(Icons.chevron_right, color: Colors.black),
-                        titleTextStyle: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
-                      ),
-                      calendarStyle: CalendarStyle(
-                        outsideDaysVisible: false,
-                        holidayTextStyle: const TextStyle(color: Colors.red),
-                        selectedDecoration: BoxDecoration(
-                          color: Colors.blue,
-                          shape: BoxShape.circle,
-                        ),
-                        todayDecoration: BoxDecoration(
-                          color: Colors.blue[100],
-                          shape: BoxShape.circle,
-                        ),
-                        defaultTextStyle: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black,
-                        ),
-                        weekendTextStyle: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.red,
-                        ),
-                      ),
-                      daysOfWeekStyle: const DaysOfWeekStyle(
-                        weekdayStyle: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
-                        weekendStyle: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.red,
-                        ),
+                    child: const Text(
+                      '확인',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-
-                // 종료 날짜 선택기 (인라인)
-                if (_isEndDatePickerVisible)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: TableCalendar<dynamic>(
-                      focusedDay: _endDateTime,
-                      firstDay: DateTime.utc(2020, 1, 1),
-                      lastDay: DateTime.utc(2030, 12, 31),
-                      calendarFormat: CalendarFormat.month,
-                      selectedDayPredicate: (day) {
-                        return isSameDay(_endDateTime, day);
-                      },
-                      onDaySelected: (selectedDay, focusedDay) {
-                        setState(() {
-                          // 종료 날짜가 시작 날짜보다 이전이면 경고
-                          if (selectedDay.isBefore(DateTime(_startDateTime.year, _startDateTime.month, _startDateTime.day))) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('종료 날짜는 시작 날짜보다 늦어야 합니다'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                            return;
-                          }
-                          
-                          _endDateTime = DateTime(
-                            selectedDay.year,
-                            selectedDay.month,
-                            selectedDay.day,
-                            _endDateTime.hour,
-                            _endDateTime.minute,
-                          );
-                          _isEndDatePickerVisible = false; // 선택 후 달력 닫기
-                        });
-                      },
-                      headerStyle: const HeaderStyle(
-                        formatButtonVisible: false,
-                        titleCentered: true,
-                        leftChevronIcon: Icon(Icons.chevron_left, color: Colors.black),
-                        rightChevronIcon: Icon(Icons.chevron_right, color: Colors.black),
-                        titleTextStyle: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
-                      ),
-                      calendarStyle: CalendarStyle(
-                        outsideDaysVisible: false,
-                        holidayTextStyle: const TextStyle(color: Colors.red),
-                        selectedDecoration: BoxDecoration(
-                          color: Colors.blue,
-                          shape: BoxShape.circle,
-                        ),
-                        todayDecoration: BoxDecoration(
-                          color: Colors.blue[100],
-                          shape: BoxShape.circle,
-                        ),
-                        defaultTextStyle: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black,
-                        ),
-                        weekendTextStyle: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.red,
-                        ),
-                      ),
-                      daysOfWeekStyle: const DaysOfWeekStyle(
-                        weekdayStyle: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
-                        weekendStyle: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ),
-                  ),
-                
-                const SizedBox(height: 8), // 간격 대폭 축소: 12 → 8
-                
-                // 추천 태그
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.check_box, color: Colors.black, size: 24),
-                        const SizedBox(width: 16),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _recommendedTags.map((tag) {
-                        final isSelected = tag == _selectedTag;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedTag = isSelected ? null : tag;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : Colors.grey[100],
-                              borderRadius: BorderRadius.circular(16),
-                              border: isSelected 
-                                  ? Border.all(color: AppTheme.primaryColor)
-                                  : null,
-                            ),
-                            child: Text(
-                              tag,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: isSelected ? AppTheme.primaryColor : Colors.black,
-                                fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
                 ),
-                
-                const SizedBox(height: 24),
-                
-                // 알림 설정
-                GestureDetector(
-                  onTap: _showNotificationOptions,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.notifications, color: Colors.black, size: 24),
-                      const SizedBox(width: 6),
-                      Text(
-                        _notificationTime,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const Spacer(),
-                      const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // 위치 입력
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, color: Colors.black, size: 24),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _locationController,
-                        decoration: const InputDecoration(
-                          hintText: '위치',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                    const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-                  ],
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // 메모 입력
-                Row(
-                  children: [
-                    const Icon(Icons.label, color: Colors.black, size: 24),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _memoController,
-                        decoration: const InputDecoration(
-                          hintText: '메모',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                    const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-                  ],
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // 아이콘 선택
-                const Text(
-                  '아이콘 선택',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  height: 60,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _availableIcons.length,
-                          itemBuilder: (context, index) {
-                            final icon = _availableIcons[index];
-                            final isSelected = icon == _selectedIcon;
-                            final isAddButton = icon == '+';
-                            
-                            return GestureDetector(
-                              onTap: () {
-                                if (!isAddButton) {
-                                  setState(() {
-                                    _selectedIcon = icon;
-                                  });
-                                }
-                              },
-                              child: Container(
-                                width: 50,
-                                height: 50,
-                                margin: const EdgeInsets.only(right: 12),
-                                decoration: BoxDecoration(
-                                  color: isSelected 
-                                    ? AppTheme.primaryColor.withOpacity(0.2)
-                                    : Colors.grey[100],
-                                  shape: BoxShape.circle,
-                                  border: isSelected 
-                                    ? Border.all(color: AppTheme.primaryColor, width: 2)
-                                    : null,
-                                ),
-                                child: Center(
-                                  child: isAddButton
-                                      ? const Icon(
-                                          Icons.add,
-                                          color: Colors.grey,
-                                          size: 24,
-                                        )
-                                      : Text(
-                                          icon,
-                                          style: const TextStyle(fontSize: 24),
-                                        ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 12), // 간격 대폭 축소: 24 → 12 // 간격 축소: 60 → 40
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
-        floatingActionButton: Consumer<ScheduleViewModel>(
-          builder: (context, viewModel, child) {
-            return FloatingActionButton(
-              onPressed: _isLoading ? null : () => _saveTask(viewModel),
-              backgroundColor: _isLoading ? Colors.grey[400] : Colors.black,
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 24,
+        );
+      },
+    );
+  }
+
+  void _showDateRangePicker() {
+    DateTime? selectedStartDate;
+    DateTime? selectedEndDate;
+    DateTime currentMonth = DateTime.now();
+    
+    showCupertinoModalPopup(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: 450,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Column(
+                children: [
+                  // 커스텀 달력
+                  Expanded(
+                    child: _buildCustomCalendar(
+                      currentMonth: currentMonth,
+                      selectedStartDate: selectedStartDate,
+                      selectedEndDate: selectedEndDate,
+                      onDateSelected: (date) {
+                        setModalState(() {
+                          if (selectedStartDate == null) {
+                            selectedStartDate = date;
+                          } else if (selectedEndDate == null) {
+                            if (date.isBefore(selectedStartDate!)) {
+                              selectedEndDate = selectedStartDate;
+                              selectedStartDate = date;
+                            } else {
+                              selectedEndDate = date;
+                            }
+                          } else {
+                            selectedStartDate = date;
+                            selectedEndDate = null;
+                          }
+                        });
+                      },
+                      onMonthChanged: (newMonth) {
+                        setModalState(() {
+                          currentMonth = newMonth;
+                        });
+                      },
                     ),
+                  ),
+                  // 하단 확인 버튼
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: selectedStartDate != null && selectedEndDate != null
+                            ? () {
+                                setState(() {
+                                  _startDate = selectedStartDate!;
+                                  _endDate = selectedEndDate!;
+                                  _isStartDateSelected = true;
+                                  _isEndDateSelected = true;
+                                });
+                                Navigator.pop(context);
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: selectedStartDate != null && selectedEndDate != null
+                              ? AppTheme.primaryColor
+                              : Colors.grey[300],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          '확인',
+                          style: TextStyle(
+                            color: selectedStartDate != null && selectedEndDate != null
+                                ? Colors.white
+                                : Colors.grey[600],
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             );
           },
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      ),
+        );
+      },
     );
   }
 
-  void _showNotificationOptions() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          '알림 설정',
-          style: TextStyle(
-            fontFamily: 'Pretendard',
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+  Widget _buildCustomCalendar({
+    required DateTime currentMonth,
+    required DateTime? selectedStartDate,
+    required DateTime? selectedEndDate,
+    required Function(DateTime) onDateSelected,
+    required Function(DateTime) onMonthChanged,
+  }) {
+    final firstDayOfMonth = DateTime(currentMonth.year, currentMonth.month, 1);
+    final lastDayOfMonth = DateTime(currentMonth.year, currentMonth.month + 1, 0);
+    final firstDayOfWeek = firstDayOfMonth.weekday;
+    
+    final daysInMonth = lastDayOfMonth.day;
+    final totalDays = firstDayOfWeek - 1 + daysInMonth;
+    final weeks = (totalDays / 7).ceil();
+    
+    return Column(
+      children: [
+        // 월/년도 헤더
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              Text(
+                '${currentMonth.month}월 ${currentMonth.year}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1F5DFF),
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () {
+                  final previousMonth = DateTime(currentMonth.year, currentMonth.month - 1);
+                  onMonthChanged(previousMonth);
+                },
+                icon: const Icon(Icons.chevron_left, color: Color(0xFF1F5DFF)),
+              ),
+              IconButton(
+                onPressed: () {
+                  final nextMonth = DateTime(currentMonth.year, currentMonth.month + 1);
+                  onMonthChanged(nextMonth);
+                },
+                icon: const Icon(Icons.chevron_right, color: Color(0xFF1F5DFF)),
+              ),
+            ],
           ),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: _notificationOptions.map((option) => ListTile(
-            title: Text(
-              option,
-              style: const TextStyle(
-                fontFamily: 'Pretendard',
-                fontSize: 16,
-              ),
-            ),
-            trailing: _notificationTime == option 
-                ? const Icon(Icons.check, color: AppTheme.primaryColor)
-                : null,
-            onTap: () {
-              setState(() {
-                _notificationTime = option;
-              });
-              Navigator.pop(context);
+        // 요일 헤더
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: ['일', '월', '화', '수', '목', '금', '토'].map((day) {
+              return Expanded(
+                child: Center(
+                  child: Text(
+                    day,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // 달력 그리드
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: weeks,
+            itemBuilder: (context, weekIndex) {
+              return Row(
+                children: List.generate(7, (dayIndex) {
+                  final dayNumber = weekIndex * 7 + dayIndex - (firstDayOfWeek - 1) + 1;
+                  
+                  if (dayNumber <= 0 || dayNumber > daysInMonth) {
+                    // 이전/다음 달의 날짜
+                    return Expanded(
+                      child: Container(
+                        height: 40,
+                        margin: const EdgeInsets.all(2),
+                        child: const Center(
+                          child: Text(
+                            '',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  
+                  final date = DateTime(currentMonth.year, currentMonth.month, dayNumber);
+                  final isSelected = selectedStartDate != null && 
+                      selectedEndDate != null &&
+                      (date.isAtSameMomentAs(selectedStartDate!) || 
+                       date.isAtSameMomentAs(selectedEndDate!) ||
+                       (date.isAfter(selectedStartDate!) && date.isBefore(selectedEndDate!)));
+                  
+                  final isStartDate = selectedStartDate != null && 
+                      date.isAtSameMomentAs(selectedStartDate!);
+                  final isEndDate = selectedEndDate != null && 
+                      date.isAtSameMomentAs(selectedEndDate!);
+                  
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => onDateSelected(date),
+                      child: Container(
+                        height: 40,
+                        margin: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFFE0EDFF) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
+                          border: isStartDate || isEndDate
+                              ? Border.all(color: const Color(0xFF1F5DFF), width: 2)
+                              : null,
+                        ),
+                        child: Center(
+                          child: Text(
+                            dayNumber.toString(),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: isSelected 
+                                  ? const Color(0xFF1F5DFF)
+                                  : Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              );
             },
-          )).toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              '취소',
-              style: TextStyle(
-                fontFamily: 'Pretendard',
-                color: Colors.grey,
-              ),
-            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Future<void> _saveTask(ScheduleViewModel viewModel) async {
-    if (!_formKey.currentState!.validate()) return;
-
-    // 시간 검증: 종료시간이 시작시간보다 이전이면 안됨
-    if (_endDateTime.isBefore(_startDateTime)) {
+  Future<void> _saveTask() async {
+    if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('종료시간은 시작시간보다 늦어야 합니다'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('일정 제목을 입력해주세요')),
       );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    final task = TaskModel(
+      id: widget.taskToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      title: _titleController.text.trim(),
+      description: '${_locationController.text.trim()}\n${_memoController.text.trim()}',
+      priority: _getTaskPriorityFromString(_selectedPriority),
+      isCompleted: false,
+      createdAt: DateTime.now(),
+      startDate: _startDateTime,
+      dueDate: _endDateTime,
+    );
 
-    try {
-      bool success;
-      
-      if (widget.taskToEdit != null) {
-        // 수정 모드: 기존 일정 업데이트
-        final updatedTask = widget.taskToEdit!.copyWith(
-          title: _titleController.text.trim(),
-          description: _buildDescription(),
-          startDate: _startDateTime,
-          dueDate: _endDateTime,
-          priority: _getTaskPriorityFromTag(_selectedTag),
-        );
-        success = await viewModel.updateTask(updatedTask);
-      } else {
-        // 추가 모드: 새 일정 추가
-        success = await viewModel.addTask(
-          title: _titleController.text.trim(),
-          description: _buildDescription(),
-          startDate: _startDateTime,
-          dueDate: _endDateTime,
-          priority: _getTaskPriorityFromTag(_selectedTag),
-        );
-      }
+    final viewModel = Provider.of<ScheduleViewModel>(context, listen: false);
+    
+    if (widget.taskToEdit != null) {
+      await viewModel.updateTask(task);
+    } else {
+      await viewModel.addTask(
+        title: task.title,
+        description: task.description,
+        startDate: task.startDate,
+        dueDate: task.dueDate,
+        priority: task.priority,
+      );
+    }
 
-      if (success && mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        
-        // 성공 팝업 표시
-        _showSuccessDialog();
-      } else {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(viewModel.errorMessage ?? 
-                  (widget.taskToEdit != null ? '일정 수정에 실패했습니다' : '일정 추가에 실패했습니다')),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(widget.taskToEdit != null ? 
-                '일정 수정 중 오류가 발생했습니다' : '일정 추가 중 오류가 발생했습니다'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  String _buildDescription() {
-    List<String> descriptionParts = [];
-    
-    if (_locationController.text.trim().isNotEmpty) {
-      descriptionParts.add('위치: ${_locationController.text.trim()}');
-    }
-    
-    if (_memoController.text.trim().isNotEmpty) {
-      descriptionParts.add('메모: ${_memoController.text.trim()}');
-    }
-    
-    if (_selectedTag != null) {
-      descriptionParts.add('태그: $_selectedTag');
-    }
-    
-    descriptionParts.add('아이콘: $_selectedIcon');
-    descriptionParts.add('알림: $_notificationTime');
-    
-    return descriptionParts.join('\n');
+    _showSuccessDialog();
   }
 
   void _showSuccessDialog() {
@@ -972,6 +578,604 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       MaterialPageRoute(
         builder: (context) => ScheduleAddCompleteScreen(
           isEditMode: widget.taskToEdit != null,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+                 title: Text(
+           widget.taskToEdit != null ? '일정 수정' : '일정 추가',
+           style: const TextStyle(
+             color: Colors.black,
+             fontSize: 18,
+             fontWeight: FontWeight.w600,
+           ),
+         ),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 제목 입력과 이모지 선택을 가로로 배치
+            Row(
+              children: [
+                // 제목 입력 필드
+                Expanded(
+                  child: Container(
+                    height: 54, // 고정 높이 설정
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: TextField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(
+                        hintText: '일정의 제목을 작성해주세요',
+                        hintStyle: TextStyle(
+                          color: Color(0xFFB4B5B6),
+                          fontSize: 16,
+                        ),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // 이모지 선택 버튼
+                GestureDetector(
+                  onTap: _showEmojiPicker,
+                  child: Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _selectedIcon,
+                        style: const TextStyle(fontSize: 20),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // 시간 선택
+            Row(
+              children: [
+                const Icon(Icons.access_time, color: Colors.black87, size: 20),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: () => _showTimePicker(true),
+                  child: Text(
+                    _formatTime(_startDateTime),
+                    style: TextStyle(
+                      color: _isStartTimeSelected ? const Color(0xFF1F5DFF) : Colors.grey,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text('>', style: TextStyle(color: Colors.grey)),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: () => _showTimePicker(false),
+                  child: Text(
+                    _formatTime(_endDateTime),
+                    style: TextStyle(
+                      color: _isEndTimeSelected ? const Color(0xFF1F5DFF) : Colors.grey,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // 날짜 선택
+            Row(
+              children: [
+                const Icon(Icons.calendar_month, color: Colors.black, size: 20),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: () => _showDateRangePicker(),
+                  child: Text(
+                    _formatDate(_startDate),
+                    style: TextStyle(
+                      color: _isStartDateSelected ? const Color(0xFF1F5DFF) : Colors.grey,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text('>', style: TextStyle(color: Colors.grey)),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: () => _showDateRangePicker(),
+                  child: Text(
+                    _formatDate(_endDate),
+                    style: TextStyle(
+                      color: _isEndDateSelected ? const Color(0xFF1F5DFF) : Colors.grey,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // 우선순위 선택 
+            Row(
+              children: [
+                const Icon(Icons.event_available, color: Colors.black, size: 20),
+                const SizedBox(width: 12),
+                // 2x2 그리드로 우선순위 버튼 배치
+                Expanded(
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedPriority = _priorityOptions[0];
+                                });
+                              },
+                              child: Container(
+                                height: 40,
+                                margin: const EdgeInsets.only(right: 8, bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: _selectedPriority == _priorityOptions[0] 
+                                      ? const Color(0xFFE0EDFF) 
+                                      : const Color(0xFFF5F5F5),
+                                  border: Border.all(
+                                    color: _selectedPriority == _priorityOptions[0] 
+                                        ? const Color(0xFF5886FF) 
+                                        : const Color(0xFFE5E5E5),
+                                    width: 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    _priorityOptions[0],
+                                    style: TextStyle(
+                                      color: _selectedPriority == _priorityOptions[0] 
+                                          ? const Color(0xFF1F5DFF) 
+                                          : const Color(0xFF74787B),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedPriority = _priorityOptions[1];
+                                });
+                              },
+                              child: Container(
+                                height: 40,
+                                margin: const EdgeInsets.only(left: 8, bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: _selectedPriority == _priorityOptions[1] 
+                                      ? const Color(0xFFE0EDFF) 
+                                      : const Color(0xFFF5F5F5),
+                                  border: Border.all(
+                                    color: _selectedPriority == _priorityOptions[1] 
+                                        ? const Color(0xFF5886FF) 
+                                        : const Color(0xFFE5E5E5),
+                                    width: 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    _priorityOptions[1],
+                                    style: TextStyle(
+                                      color: _selectedPriority == _priorityOptions[1] 
+                                          ? const Color(0xFF1F5DFF) 
+                                          : const Color(0xFF74787B),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedPriority = _priorityOptions[2];
+                                });
+                              },
+                              child: Container(
+                                height: 40,
+                                margin: const EdgeInsets.only(right: 8, top: 8),
+                                decoration: BoxDecoration(
+                                  color: _selectedPriority == _priorityOptions[2] 
+                                      ? const Color(0xFFE0EDFF) 
+                                      : const Color(0xFFF5F5F5),
+                                  border: Border.all(
+                                    color: _selectedPriority == _priorityOptions[2] 
+                                        ? const Color(0xFF5886FF) 
+                                        : const Color(0xFFE5E5E5),
+                                    width: 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    _priorityOptions[2],
+                                    style: TextStyle(
+                                      color: _selectedPriority == _priorityOptions[2] 
+                                          ? const Color(0xFF1F5DFF) 
+                                          : const Color(0xFF74787B),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedPriority = _priorityOptions[3];
+                                });
+                              },
+                              child: Container(
+                                height: 40,
+                                margin: const EdgeInsets.only(left: 8, top: 8),
+                                decoration: BoxDecoration(
+                                  color: _selectedPriority == _priorityOptions[3] 
+                                      ? const Color(0xFFE0EDFF) 
+                                      : const Color(0xFFF5F5F5),
+                                  border: Border.all(
+                                    color: _selectedPriority == _priorityOptions[3] 
+                                        ? const Color(0xFF5886FF) 
+                                        : const Color(0xFFE5E5E5),
+                                    width: 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    _priorityOptions[3],
+                                    style: TextStyle(
+                                      color: _selectedPriority == _priorityOptions[3] 
+                                          ? const Color(0xFF1F5DFF) 
+                                          : const Color(0xFF74787B),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // 알림 설정
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.notifications, color: Colors.black, size: 20),
+                    const SizedBox(width: 12),
+                    const Text(
+                      '일정 알림 설정',
+                      style: TextStyle(
+                        color: Color(0xFFB4B5B6),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                    Switch(
+                      value: _isNotificationEnabled,
+                      onChanged: (value) {
+                        setState(() {
+                          _isNotificationEnabled = value;
+                          if (!value) {
+                            _selectedNotificationTime = null;
+                          }
+                        });
+                      },
+                      activeColor: const Color(0xFFFFFFFF),
+                      activeTrackColor: const Color(0xFF5886FF),
+                      inactiveThumbColor: const Color(0xFFFFFFFF),
+                      inactiveTrackColor: const Color(0xFFD9D9D9),
+                    ),
+                  ],
+                ),
+                // 알림 시간 선택 컨테이너 (알림이 활성화된 경우에만 표시)
+                if (_isNotificationEnabled) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        // 30분전
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedNotificationTime = '30분전';
+                              });
+                            },
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: _selectedNotificationTime == '30분전' 
+                                        ? const Color(0xFF1F5DFF) 
+                                        : Colors.transparent,
+                                    border: Border.all(
+                                      color: _selectedNotificationTime == '30분전' 
+                                          ? const Color(0xFF1F5DFF) 
+                                          : Colors.grey[400]!,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: _selectedNotificationTime == '30분전'
+                                      ? const Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 14,
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '30분전',
+                                  style: TextStyle(
+                                    color: _selectedNotificationTime == '30분전' 
+                                        ? const Color(0xFF1F5DFF) 
+                                        : Colors.grey[600],
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // 1시간전
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedNotificationTime = '1시간전';
+                              });
+                            },
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: _selectedNotificationTime == '1시간전' 
+                                        ? const Color(0xFF1F5DFF) 
+                                        : Colors.transparent,
+                                    border: Border.all(
+                                      color: _selectedNotificationTime == '1시간전' 
+                                          ? const Color(0xFF1F5DFF) 
+                                          : Colors.grey[400]!,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: _selectedNotificationTime == '1시간전'
+                                      ? const Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 14,
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '1시간전',
+                                  style: TextStyle(
+                                    color: _selectedNotificationTime == '1시간전' 
+                                        ? const Color(0xFF1F5DFF) 
+                                        : Colors.grey[600],
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // 2시간전
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedNotificationTime = '2시간전';
+                              });
+                            },
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: _selectedNotificationTime == '2시간전' 
+                                        ? const Color(0xFF1F5DFF) 
+                                        : Colors.transparent,
+                                    border: Border.all(
+                                      color: _selectedNotificationTime == '2시간전' 
+                                          ? const Color(0xFF1F5DFF) 
+                                          : Colors.grey[400]!,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: _selectedNotificationTime == '2시간전'
+                                      ? const Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 14,
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '2시간전',
+                                  style: TextStyle(
+                                    color: _selectedNotificationTime == '2시간전' 
+                                        ? const Color(0xFF1F5DFF) 
+                                        : Colors.grey[600],
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // 장소 입력
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on, color: Colors.grey, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _locationController,
+                      decoration: const InputDecoration(
+                        hintText: '장소를 입력해주세요',
+                        hintStyle: TextStyle(
+                          color: Color(0xFFB4B5B6),
+                          fontSize: 16,
+                        ),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // 메모 입력
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.edit, color: Colors.grey, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _memoController,
+                      decoration: const InputDecoration(
+                        hintText: '메모를 작성해주세요',
+                        hintStyle: TextStyle(
+                          color: Color(0xFFB4B5B6),
+                          fontSize: 16,
+                        ),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // 저장 버튼
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _saveTask,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  '저장하기',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

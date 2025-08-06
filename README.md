@@ -64,7 +64,12 @@ lib/
 │   │
 │   ├── schedule/
 │   │   ├── screens/
-│   │   │   └── schedule_edit_screen.dart
+│   │   │   ├── schedule_add_screen.dart
+│   │   │   ├── schedule_add_complete_screen.dart
+│   │   │   ├── daily_timeline_screen.dart
+│   │   │   ├── schedule_list_screen.dart
+│   │   │   ├── schedule_timer_screen.dart
+│   │   │   └── timeline_planner_screen.dart
 │   │   └── view_models/
 │   │       └── schedule_view_model.dart
 │   │
