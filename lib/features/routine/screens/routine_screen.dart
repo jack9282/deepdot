@@ -26,11 +26,12 @@ class _RoutineScreenBody extends StatefulWidget {
 }
 
 class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBindingObserver {
+  String _selectedGoal = '아침루틴';
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // 초기 데이터 로드
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RoutineViewModel>().initialize();
     });
@@ -45,7 +46,6 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // App came back to foreground, refresh data
       context.read<RoutineViewModel>().initialize();
     }
   }
@@ -53,7 +53,6 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Refresh data when dependencies change (e.g., when navigating back)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RoutineViewModel>().initialize();
     });
@@ -61,10 +60,16 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
 
   @override
   Widget build(BuildContext context) {
+    final routineVM = context.watch<RoutineViewModel>();
+    final List<String> goals = routineVM.routineList.map((r) => r.name).toList();
+    if (_selectedGoal.isEmpty && goals.isNotEmpty) {
+      _selectedGoal = goals.first;
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Center(
+        title: const Center(
           child: Text(
             '루틴 체크리스트',
             style: TextStyle(
@@ -76,10 +81,7 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
         ),
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        leading: const SizedBox.shrink(),
         centerTitle: true,
         actions: [
           IconButton(
@@ -97,125 +99,224 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(30.0),
+      body: goals.isEmpty
+          ? Center(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // 루틴 목록
-                  Expanded(
-                    child: Consumer<RoutineViewModel>(
-                      builder: (context, routineVM, _) {
-                        final routineList = routineVM.routineList;
-                        
-                        // 데이터가 없을 때 빈 상태 UI
-                        if (routineList.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.assignment_outlined,
-                                  size: 80,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  '루틴이 없습니다',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '오른쪽 상단의 + 버튼을 눌러\n루틴을 추가해보세요',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[500],
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                        
-                        return Column(
-                          children: [
-                            // 요일 헤더 (루틴이 있을 때만 표시)
-                            _buildDaysHeader(),
-                            const SizedBox(height: 8),
-                            // 루틴 목록
-                            Expanded(
-                              child: ListView.separated(
-                                itemCount: routineList.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 8),
-                                itemBuilder: (context, index) {
-                                  final routine = routineList[index];
-                                  final checks = routineVM.getChecksForItem(index);
-                                  
-                                  // 체크 상태를 루틴 데이터에 추가
-                                  final routineWithChecks = Map<String, dynamic>.from(routine);
-                                  routineWithChecks['checks'] = checks;
-                                  
-                                  return RoutineListItem(
-                                    routine: routineWithChecks,
-                                    index: index,
-                                    routineVM: routineVM,
-                                    onDelete: (index) {
-                                      routineVM.removeRoutine(index);
-                                    },
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+                  Icon(
+                    Icons.assignment_outlined,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '루틴이 없습니다',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '오른쪽 상단의 + 버튼을 눌러\n루틴을 추가해보세요',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+            )
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 16, left: 24, right: 24, bottom: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Text('목표', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: goals.map((goal) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: _GoalTabButton(
+                                text: goal,
+                                selected: _selectedGoal == goal,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedGoal = goal;
+                                  });
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: Consumer<RoutineViewModel>(
+                              builder: (context, routineVM, _) {
+                                final routineList = routineVM.routineList.where((routine) => routine.name == _selectedGoal).toList();
 
-  // 요일 헤더 위젯
-  Widget _buildDaysHeader() {
-    final List<String> days = ['월', '화', '수', '목', '금', '토', '일'];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          // 빈 공간 (루틴 이름이 들어갈 자리)
-          const SizedBox(width: 120),
-          // 요일들
-          ...days
-              .map(
-                (day) => Expanded(
-                  child: Center(
-                    child: Text(
-                      day,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black,
+                                if (routineList.isEmpty) {
+                                  return Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.assignment_outlined,
+                                          size: 80,
+                                          color: Colors.grey[400],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          '루틴이 없습니다',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          '오른쪽 상단의 + 버튼을 눌러\n루틴을 추가해보세요',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[500],
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                return Stack(
+                                  children: [
+                                    Column(
+                                      children: [
+                                        _buildDaysHeader(),
+                                        const SizedBox(height: 8),
+                                        Expanded(
+                                          child: ListView.separated(
+                                            itemCount: routineList.length,
+                                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                            itemBuilder: (context, index) {
+                                              final routine = routineList[index];
+                                              final checks = routineVM.getChecksForRoutine(routineVM.routineList.indexOf(routine));
+                                              final routineMap = {
+                                                'id': routine.id,
+                                                'name': routine.name,
+                                                'items': routine.items.map((e) => e.toJson()).toList(),
+                                                'notificationEnabled': routine.notificationEnabled,
+                                                'hour': routine.hour,
+                                                'minute': routine.minute,
+                                                'isAM': routine.isAM,
+                                                'createdAt': routine.createdAt,
+                                                'updatedAt': routine.updatedAt,
+                                                'checks': checks,
+                                              };
+                                              return RoutineListItem(
+                                                routine: routineMap,
+                                                index: routineVM.routineList.indexOf(routine),
+                                                routineVM: routineVM,
+                                                onDelete: (originalIndex) {
+                                                  routineVM.removeRoutine(originalIndex);
+                                                },
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-              )
-              .toList(),
+              ],
+            ),
+    );
+  }
+  
+  Widget _buildDaysHeader() {
+    final List<String> days = ['월', '화', '수', '목', '금', '토', '일'];
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          const SizedBox(width: 120),
+          ...List.generate(days.length, (i) => Expanded(
+            child: Center(
+              child: Text(
+                days[i],
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  color: i == 6 ? const Color(0xFFFF5A5A) : const Color(0xFFB0B0B0),
+                ),
+              ),
+            ),
+          )),
         ],
+      ),
+    );
+  }
+}
+
+class _GoalTabButton extends StatelessWidget {
+  final String text;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  const _GoalTabButton({required this.text, this.selected = false, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF3973F4) : const Color(0xFFF5F6FA),
+          borderRadius: BorderRadius.circular(18),
+          border: selected ? null : Border.all(color: const Color(0xFFE0E0E0)),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: selected ? Colors.white : const Color(0xFF888888),
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
       ),
     );
   }

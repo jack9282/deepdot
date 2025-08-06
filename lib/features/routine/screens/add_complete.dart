@@ -48,7 +48,7 @@ class RoutineCompleteScreen extends StatelessWidget {
               onPressed: () async {
                 // 데이터 새로고침 후 루틴 화면으로 이동
                 final routineVM = context.read<RoutineViewModel>();
-                await routineVM.refresh();
+                await routineVM.initialize();
                 if (context.mounted) {
                   context.go('/routine');
                 }

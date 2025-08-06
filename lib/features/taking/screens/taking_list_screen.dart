@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/taking_view_model.dart';
-import '../../../common/theme/app_theme.dart';
 import '../widgets/taking_list_item.dart';
 
 class TakingListScreen extends StatelessWidget {
@@ -73,10 +72,7 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody> with Widge
         ),
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        leading: const SizedBox.shrink(),
         centerTitle: true,
         actions: [
           IconButton(
@@ -138,18 +134,18 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody> with Widge
                     separatorBuilder: (_, __) => const SizedBox(height: 20),
                     itemBuilder: (context, idx) {
                       final item = takingList[idx];
-                      final times = List<String>.from(item['times'] as List<dynamic>);
+                      final times = item.times;
                       final checks = takingVM.getChecksForItem(idx);
 
-                                                                   return TakingListItem(
-                        name: item['name'],
+                      return TakingListItem(
+                        name: item.name,
                         times: times,
                         checks: checks,
                         onCheckChanged: (timeIdx, val) {
                           takingVM.updateCheck(
                             idx,
                             timeIdx,
-                            val ?? false,
+                            val,
                           );
                         },
                         onEditPressed: () {
@@ -175,7 +171,7 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody> with Widge
                                       Padding(
                                         padding: const EdgeInsets.all(24),
                                         child: Text(
-                                          "'${item['name']}'를 삭제하시겠습니까?",
+                                          "'${item.name}'를 삭제하시겠습니까?",
                                           style: const TextStyle(
                                             color: Colors.black,
                                             fontSize: 16,

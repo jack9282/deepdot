@@ -133,8 +133,8 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
     if (widget.editIndex! < takingVM.takingList.length) {
       final item = takingVM.takingList[widget.editIndex!];
       setState(() {
-        _nameController.text = item['name'];
-        _takingTimes = List<String>.from(item['times']);
+        _nameController.text = item.name;
+        _takingTimes = List<String>.from(item.times);
       });
     }
   }

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../common/theme/app_theme.dart';
 import '../view_models/routine_view_model.dart';
-import '../screens/set_routine.dart';
+// DayBubble 위젯을 이 파일 안에 포함시키므로 import 'day_bubble.dart'는 필요 없습니다.
 
-class RoutineListItem extends StatelessWidget {
+class RoutineListItem extends StatefulWidget {
   final Map<String, dynamic> routine;
   final int index;
   final RoutineViewModel routineVM;
@@ -18,203 +17,182 @@ class RoutineListItem extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final List<bool> checks = routine['checks'] as List<bool>;
+  State<RoutineListItem> createState() => _RoutineListItemState();
+}
 
-    return Container(
-      child: Row(
-        children: [
-          // 루틴 이름 (클릭 가능)
-          SizedBox(
-            width: 120,
-            child: PopupMenuButton<String>(
-              offset: const Offset(0, 40),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              itemBuilder: (BuildContext context) => [
-                const PopupMenuItem<String>(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, size: 18, color: Colors.black54),
-                      SizedBox(width: 8),
-                      Text(
-                        '수정',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
+class _RoutineListItemState extends State<RoutineListItem> {
+  late List<List<bool>> checks;
+
+  static const Color naverBlue = Color(0xFF3973F4);
+
+  @override
+  void initState() {
+    super.initState();
+    checks = List<List<bool>>.from(widget.routine['checks'] ?? []);
+  }
+
+  @override
+  void didUpdateWidget(covariant RoutineListItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.routine['checks'] != widget.routine['checks']) {
+      checks = List<List<bool>>.from(widget.routine['checks'] ?? []);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color mainColor = naverBlue;
+    final List<dynamic> items = widget.routine['items'] ?? [];
+
+    return Column(
+      children: [
+        for (int itemIdx = 0; itemIdx < items.length; itemIdx++)
+          Container(
+            height: 44,
+            margin: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 120,
+                  child: Text(
+                    items[itemIdx]['name'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF222222),
+                      letterSpacing: -0.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const PopupMenuItem<String>(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, size: 18, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text(
-                        '삭제',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                ...List.generate(7, (dayIndex) {
+                  final bool isDayActive = (items[itemIdx]['days'] as List).contains(_dayString(dayIndex));
+                  
+                  return Expanded(
+                    child: Center(
+                      child: isDayActive
+                          ? GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  checks[itemIdx][dayIndex] = !checks[itemIdx][dayIndex];
+                                });
+                                widget.routineVM.updateCheck(widget.index, itemIdx, dayIndex, checks[itemIdx][dayIndex]);
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 120),
+                                width: 28,
+                                height: 28,
+                                margin: const EdgeInsets.symmetric(vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: checks[itemIdx][dayIndex] ? mainColor : Colors.white,
+                                  border: Border.all(
+                                    color: checks[itemIdx][dayIndex] ? mainColor : const Color(0xFFD1D5DB),
+                                    width: 1.7,
+                                  ),
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                                child: checks[itemIdx][dayIndex]
+                                    ? const Icon(Icons.check, color: Colors.white, size: 20)
+                                    : null,
+                              ),
+                            )
+                          : const DayBubble(),
+                    ),
+                  );
+                }),
               ],
-              onSelected: (String value) async {
-                if (value == 'edit') {
-                  await Future.delayed(const Duration(milliseconds: 100));
-                  if (context.mounted) {
-                    _navigateToEditScreen(context);
-                  }
-                } else if (value == 'delete') {
-                  _showDeleteDialog(context);
-                }
-              },
-              child: Text(
-                routine['name'],
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
-              ),
             ),
           ),
-          // 체크박스들
-          ...List.generate(7, (dayIndex) => Expanded(
-            child: Center(
-              child: Checkbox(
-                value: checks[dayIndex],
-                onChanged: (value) {
-                  routineVM.updateCheck(index, dayIndex, value ?? false);
-                },
-                activeColor: AppTheme.primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-          )),
-        ],
-      ),
+      ],
     );
   }
 
-  // 수정 화면으로 이동
-  void _navigateToEditScreen(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => SetRoutineScreen(
-          existingRoutine: routine,
-          routineIndex: index,
+  String _dayString(int index) {
+    const days = ['월', '화', '수', '목', '금', '토', '일'];
+    return days[index];
+  }
+}
+
+class DayBubble extends StatefulWidget {
+  const DayBubble({Key? key}) : super(key: key);
+
+  @override
+  State<DayBubble> createState() => _DayBubbleState();
+}
+
+class _DayBubbleState extends State<DayBubble> {
+  OverlayEntry? _overlayEntry;
+
+  void _showOverlay(BuildContext context) {
+    if (_overlayEntry != null) return; // 이미 오버레이가 있다면 새로 띄우지 않음
+
+    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final size = renderBox.size;
+    final offset = renderBox.localToGlobal(Offset.zero);
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        left: offset.dx - 100, // 좌측으로 이동하여 체크박스 중앙에 위치
+        top: offset.dy + size.height + 4, // 체크박스 바로 아래
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3973F4),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Text(
+              '이 요일엔 루틴이 설정되어 있지 않아요',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ),
         ),
       ),
-    ).then((result) {
-      if (result != null && result['routine'] != null) {
-        // 수정된 루틴 데이터로 업데이트
-        final updatedRoutine = result['routine'] as Map<String, dynamic>;
-        final routineIndex = result['index'] as int;
-        
-        // RoutineViewModel을 통해 업데이트
-        routineVM.updateRoutine(
-          routineIndex,
-          updatedRoutine['name'],
-          List<String>.from(updatedRoutine['items']),
-          List<String>.from(updatedRoutine['days']),
-          updatedRoutine['notificationEnabled'],
-          updatedRoutine['hour'],
-          updatedRoutine['minute'],
-          updatedRoutine['isAM'],
-        );
-      }
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+
+    // 2초 후에 오버레이 제거
+    Future.delayed(const Duration(seconds: 2), () {
+      _removeOverlay();
     });
   }
 
-  // 삭제 확인 다이얼로그
-  void _showDeleteDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(color: Colors.black, width: 3),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          content: SizedBox(
-            width: 200,
-            height: 100,
-            child: Center(
-              child: Text(
-                "'${routine['name']}'을 삭제하시겠습니까?",
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-          actions: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      backgroundColor: AppTheme.buttonColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text(
-                      '아니오',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      backgroundColor: AppTheme.buttonColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      onDelete?.call(index);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('${routine['name']} 삭제됨')),
-                      );
-                    },
-                    child: const Text(
-                      '네',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
+  void _removeOverlay() {
+    if (_overlayEntry != null) {
+      _overlayEntry!.remove();
+      _overlayEntry = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _removeOverlay(); // 위젯이 사라질 때 오버레이도 정리
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        _showOverlay(context);
       },
+      child: Container(
+        width: 28,
+        height: 28,
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          border: Border.all(
+            color: const Color(0xFFD1D5DB),
+            width: 1.7,
+          ),
+          borderRadius: BorderRadius.circular(7),
+        ),
+      ),
     );
   }
 }

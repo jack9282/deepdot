@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import '../view_models/taking_view_model.dart';
 import '../../../common/theme/app_theme.dart';
 
 class TakingAddCompleteScreen extends StatelessWidget {
