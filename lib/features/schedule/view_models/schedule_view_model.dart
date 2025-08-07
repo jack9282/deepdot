@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/models/task_model.dart';
+import 'dart:math';
 
 class ScheduleViewModel with ChangeNotifier {
   final TaskRepository _taskRepository = TaskRepository();
@@ -206,7 +207,7 @@ class ScheduleViewModel with ChangeNotifier {
         }
 
         final task = TaskModel(
-          id: 'task_${DateTime.now().millisecondsSinceEpoch}_${taskCount}_${currentDate.millisecondsSinceEpoch}',
+          id: 'task_${DateTime.now().millisecondsSinceEpoch}_${taskCount}_${currentDate.millisecondsSinceEpoch}_${Random().nextInt(999999)}',
           title: title,
           description: description,
           priority: priority,

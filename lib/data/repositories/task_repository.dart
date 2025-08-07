@@ -123,9 +123,14 @@ class TaskRepository {
 
   // 로컬 스토리지에 할일 목록 저장
   Future<void> _saveTasksToStorage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final tasksJson = json.encode(_tasks.map((task) => task.toJson()).toList());
-    await prefs.setString(_tasksKey, tasksJson);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final tasksJson = json.encode(_tasks.map((task) => task.toJson()).toList());
+      await prefs.setString(_tasksKey, tasksJson);
+    } catch (e) {
+      print('Task storage error: $e');
+      // 저장 실패 시에도 앱이 크래시되지 않도록 처리
+    }
   }
 
   // 샘플 할일 데이터 생성 (처음 앱을 사용할 때)

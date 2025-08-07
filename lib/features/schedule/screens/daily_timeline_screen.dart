@@ -529,6 +529,8 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                                  ? TextDecoration.lineThrough 
                                  : null,
                            ),
+                           softWrap: false,
+                           overflow: TextOverflow.visible,
                          ),
                        ),
                                                // 재생 버튼

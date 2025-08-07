@@ -659,16 +659,14 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   }
 
   void _showSuccessDialog() {
+    // 성공 후 완료 화면으로 이동
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => ScheduleAddCompleteScreen(
           isEditMode: widget.taskToEdit != null,
         ),
       ),
-    ).then((_) {
-      // 완료 화면에서 돌아온 후 이전 화면으로 돌아가기
-      Navigator.of(context).pop(true);
-    });
+    );
   }
 
   @override

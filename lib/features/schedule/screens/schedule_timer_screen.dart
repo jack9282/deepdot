@@ -494,7 +494,7 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
               Center(
                 child: Container(
                   width: 500,
-                  height: 50,
+                  height: 500,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
