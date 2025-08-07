@@ -4,6 +4,7 @@ import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../view_models/schedule_view_model.dart';
 import 'schedule_add_screen.dart';
+import 'schedule_timer_screen.dart';
 
 class DailyTimelineScreen extends StatefulWidget {
   final TaskPriority? priority;
@@ -530,21 +531,32 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                            ),
                          ),
                        ),
-                       // 재생 버튼
-                       Container(
-                         width: 24,
-                         height: 24,
-                         margin: const EdgeInsets.only(left: 12),
-                         decoration: BoxDecoration(
-                           color: Colors.grey[200],
-                           shape: BoxShape.circle,
-                         ),
-                         child: const Icon(
-                           Icons.play_arrow,
-                           size: 16,
-                           color: Colors.grey,
-                         ),
-                       ),
+                                               // 재생 버튼
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => ScheduleTimerScreen(
+                                  task: task,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            margin: const EdgeInsets.only(left: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
                        // 반복 일정 표시
                        if (task.isRecurring)
                          Container(

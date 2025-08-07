@@ -29,6 +29,7 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
   int _totalSeconds = 25 * 60; // 총 시간 (초)
   
   bool _isFocusMode = true; // true: 집중 시간, false: 휴식 시간
+  bool _showTimeEdit = false; // 시간 수정 UI 표시 여부
 
   @override
   void initState() {
@@ -131,25 +132,29 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
     });
   }
 
-  void _showTimeEditDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => _TimeEditBottomSheet(
-        focusTime: _focusTimeMinutes,
-        breakTime: _breakTimeMinutes,
-        onTimeChanged: (focusTime, breakTime) {
-          setState(() {
-            _focusTimeMinutes = focusTime;
-            _breakTimeMinutes = breakTime;
-            _initializeTimer();
-          });
-        },
-      ),
-    );
+  void _toggleTimeEdit() {
+    setState(() {
+      _showTimeEdit = !_showTimeEdit;
+    });
+  }
+
+  void _adjustTime(bool isFocus, bool isIncrease) {
+    setState(() {
+      if (isFocus) {
+        if (isIncrease) {
+          _focusTimeMinutes = (_focusTimeMinutes + 5).clamp(5, 60);
+        } else {
+          _focusTimeMinutes = (_focusTimeMinutes - 5).clamp(5, 60);
+        }
+      } else {
+        if (isIncrease) {
+          _breakTimeMinutes = (_breakTimeMinutes + 5).clamp(5, 30);
+        } else {
+          _breakTimeMinutes = (_breakTimeMinutes - 5).clamp(5, 30);
+        }
+      }
+      _initializeTimer();
+    });
   }
 
   void _completeTask() {
@@ -209,16 +214,16 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[100], // 본문 뒷배경을 연한회색으로 변경
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.white, // 상단바는 흰색 유지
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          '일정',
+          '뽀모도로',
           style: TextStyle(
             color: Colors.black,
             fontSize: 18,
@@ -226,216 +231,330 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ScheduleAddScreen(
-                    priority: widget.task.priority,
-                    taskToEdit: widget.task,
-                  ),
-                ),
-              );
-            },
-            child: const Text(
-              '일정 수정',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: _showTimeEditDialog,
-            child: const Text(
-              '시간 수정',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 14,
-              ),
-            ),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            // 상단 정보
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                widget.task.title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-            ),
+                         // 일정 정보 섹션
+             Row(
+               children: [
+                 // 일정 제목
+                 Expanded(
+                   child: Text(
+                     widget.task.title,
+                     style: const TextStyle(
+                       fontSize: 18,
+                       fontWeight: FontWeight.w600,
+                       color: Colors.black,
+                     ),
+                   ),
+                 ),
+                 // 일정 수정 버튼
+                 GestureDetector(
+                   onTap: () {
+                     Navigator.push(
+                       context,
+                       MaterialPageRoute(
+                         builder: (context) => ScheduleAddScreen(
+                           priority: widget.task.priority,
+                           taskToEdit: widget.task,
+                         ),
+                       ),
+                     );
+                   },
+                   child: const Icon(
+                     Icons.chevron_right,
+                     color: Colors.black,
+                     size: 24,
+                   ),
+                 ),
+               ],
+             ),
             const SizedBox(height: 16),
             
-            // Tip 문구
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '[Tip] 집중이 끝나면, 잠깐 쉬어가세요!',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            
-            // 시간 정보
-            Row(
-              children: [
-                Text(
-                  '집중 시간 : ${_focusTimeMinutes}분',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Text(
-                  '휴식 시간 : ${_breakTimeMinutes}분',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 40),
-            
-            // 중앙 타이머
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // 타이머 원형 디스플레이
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 280,
-                          height: 280,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.black,
-                              width: 3,
-                            ),
+                         // Tip 문구와 시간 수정 버튼
+             Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+                 // Tip 문구
+                 Row(
+                   children: [
+                     Expanded(
+                       child: RichText(
+                         text: TextSpan(
+                           children: [
+                             TextSpan(
+                               text: '[Tip] ',
+                               style: const TextStyle(
+                                 fontSize: 16,
+                                 color: Color(0xFF1F5DFF), // 파란색
+                                 fontWeight: FontWeight.w600,
+                               ),
+                             ),
+                             TextSpan(
+                               text: '집중이 끝나면 잠깐 쉬어가세요',
+                               style: const TextStyle(
+                                 fontSize: 15,
+                                 color: Colors.black, // 검정색
+                                 fontWeight: FontWeight.w600,
+                               ),
+                             ),
+                           ],
+                         ),
+                       ),
+                     ),
+                     // 시간 수정 버튼
+                     GestureDetector(
+                       onTap: _toggleTimeEdit,
+                       child: Container(
+                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                         decoration: BoxDecoration(
+                           color: Colors.grey[200],
+                           borderRadius: BorderRadius.circular(16),
+                         ),
+                         child: Text(
+                           _showTimeEdit ? '완료' : '수정하기',
+                           style: const TextStyle(
+                             fontSize: 12,
+                             color: Colors.black,
+                             fontWeight: FontWeight.w500,
+                           ),
+                         ),
+                       ),
+                     ),
+                   ],
+                 ),
+                 const SizedBox(height: 8),
+                 // 시간 정보
+                 Text(
+                   '+,-버튼을 시간을 설정할 수 있어요',
+                   style: TextStyle(
+                     fontSize: 13,
+                     color: Colors.grey[500],
+                   ),
+                 ),
+                 
+                  
+                  // 인라인 시간 수정 UI
+                  if (_showTimeEdit) ...[
+                    const SizedBox(height: 6),
+                                         Container(
+                       padding: const EdgeInsets.all(3),
+                       decoration: BoxDecoration(
+                         color: Colors.white,
+                         borderRadius: BorderRadius.circular(16),
+                         border: Border.all(color: Colors.grey[300]!),
+                       ),
+                      child: Column(
+                        children: [
+                          // 집중 시간 설정
+                                                     Row(
+                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                             children: [
+                               const Text(
+                                 '   집중시간',
+                                 style: TextStyle(
+                                   fontSize: 16,
+                                   fontWeight: FontWeight.w500,
+                                   color: Colors.black,
+                                 ),
+                               ),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    onPressed: () => _adjustTime(true, false),
+                                    icon: const Icon(Icons.remove),
+                                    color: Colors.black,
+                                  ),
+                                    Text(
+                                     '${_focusTimeMinutes}분',
+                                     style: const TextStyle(
+                                       fontSize: 16,
+                                       fontWeight: FontWeight.w600,
+                                       color: Colors.black,
+                                     ),
+                                   ),
+                                  IconButton(
+                                    onPressed: () => _adjustTime(true, true),
+                                    icon: const Icon(Icons.add),
+                                    color: Colors.black,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ),
-                        Text(
-                          _formatTime(_remainingSeconds),
-                          style: const TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                          const SizedBox(height: 2),
+                          Divider(color: Colors.grey[300]),
+                          const SizedBox(height: 2),
+                          // 휴식 시간 설정
+                                                     Row(
+                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                             children: [
+                               const Text(
+                                 '   휴식시간',
+                                 style: TextStyle(
+                                   fontSize: 16,
+                                   fontWeight: FontWeight.w500,
+                                   color: Colors.black,
+                                 ),
+                               ),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    onPressed: () => _adjustTime(false, false),
+                                    icon: const Icon(Icons.remove),
+                                    color: Colors.black,
+                                  ),
+                                                                     Text(
+                                     '${_breakTimeMinutes}분',
+                                     style: const TextStyle(
+                                       fontSize: 16,
+                                       fontWeight: FontWeight.w600,
+                                       color: Colors.black,
+                                     ),
+                                   ),
+                                  IconButton(
+                                    onPressed: () => _adjustTime(false, true),
+                                    icon: const Icon(Icons.add),
+                                    color: Colors.black,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ),
-                        // 상단 핸들
-                        Positioned(
-                          top: -10,
-                          child: Container(
-                            width: 20,
-                            height: 20,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 30),
-                    
-                    // 재생/정지 버튼
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.black,
-                          width: 2,
-                        ),
-                      ),
-                      child: IconButton(
-                        onPressed: _toggleTimer,
-                        icon: Icon(
-                          _isRunning ? Icons.pause : Icons.play_arrow,
-                          size: 30,
-                          color: Colors.black,
-                        ),
+                        ],
                       ),
                     ),
                   ],
+                ],
+              ),
+            
+            const SizedBox(height: 30),
+            
+              // 중앙 타이머 (흰색 카드에 담기)
+              Center(
+                                 child: Container(
+                   width: 500,
+                   height: 400,
+                   padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                                     child: Column(
+                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                     children: [
+                       // 타이머 시간만 표시 (중앙)
+                       Expanded(
+                         child: Center(
+                           child: Text(
+                             _formatTime(_remainingSeconds),
+                             style: const TextStyle(
+                               fontSize: 50,
+                               fontWeight: FontWeight.w500,
+                               color: Colors.black,
+                             ),
+                           ),
+                         ),
+                       ),
+                       
+                       // 재생/정지 버튼 (카드 하단)
+                       Container(
+                         width: 60,
+                         height: 60,
+                         decoration: BoxDecoration(
+                           shape: BoxShape.circle,
+                           color: const Color(0xFF3A71FF),
+                         ),
+                         child: IconButton(
+                           onPressed: _toggleTimer,
+                           icon: Icon(
+                             _isRunning ? Icons.pause : Icons.play_arrow,
+                             size: 30,
+                             color: Colors.white,
+                           ),
+                         ),
+                       ),
+                     ],
+                   ),
+                 ),
+               ),
+              
+              const SizedBox(height: 20),
+              
+              // 진행률 바 (별도 흰색 카드)
+              Center(
+                child: Container(
+                  width: 500,
+                  height: 50,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                                     child: Row(
+                     children: [
+                       const Text(
+                         '진행률',
+                         style: TextStyle(
+                           fontSize: 16,
+                           fontWeight: FontWeight.w500,
+                           color: Colors.black,
+                         ),
+                       ),
+                       const SizedBox(width: 16),
+                       Expanded(
+                         child: Container(
+                           height: 8,
+                           decoration: BoxDecoration(
+                             color: Colors.grey[300],
+                             borderRadius: BorderRadius.circular(4),
+                           ),
+                           child: FractionallySizedBox(
+                             alignment: Alignment.centerLeft,
+                             widthFactor: _getProgress(),
+                             child: Container(
+                               decoration: BoxDecoration(
+                                 color: AppTheme.primaryColor,
+                                 borderRadius: BorderRadius.circular(4),
+                               ),
+                             ),
+                           ),
+                         ),
+                       ),
+                       const SizedBox(width: 16),
+                       Text(
+                         '${(_getProgress() * 100).toInt()}%',
+                         style: TextStyle(
+                           fontSize: 14,
+                           color: Colors.grey[600],
+                         ),
+                       ),
+                     ],
+                   ),
                 ),
               ),
-            ),
-            
-            // 진행률 바
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      '진행률',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black,
-                      ),
-                    ),
-                    Text(
-                      '${(_getProgress() * 100).toInt()}%',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: _getProgress(),
-                  backgroundColor: Colors.grey[300],
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-                  minHeight: 8,
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 40),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _completeTask,
-        backgroundColor: Colors.black,
+        backgroundColor: const Color(0xFF3A71FF),
         child: const Icon(
           Icons.check,
           color: Colors.white,
@@ -447,194 +566,3 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
   }
 }
 
-// 시간 수정 Bottom Sheet
-class _TimeEditBottomSheet extends StatefulWidget {
-  final int focusTime;
-  final int breakTime;
-  final Function(int focusTime, int breakTime) onTimeChanged;
-
-  const _TimeEditBottomSheet({
-    required this.focusTime,
-    required this.breakTime,
-    required this.onTimeChanged,
-  });
-
-  @override
-  State<_TimeEditBottomSheet> createState() => _TimeEditBottomSheetState();
-}
-
-class _TimeEditBottomSheetState extends State<_TimeEditBottomSheet> {
-  late int _focusTime;
-  late int _breakTime;
-
-  @override
-  void initState() {
-    super.initState();
-    _focusTime = widget.focusTime;
-    _breakTime = widget.breakTime;
-  }
-
-  void _adjustTime(bool isFocus, bool isIncrease) {
-    setState(() {
-      if (isFocus) {
-        if (isIncrease) {
-          _focusTime = (_focusTime + 5).clamp(5, 60);
-        } else {
-          _focusTime = (_focusTime - 5).clamp(5, 60);
-        }
-      } else {
-        if (isIncrease) {
-          _breakTime = (_breakTime + 5).clamp(5, 30);
-        } else {
-          _breakTime = (_breakTime - 5).clamp(5, 30);
-        }
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 핸들
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 20),
-          
-          // 제목
-          const Text(
-            '시간 설정',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 30),
-          
-          // 집중 시간 설정
-          _buildTimeAdjuster(
-            '집중 시간',
-            _focusTime,
-            () => _adjustTime(true, false),
-            () => _adjustTime(true, true),
-          ),
-          const SizedBox(height: 20),
-          
-          // 휴식 시간 설정
-          _buildTimeAdjuster(
-            '휴식 시간',
-            _breakTime,
-            () => _adjustTime(false, false),
-            () => _adjustTime(false, true),
-          ),
-          const SizedBox(height: 30),
-          
-          // 버튼들
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    '취소',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    widget.onTimeChanged(_focusTime, _breakTime);
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    '확인',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeAdjuster(String label, int time, VoidCallback onDecrease, VoidCallback onIncrease) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: Colors.black,
-          ),
-        ),
-        Row(
-          children: [
-            IconButton(
-              onPressed: onDecrease,
-              icon: const Icon(Icons.remove_circle_outline),
-              color: Colors.grey[600],
-            ),
-            Container(
-              width: 60,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${time}분',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-            IconButton(
-              onPressed: onIncrease,
-              icon: const Icon(Icons.add_circle_outline),
-              color: Colors.grey[600],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
