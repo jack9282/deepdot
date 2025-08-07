@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../view_models/schedule_view_model.dart';
-import 'task_add_screen.dart';
+import 'schedule_add_screen.dart';
 
 class DailyTimelineScreen extends StatefulWidget {
   final TaskPriority? priority;
@@ -20,7 +20,6 @@ class DailyTimelineScreen extends StatefulWidget {
 }
 
 class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
-  late ScheduleViewModel _viewModel;
   DateTime _selectedDate = DateTime.now();
   DateTime _baseDate = DateTime.now(); // 7일 주간 표시의 기준 날짜
   final PageController _pageController = PageController();
@@ -28,35 +27,45 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
   @override
   void initState() {
     super.initState();
-    _viewModel = ScheduleViewModel();
-    _loadTasks();
   }
 
   @override
   void dispose() {
-    _viewModel.dispose();
     _pageController.dispose();
     super.dispose();
   }
 
-  void _loadTasks() {
+  void _loadTasks(ScheduleViewModel viewModel) {
     if (widget.priority != null) {
-      _viewModel.loadTasksByPriority(widget.priority!);
+      viewModel.loadTasksByPriority(widget.priority!);
     } else {
-      _viewModel.loadAllTasks();
+      viewModel.loadAllTasks();
     }
   }
 
   Color _getPriorityColor(TaskPriority priority) {
     switch (priority) {
       case TaskPriority.urgentImportant:
-        return AppTheme.urgentImportantColor;
+        return const Color(0xFFFF4C4C); // 홈화면과 동일한 빨간색
       case TaskPriority.important:
-        return AppTheme.importantColor;
+        return const Color(0xFF1F5DFF); // 홈화면과 동일한 파란색
       case TaskPriority.urgent:
-        return AppTheme.urgentColor;
+        return const Color(0xFFFFBC4C); // 홈화면과 동일한 주황색
       case TaskPriority.neither:
-        return AppTheme.neitherColor;
+        return const Color(0xFF74787B); // 홈화면과 동일한 회색
+    }
+  }
+
+  Color _getPriorityBackgroundColor(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.urgentImportant:
+        return const Color(0xFFFFD6D6); // 홈화면과 동일한 연한 빨간색
+      case TaskPriority.important:
+        return const Color(0xFFE0E9FF); // 홈화면과 동일한 연한 파란색
+      case TaskPriority.urgent:
+        return const Color(0xFFFFF6C4); // 홈화면과 동일한 연한 노란색
+      case TaskPriority.neither:
+        return const Color(0xFFFFFFFF); // 홈화면과 동일한 흰색
     }
   }
 
@@ -66,11 +75,19 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
     return '$hour:$minute';
   }
 
+  String _getTimeStringWithAmPm(DateTime dateTime) {
+    final hour = dateTime.hour;
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    
+    String amPm = hour < 12 ? '오전' : '오후';
+    int displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    
+    return '$amPm ${displayHour.toString().padLeft(2, '0')}:$minute';
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<ScheduleViewModel>(
-      create: (_) => _viewModel,
-      child: Scaffold(
+    return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.white,
@@ -100,14 +117,15 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                 // 일정 추가 화면으로 이동
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => TaskAddScreen(
+                    builder: (context) => ScheduleAddScreen(
                       priority: TaskPriority.urgentImportant, // 기본 우선순위
                     ),
                   ),
                 ).then((result) {
                   if (result == true) {
                     // 일정 추가 성공 시 화면 새로고침
-                    _loadTasks();
+                    final viewModel = Provider.of<ScheduleViewModel>(context, listen: false);
+                    viewModel.refresh();
                   }
                 });
               },
@@ -116,21 +134,6 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
         ),
         body: Column(
           children: [
-            // 월/년 헤더
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                '${_baseDate.year}년 ${_baseDate.month}월',
-                style: const TextStyle(
-                  fontFamily: 'Pretendard',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            
             // 날짜 선택 헤더 (현재 날짜 중심으로 ±3일)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -226,10 +229,23 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
               ),
             ),
             
+            // 날짜 선택 영역과 타임라인 사이의 구분선
+            Container(
+              height: 1,
+              color: Colors.grey.withOpacity(0.1),
+            ),
+            
             // 타임라인 뷰
             Expanded(
               child: Consumer<ScheduleViewModel>(
                 builder: (context, viewModel, child) {
+                  // 초기 로딩 (빌드 완료 후 수행)
+                  if (viewModel.tasks.isEmpty && !viewModel.isLoading) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _loadTasks(viewModel);
+                    });
+                  }
+                  
                   if (viewModel.isLoading) {
                     return const Center(
                       child: CircularProgressIndicator(
@@ -240,7 +256,41 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
 
                   final tasks = viewModel.filteredTasks
                       .where((task) {
-                        // 시작시간이 있으면 시작시간 기준, 없으면 종료시간 기준으로 필터링
+                        // 반복 일정인 경우 해당 날짜에 맞는 일정만 표시
+                        if (task.isRecurring && task.startDateRange != null && task.endDateRange != null) {
+                          final startRange = DateTime(
+                            task.startDateRange!.year,
+                            task.startDateRange!.month,
+                            task.startDateRange!.day,
+                          );
+                          final endRange = DateTime(
+                            task.endDateRange!.year,
+                            task.endDateRange!.month,
+                            task.endDateRange!.day,
+                          );
+                          final selectedDate = DateTime(
+                            _selectedDate.year,
+                            _selectedDate.month,
+                            _selectedDate.day,
+                          );
+                          
+                          // 선택된 날짜가 범위 내에 있는지 확인
+                          if (!selectedDate.isBefore(startRange) && !selectedDate.isAfter(endRange)) {
+                            // 반복 일정의 실제 시작 시간이 선택된 날짜와 일치하는지 확인
+                            if (task.startDate != null) {
+                              final taskDate = DateTime(
+                                task.startDate!.year,
+                                task.startDate!.month,
+                                task.startDate!.day,
+                              );
+                              return _isSameDay(taskDate, _selectedDate);
+                            }
+                            return false;
+                          }
+                          return false;
+                        }
+                        
+                        // 일반 일정인 경우 시작시간이 있으면 시작시간 기준, 없으면 종료시간 기준으로 필터링
                         final dateToCheck = task.startDate ?? task.dueDate;
                         return dateToCheck != null && _isSameDay(dateToCheck, _selectedDate);
                       })
@@ -276,99 +326,97 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                     );
                   }
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: tasks.length,
-                    itemBuilder: (context, index) {
-                      final task = tasks[index];
-                      final isLast = index == tasks.length - 1;
-                      
-                      return _buildTimelineItem(task, isLast, viewModel);
-                    },
-                  );
+                                     return ListView.builder(
+                     padding: const EdgeInsets.all(16),
+                     itemCount: tasks.length,
+                     itemBuilder: (context, index) {
+                       final task = tasks[index];
+                       final isLast = index == tasks.length - 1;
+                       
+                       return _buildTimelineItem(task, isLast, viewModel, tasks);
+                     },
+                   );
                 },
               ),
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
-  Widget _buildTimelineItem(TaskModel task, bool isLast, ScheduleViewModel viewModel) {
-    final priorityColor = _getPriorityColor(task.priority);
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 시간 표시 (시작 시간 기준)
-          SizedBox(
-            width: 80,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                task.startDate != null 
-                    ? _getTimeString(task.startDate!)
-                    : _getTimeString(task.dueDate ?? DateTime.now()),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-          ),
-          
-          // 타임라인 라인과 아이콘
-          Column(
-            children: [
-              // 아이콘이 포함된 타임라인 점
-              Container(
-                width: 60,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: priorityColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // 아이콘 (이모지 또는 아이콘)
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: priorityColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          _getTaskIcon(task),
-                          style: const TextStyle(fontSize: 16),
+     Widget _buildTimelineItem(TaskModel task, bool isLast, ScheduleViewModel viewModel, List<TaskModel> allTasks) {
+     final priorityColor = _getPriorityColor(task.priority);
+     
+           return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center, // 중앙 정렬로 변경
+          children: [
+                         // 타임라인 라인과 아이콘
+             SizedBox(
+               width: 70,
+               child: Column(
+                 children: [
+                                       // 상단 연결선 (첫 번째 아이템이 아닌 경우)
+                    if (allTasks.indexOf(task) > 0)
+                      Container(
+                        width: 2,
+                        height: 20, // 연결선 길이 줄임
+                        decoration: BoxDecoration(
+                          border: Border(
+                            left: BorderSide(
+                              color: Colors.grey[300]!,
+                              width: 2,
+                              style: BorderStyle.solid,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              // 연결선
-              if (!isLast)
-                Container(
-                  width: 2,
-                  height: 20,
-                  color: Colors.grey[300],
-                ),
-            ],
-          ),
+                   // 아이콘이 포함된 타임라인 점 (세로 타원형 배경)
+                   Container(
+                     width: 40,  // 가로 크기
+                     height: 80, // 세로 크기
+                     decoration: BoxDecoration(
+                       color: _getPriorityBackgroundColor(task.priority),
+                       borderRadius: BorderRadius.circular(30), // 세로 타원형 모양
+                       border: Border.all(
+                         color: priorityColor,
+                         width: 0,
+                       ),
+                     ),
+                     child: Center(
+                       child: Icon(
+                         _getTaskIcon(task),
+                         size: 24,
+                         color: priorityColor,
+                       ),
+                     ),
+                   ),
+                                       // 하단 연결선 (마지막 아이템이 아닌 경우)
+                    if (!isLast)
+                      Container(
+                        width: 2,
+                        height: 20, // 연결선 길이 줄임
+                        decoration: BoxDecoration(
+                          border: Border(
+                            left: BorderSide(
+                              color: Colors.grey[300]!,
+                              width: 2,
+                              style: BorderStyle.solid,
+                            ),
+                          ),
+                        ),
+                      ),
+                 ],
+               ),
+             ),
           
-          const SizedBox(width: 16),
+          const SizedBox(width: 20),
           
-          // 일정 카드
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.only(top: 8),
+                     // 일정 카드
+           Expanded(
+             child: Container(
+               margin: const EdgeInsets.only(top: 0), // 상단 마진 제거하여 타임라인 아이콘과 일정 카드 정확히 중앙 정렬
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -381,120 +429,162 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                   ),
                 ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      // 시간 범위 (시작시간 ~ 종료시간)
-                      Text(
-                        _getTimeRangeString(task),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const Spacer(),
-                      // 완료 체크박스
-                      GestureDetector(
-                        onTap: () {
-                          viewModel.toggleTaskCompletion(task.id);
-                        },
-                        child: Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: task.isCompleted ? Colors.green : Colors.transparent,
-                            border: Border.all(
-                              color: task.isCompleted ? Colors.green : Colors.grey[400]!,
-                              width: 1.5,
-                            ),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: task.isCompleted
-                              ? const Icon(
-                                  Icons.check,
-                                  size: 12,
-                                  color: Colors.white,
-                                )
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // 제목
-                  Text(
-                    task.title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: task.isCompleted 
-                          ? Colors.grey[500]
-                          : Colors.black,
-                      decoration: task.isCompleted 
-                          ? TextDecoration.lineThrough 
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // 재생 버튼
-                  Row(
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.play_arrow,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const Spacer(),
-                      // 더보기 메뉴
-                      PopupMenuButton<String>(
-                        icon: const Icon(
-                          Icons.more_horiz,
-                          size: 20,
-                          color: Colors.grey,
-                        ),
-                        onSelected: (value) {
-                          if (value == 'edit') {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => TaskAddScreen(
-                                  priority: task.priority,
-                                  taskToEdit: task,
-                                ),
-                              ),
-                            ).then((result) {
-                              if (result == true) {
-                                viewModel.refresh();
-                              }
-                            });
-                          } else if (value == 'delete') {
-                            _showDeleteConfirmDialog(context, task, viewModel);
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Text('일정 수정'),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Text('일정 삭제'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                             child: Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                   // 첫 번째 줄: 시간 범위와 더보기 메뉴
+                   Row(
+                     children: [
+                       // 시간 범위 (시작시간 ~ 종료시간)
+                       Text(
+                         _getTimeRangeString(task),
+                         style: TextStyle(
+                           fontSize: 16,
+                           color: Colors.black,
+                         ),
+                       ),
+                       const Spacer(),
+                       // 더보기 메뉴
+                       PopupMenuButton<String>(
+                         icon: const Icon(
+                           Icons.more_vert,
+                           size: 24,
+                           color: Colors.grey,
+                         ),
+                         onSelected: (value) {
+                           if (value == 'edit') {
+                             Navigator.of(context).push(
+                               MaterialPageRoute(
+                                 builder: (context) => ScheduleAddScreen(
+                                   priority: task.priority,
+                                   taskToEdit: task,
+                                 ),
+                               ),
+                             ).then((result) {
+                               if (result == true) {
+                                 viewModel.refresh();
+                               }
+                             });
+                           } else if (value == 'delete') {
+                             _showDeleteConfirmDialog(context, task, viewModel);
+                           }
+                         },
+                         itemBuilder: (context) => [
+                           PopupMenuItem(
+                             value: 'edit',
+                             child: const Text(
+                               '수정하기',
+                               style: TextStyle(
+                                 color: Color(0xFF1F5DFF), // 파란색
+                                 fontWeight: FontWeight.w500,
+                               ),
+                             ),
+                           ),
+                           PopupMenuItem(
+                             value: 'delete',
+                             child: const Text(
+                               '삭제하기',
+                               style: TextStyle(
+                                 color: Colors.red, // 빨간색
+                                 fontWeight: FontWeight.w500,
+                               ),
+                             ),
+                           ),
+                         ],
+                       ),
+                     ],
+                   ),
+                   const SizedBox(height: 8),
+                   // 두 번째 줄: 아이콘, 제목, 재생 버튼, 반복 일정, 완료 체크박스
+                   Row(
+                     children: [
+                       // 아이콘
+                       Container(
+                         width: 20,
+                         height: 20,
+                         margin: const EdgeInsets.only(right: 8),
+                         child: task.emoji != null
+                             ? Text(
+                                 task.emoji!,
+                                 style: const TextStyle(fontSize: 16),
+                               )
+                             : Icon(
+                                 _getTaskIcon(task),
+                                 size: 14,
+                                 color: priorityColor,
+                               ),
+                       ),
+                       // 제목
+                       Flexible(
+                         child: Text(
+                           task.title,
+                           style: TextStyle(
+                             fontSize: 18,
+                             fontWeight: FontWeight.w600,
+                             color: task.isCompleted 
+                                 ? Colors.grey[500]
+                                 : Colors.black,
+                             decoration: task.isCompleted 
+                                 ? TextDecoration.lineThrough 
+                                 : null,
+                           ),
+                         ),
+                       ),
+                       // 재생 버튼
+                       Container(
+                         width: 24,
+                         height: 24,
+                         margin: const EdgeInsets.only(left: 12),
+                         decoration: BoxDecoration(
+                           color: Colors.grey[200],
+                           shape: BoxShape.circle,
+                         ),
+                         child: const Icon(
+                           Icons.play_arrow,
+                           size: 16,
+                           color: Colors.grey,
+                         ),
+                       ),
+                       // 반복 일정 표시
+                       if (task.isRecurring)
+                         Container(
+                           margin: const EdgeInsets.only(left: 8),
+                           child: const Icon(
+                             Icons.repeat,
+                             size: 16,
+                             color: Color(0xFF1F5DFF),
+                           ),
+                         ),
+                       const Spacer(flex: 3),
+                       // 완료 체크박스 (우측 끝)
+                       GestureDetector(
+                         onTap: () {
+                           viewModel.toggleTaskCompletion(task.id);
+                         },
+                         child: Container(
+                           width: 24,
+                           height: 24,
+                           decoration: BoxDecoration(
+                             color: task.isCompleted ? Colors.green : Colors.transparent,
+                             border: Border.all(
+                               color: task.isCompleted ? Colors.green : Colors.grey[400]!,
+                               width: 1.5,
+                             ),
+                             borderRadius: BorderRadius.circular(4),
+                           ),
+                           child: task.isCompleted
+                               ? const Icon(
+                                   Icons.check,
+                                   size: 14,
+                                   color: Colors.white,
+                                 )
+                               : null,
+                         ),
+                       ),
+                     ],
+                   ),
+                 ],
+               ),
             ),
           ),
         ],
@@ -502,17 +592,17 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
     );
   }
 
-  String _getTaskIcon(TaskModel task) {
-    // 우선순위에 따른 아이콘 반환
+  IconData _getTaskIcon(TaskModel task) {
+    // 우선순위에 따른 아이콘 반환 (홈화면과 동일하게)
     switch (task.priority) {
       case TaskPriority.urgentImportant:
-        return '🐰';
+        return Icons.warning_amber_rounded; // 경고 아이콘
       case TaskPriority.important:
-        return '👨‍💼';
+        return Icons.check_box_outlined; // 체크박스 아이콘
       case TaskPriority.urgent:
-        return '✏️';
+        return Icons.refresh_rounded; // 새로고침 아이콘
       case TaskPriority.neither:
-        return '⚫';
+        return Icons.edit_outlined; // 편집 아이콘
     }
   }
 
@@ -541,7 +631,10 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                viewModel.deleteTask(task.id);
+                // 빌드 완료 후 삭제 작업 수행
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  viewModel.deleteTask(task.id);
+                });
               },
               style: TextButton.styleFrom(
                 foregroundColor: Colors.red,
@@ -594,13 +687,17 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
         durationText = '(${minutes}분)';
       }
       
-      return '${_getTimeString(startTime)} ~ ${_getTimeString(endTime)} $durationText';
+      // 오전/오후 형식으로 변경
+      String startTimeStr = _getTimeStringWithAmPm(startTime);
+      String endTimeStr = _getTimeStringWithAmPm(endTime);
+      
+      return '$startTimeStr ~ $endTimeStr $durationText';
     } else if (startTime != null) {
       // 시작시간만 있는 경우
-      return '${_getTimeString(startTime)} ~';
+      return '${_getTimeStringWithAmPm(startTime)} ~';
     } else if (endTime != null) {
       // 종료시간만 있는 경우 (기존 데이터 호환)
-      return '~ ${_getTimeString(endTime)}';
+      return '~ ${_getTimeStringWithAmPm(endTime)}';
     } else {
       // 둘 다 없는 경우
       return '시간 미정';

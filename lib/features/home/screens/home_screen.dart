@@ -6,8 +6,9 @@ import '../../../data/models/task_model.dart';
 import '../view_models/home_view_model.dart';
 
 import '../../schedule/screens/daily_timeline_screen.dart';
-import '../../schedule/screens/task_add_screen.dart';
-import '../../schedule/screens/task_timer_screen.dart';
+import '../../schedule/screens/schedule_add_screen.dart';
+import '../../schedule/screens/schedule_timer_screen.dart';
+import '../../schedule/view_models/schedule_view_model.dart';
 import '../../statistics/screens/statistics_screen.dart';
 
 
@@ -24,6 +25,26 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _setStatusBarStyle();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 화면이 다시 포커스될 때 데이터 새로고침
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+        homeViewModel.refresh();
+        
+        // ScheduleViewModel도 함께 새로고침
+        final scheduleViewModel = Provider.of<ScheduleViewModel>(context, listen: false);
+        scheduleViewModel.refresh();
+      } catch (e) {
+        // Provider가 없는 경우 무시
+      }
+    });
+  }
+
+
 
   void _setStatusBarStyle() {
     SystemChrome.setSystemUIOverlayStyle(
@@ -87,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: const Icon(
                               Icons.bar_chart,
                               size: 24,
-                              color: AppTheme.primaryColor,
+                              color: Color(0xFF74787B),
                             ),
                           ),
                         ),
@@ -100,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontFamily: 'Pretendard',
                             fontSize: 20,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.primaryColor, // 파란색으로 변경
+                            color: Color(0xFF74787B), // 회색으로 변경
                           ),
                         ),
                       ),
@@ -131,35 +152,41 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: const Icon(
                                   Icons.calendar_today,
                                   size: 24,
-                                  color: AppTheme.primaryColor,
+                                  color: Color(0xFF74787B),
                                 ),
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // 일정 추가 버튼
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => TaskAddScreen(
-                                      priority: TaskPriority.urgentImportant,
-                                    ),
-                                  ),
-                                ).then((result) {
-                                  if (result == true) {
-                                    final viewModel = context.read<HomeViewModel>();
-                                    viewModel.refresh();
-                                    _showSuccessTooltip();
-                                  }
-                                  _setStatusBarStyle(); // 돌아올 때 상태바 스타일 재설정
-                                });
-                              },
+                                                         // 일정 추가 버튼
+                             GestureDetector(
+                               onTap: () {
+                                 Navigator.of(context).push(
+                                   MaterialPageRoute(
+                                     builder: (context) => ScheduleAddScreen(
+                                       priority: TaskPriority.urgentImportant,
+                                     ),
+                                   ),
+                                                                   ).then((result) {
+                                    // 일정 추가 화면에서 돌아올 때 항상 데이터 새로고침
+                                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                                      try {
+                                        final viewModel = context.read<HomeViewModel>();
+                                        viewModel.refresh();
+                                        // UI 강제 업데이트
+                                        viewModel.notifyListeners();
+                                      } catch (e) {
+                                        // Provider가 없는 경우 무시
+                                      }
+                                    });
+                                    _setStatusBarStyle(); // 돌아올 때 상태바 스타일 재설정
+                                  });
+                               },
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 child: const Icon(
                                   Icons.add,
                                   size: 24,
-                                  color: AppTheme.primaryColor,
+                                  color: Color(0xFF74787B),
                                 ),
                               ),
                             ),
@@ -172,40 +199,40 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            // 메인 콘텐츠
-            Expanded(
-              child: Consumer<HomeViewModel>(
-                builder: (context, viewModel, child) {
-                  if (viewModel.isLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-                      ),
-                    );
-                  }
+                         // 메인 콘텐츠
+             Expanded(
+               child: Consumer<HomeViewModel>(
+                 builder: (context, homeViewModel, child) {
+                                     if (homeViewModel.isLoading) {
+                     return const Center(
+                       child: CircularProgressIndicator(
+                         valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                       ),
+                     );
+                   }
 
-                  if (viewModel.errorMessage != null) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            viewModel.errorMessage!,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: AppTheme.textSecondaryColor,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton(
-                            onPressed: () => viewModel.refresh(),
+                   if (homeViewModel.errorMessage != null) {
+                     return Center(
+                       child: Column(
+                         mainAxisAlignment: MainAxisAlignment.center,
+                         children: [
+                           Icon(
+                             Icons.error_outline,
+                             size: 64,
+                             color: Colors.grey[400],
+                           ),
+                           const SizedBox(height: 16),
+                           Text(
+                             homeViewModel.errorMessage!,
+                             style: const TextStyle(
+                               fontSize: 16,
+                               color: AppTheme.textSecondaryColor,
+                             ),
+                             textAlign: TextAlign.center,
+                           ),
+                           const SizedBox(height: 24),
+                           ElevatedButton(
+                             onPressed: () => homeViewModel.refresh(),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.primaryColor,
                             ),
@@ -225,35 +252,37 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: Row(
                       children: [
-                        // 먼저 처리할 일 (좌상) - 파란색
-                        Expanded(
-                          child: _buildMatrixCard(
-                            context,
-                            viewModel,
-                            title: '먼저 처리할 일',
-                            subtitle: '오늘 안에 마무리해보세요',
-                            headerColor: const Color(0xFF3A71FF), // 헤더 색상 (진한 파란색)
-                            color: const Color(0xFF5886FF), // 본문 색상 (연한 파란색)
-                            icon: Icons.warning_amber_outlined,
-                            rightIcon: Icons.bookmark_border,
-                            priority: TaskPriority.urgentImportant,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // 미리 준비해주세요 (우상) - 주황색
-                        Expanded(
-                          child: _buildMatrixCard(
-                            context,
-                            viewModel,
-                            title: '미리 준비해주세요',
-                            subtitle: '시간 여유 있을 때 하면 좋아요',
-                            headerColor: const Color(0xFFFFBC4C), // 헤더 색상 (진한 주황색)
-                            color: const Color(0xFFFFDE63), // 본문 색상 (연한 주황색)
-                            icon: Icons.star_border,
-                            rightIcon: Icons.push_pin_outlined,
-                            priority: TaskPriority.important,
-                          ),
-                        ),
+                                                 // 중요 & 긴급 (좌상) - 빨간색
+                         Expanded(
+                           child: _buildMatrixCard(
+                             context,
+                             homeViewModel,
+                             title: '중요 & 긴급',
+                             subtitle: '지금 바로 해야해요',
+                             headerColor: const Color(0xFFFF4C4C), // 헤더 색상 (진한 빨간색)
+                             subtitleColor: const Color(0xFFFF5E5E), // subtitle 색상 (빨간색)
+                             color: const Color(0xFFFFD6D6), // 본문 색상 (연한 빨간색)
+                             icon: Icons.warning_amber_rounded,
+                             rightIcon: Icons.warning_amber_rounded,
+                             priority: TaskPriority.urgentImportant,
+                           ),
+                         ),
+                         const SizedBox(width: 12),
+                         // 중요 (우상) - 파란색
+                         Expanded(
+                           child: _buildMatrixCard(
+                             context,
+                             homeViewModel,
+                             title: '중요',
+                             subtitle: '미리 계획해서 준비해요',
+                             headerColor: const Color(0xFF1F5DFF), // 헤더 색상 (진한 파란색)
+                             subtitleColor: const Color(0xFF5886FF), // subtitle 색상 (파란색)
+                             color: const Color(0xFFE0E9FF), // 본문 색상 (연한 파란색)
+                             icon: Icons.check_box_outlined,
+                             rightIcon: Icons.check_box_outlined,
+                             priority: TaskPriority.important,
+                           ),
+                         ),
                       ],
                     ),
                   ),
@@ -261,34 +290,37 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: Row(
                       children: [
-                        // 도움받아도 괜찮아요 (좌하) - 연한 노란색
-                        Expanded(
-                          child: _buildMatrixCard(
-                            context,
-                            viewModel,
-                            title: '도움받아도 괜찮아요',
-                            subtitle: '빠르게 처리하거나 위임해보세요',
-                            headerColor: const Color(0xFFFFBC4C), // 헤더 색상 (주황색)
-                            color: const Color(0xFFFFF6C4), // 본문 색상 (연한 노란색)
-                            icon: Icons.access_time,
-                            rightIcon: Icons.location_on_outlined,
-                            priority: TaskPriority.urgent,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // 나중에 봐도 괜찮아요 (우하) - 연한 파란색
-                        Expanded(
-                          child: _buildMatrixCard(
-                            context,
-                            viewModel,
-                            title: '나중에 봐도 괜찮아요',
-                            subtitle: '지금 안해도 괜찮아요',
-                            color: const Color(0xFFE0E9FF), // 단색 연하늘색
-                            icon: Icons.edit_outlined,
-                            rightIcon: Icons.circle_outlined,
-                            priority: TaskPriority.neither,
-                          ),
-                        ),
+                                                 // 긴급 (좌하) - 노란색
+                         Expanded(
+                           child: _buildMatrixCard(
+                             context,
+                             homeViewModel,
+                             title: '긴급',
+                             subtitle: '나중에 처리해요',
+                             headerColor: const Color(0xFFFFBC4C), // 헤더 색상 (진한 주황색)
+                             subtitleColor: const Color(0xFFFFBC4C), // subtitle 색상 (주황색)
+                             color: const Color(0xFFFFF6C4), // 본문 색상 (연한 노란색)
+                             icon: Icons.refresh_rounded,
+                             rightIcon: Icons.refresh_rounded,
+                             priority: TaskPriority.urgent,
+                           ),
+                         ),
+                         const SizedBox(width: 12),
+                         // 둘다 아님 (우하) - 흰색
+                         Expanded(
+                           child: _buildMatrixCard(
+                             context,
+                             homeViewModel,
+                             title: '둘다 아님',
+                             subtitle: '시간 남을 때 해요',
+                             headerColor: const Color(0xFF74787B), // 헤더 색상 (회색)
+                             subtitleColor: const Color(0xFFC0C0C0), // subtitle 색상 (회색)
+                             color: const Color(0xFFFFFFFF), // 본문 색상 (흰색)
+                             icon: Icons.edit_outlined,
+                             rightIcon: Icons.edit_outlined,
+                             priority: TaskPriority.neither,
+                           ),
+                         ),
                       ],
                     ),
                   ),
@@ -330,6 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required IconData icon,
     required TaskPriority priority,
     Color? headerColor,
+    Color? subtitleColor,
     IconData? rightIcon,
   }) {
     final tasks = viewModel.getTasksByPriority(priority);
@@ -349,138 +382,116 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Column(
-            children: [
-              // 헤더 부분
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: headerColor ?? color,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                                           child: Column(
+              children: [
+                // 헤더 부분 (아이콘과 제목) - 컨테이너 밖
+                Row(
                   children: [
-                    // 상단 아이콘 행
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Icon(
+                      icon,
+                      color: headerColor ?? Colors.black,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                                         Text(
+                       title,
+                       style: TextStyle(
+                         fontFamily: 'Pretendard',
+                         fontSize: 20,
+                         fontWeight: FontWeight.w800, // 더 굵게 변경
+                         color: headerColor ?? Colors.black,
+                       ),
+                     ),
+                  ],
+                ),
+                
+                const SizedBox(height: 8),
+                
+                // 본문 부분 (컨테이너) - 부제목과 할일 목록
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          icon,
-                          color: Colors.black,
-                          size: 20,
+                        // 부제목
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: subtitleColor ?? headerColor ?? Colors.black,
+                          ),
                         ),
-                        if (rightIcon != null)
-                          Icon(
-                            rightIcon,
-                            color: Colors.black,
-                            size: 20,
+                        
+                        const SizedBox(height: 12),
+                        
+                        // 할일 목록 (5개까지)
+                        ...displayTasks.map((task) => Padding(
+                          padding: const EdgeInsets.only(bottom: 15),
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ScheduleTimerScreen(task: task),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              task.title,
+                              style: TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 16,
+                                color: task.isCompleted 
+                                  ? const Color(0xFF74787B).withOpacity(0.5) 
+                                  : const Color(0xFF74787B),
+                                fontWeight: FontWeight.w400,
+                                decoration: task.isCompleted 
+                                  ? TextDecoration.lineThrough 
+                                  : TextDecoration.none,
+                                decorationColor: const Color(0xFF74787B),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )).toList(),
+                        
+                        // 빈 공간을 채우기 위한 더미 아이템들 (5개까지 맞추기)
+                        ...List.generate(
+                          5 - displayTasks.length,
+                          (index) => const Padding(
+                            padding: EdgeInsets.only(bottom: 6),
+                            child: SizedBox(height: 15),
+                          ),
+                        ),
+                        
+                        const Spacer(),
+                        
+                        // 하단 정보
+                        if (tasks.length > 5)
+                          Text(
+                            '외 ${tasks.length - 5}개 더',
+                            style: const TextStyle(
+                              fontFamily: 'Pretendard',
+                              fontSize: 12,
+                              color: Color(0xFF666666),
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
                       ],
                     ),
-                    
-                    const SizedBox(height: 8),
-                    
-                    // 제목
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 4),
-                    
-                    // 부제목
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontSize: 10,
-                        color: Colors.black,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // 본문 부분
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(16),
-                      bottomRight: Radius.circular(16),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 할일 목록 (5개까지)
-                      ...displayTasks.map((task) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => TaskTimerScreen(task: task),
-                              ),
-                            );
-                          },
-                          child: Text(
-                            task.title,
-                            style: const TextStyle(
-                              fontFamily: 'Pretendard',
-                              fontSize: 14,
-                              color: Colors.black,
-                              fontWeight: FontWeight.w400,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      )).toList(),
-                      
-                      // 빈 공간을 채우기 위한 더미 아이템들 (5개까지 맞추기)
-                      ...List.generate(
-                        5 - displayTasks.length,
-                        (index) => const Padding(
-                          padding: EdgeInsets.only(bottom: 6),
-                          child: SizedBox(height: 15),
-                        ),
-                      ),
-                      
-                      const Spacer(),
-                      
-                      // 하단 정보
-                      if (tasks.length > 5)
-                        Text(
-                          '외 ${tasks.length - 5}개 더',
-                          style: const TextStyle(
-                            fontFamily: 'Pretendard',
-                            fontSize: 12,
-                            color: Colors.black,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                    ],
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ),
       ),
     );
