@@ -26,7 +26,7 @@ class _RoutineScreenBody extends StatefulWidget {
 }
 
 class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBindingObserver {
-  String _selectedGoal = '아침루틴';
+  String _selectedGoal = '';
 
   @override
   void initState() {

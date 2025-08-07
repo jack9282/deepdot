@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 import 'common/theme/app_theme.dart';
 import 'common/router/app_router.dart';
 import 'features/auth/view_models/auth_view_model.dart';
@@ -10,28 +12,31 @@ import 'features/routine/view_models/routine_view_model.dart';
 import 'features/home/view_models/home_view_model.dart';
 import 'features/schedule/view_models/schedule_view_model.dart';
 import 'features/statistics/view_models/statistics_view_model.dart';
+import './utils/permission.dart'; // 권한 유틸 임포트
 
-void main() {
-  // Edge-to-Edge 활성화
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // 갤럭시 S10 등 최신 기종을 위한 강력한 전체 화면 설정
+
+  // 전체화면 설정 (엣지 투 엣지)
   SystemChrome.setEnabledSystemUIMode(
     SystemUiMode.edgeToEdge,
     overlays: [], // 모든 시스템 UI 오버레이 숨김
   );
-  
-  // 시스템 바 완전 투명화 (갤럭시 S10 전용)
+
+  // 시스템 바 투명화
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarDividerColor: Colors.transparent, // 구분선도 투명
+      systemNavigationBarDividerColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
-  
+
+  // 💡 알림 권한 요청
+  await AppPermission.requestNotificationPermission();
+
   runApp(const DeepDotApp());
 }
 
@@ -42,24 +47,12 @@ class DeepDotApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => AuthViewModel()..checkAuthStatus(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => TakingViewModel(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => RoutineViewModel(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => HomeViewModel(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => ScheduleViewModel(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => StatisticsViewModel(),
-        ),
+        ChangeNotifierProvider(create: (_) => AuthViewModel()..checkAuthStatus()),
+        ChangeNotifierProvider(create: (_) => TakingViewModel()),
+        ChangeNotifierProvider(create: (_) => RoutineViewModel()),
+        ChangeNotifierProvider(create: (_) => HomeViewModel()),
+        ChangeNotifierProvider(create: (_) => ScheduleViewModel()),
+        ChangeNotifierProvider(create: (_) => StatisticsViewModel()),
       ],
       child: MaterialApp.router(
         title: 'DeepDot',
