@@ -8,6 +8,7 @@ import '../view_models/home_view_model.dart';
 import '../../schedule/screens/daily_timeline_screen.dart';
 import '../../schedule/screens/schedule_add_screen.dart';
 import '../../schedule/screens/schedule_timer_screen.dart';
+import '../../schedule/view_models/schedule_view_model.dart';
 import '../../statistics/screens/statistics_screen.dart';
 
 
@@ -33,6 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
         homeViewModel.refresh();
+        
+        // ScheduleViewModel도 함께 새로고침
+        final scheduleViewModel = Provider.of<ScheduleViewModel>(context, listen: false);
+        scheduleViewModel.refresh();
       } catch (e) {
         // Provider가 없는 경우 무시
       }
@@ -441,11 +446,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                             child: Text(
                               task.title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Pretendard',
                                 fontSize: 16,
-                                color: Color(0xFF74787B),
+                                color: task.isCompleted 
+                                  ? const Color(0xFF74787B).withOpacity(0.5) 
+                                  : const Color(0xFF74787B),
                                 fontWeight: FontWeight.w400,
+                                decoration: task.isCompleted 
+                                  ? TextDecoration.lineThrough 
+                                  : TextDecoration.none,
+                                decorationColor: const Color(0xFF74787B),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

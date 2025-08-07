@@ -141,6 +141,7 @@ class TaskRepository {
         createdAt: now.subtract(const Duration(hours: 2)),
         startDate: now.add(const Duration(hours: 8)),
         dueDate: now.add(const Duration(hours: 10)),
+        isRecurring: false,
       ),
       TaskModel(
         id: 'sample_2',
@@ -150,6 +151,7 @@ class TaskRepository {
         createdAt: now.subtract(const Duration(hours: 1)),
         startDate: now.add(const Duration(hours: 14)),
         dueDate: now.add(const Duration(hours: 15)),
+        isRecurring: false,
       ),
       TaskModel(
         id: 'sample_3',
@@ -159,6 +161,7 @@ class TaskRepository {
         createdAt: now.subtract(const Duration(minutes: 30)),
         startDate: now.add(const Duration(hours: 16)),
         dueDate: now.add(const Duration(hours: 17)),
+        isRecurring: false,
       ),
       TaskModel(
         id: 'sample_4',
@@ -168,6 +171,7 @@ class TaskRepository {
         createdAt: now.subtract(const Duration(minutes: 15)),
         startDate: now.add(const Duration(hours: 19)),
         dueDate: now.add(const Duration(hours: 20)),
+        isRecurring: false,
       ),
     ];
 

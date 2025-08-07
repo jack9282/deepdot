@@ -13,8 +13,11 @@ class TaskModel {
   final bool isCompleted;
   final DateTime createdAt;
   final DateTime? dueDate;
-  final DateTime? startDate; // 일정 시작 날짜 추가DateTime? startDate;  // 일정 시작 시간
-  //final DateTime? dueDate;    // 일정 종료 시간
+  final DateTime? startDate; // 일정 시작 시간
+  final DateTime? startDateRange; // 일정 시작 날짜 범위
+  final DateTime? endDateRange; // 일정 종료 날짜 범위
+  final bool isRecurring; // 반복 일정 여부
+  final String? emoji; // 일정 이모지
   final DateTime? completedAt;
 
   const TaskModel({
@@ -26,7 +29,10 @@ class TaskModel {
     required this.createdAt,
     this.startDate,
     this.dueDate,
-    //this.startDate,
+    this.startDateRange,
+    this.endDateRange,
+    this.isRecurring = false,
+    this.emoji,
     this.completedAt,
   });
 
@@ -39,7 +45,10 @@ class TaskModel {
     DateTime? createdAt,
     DateTime? startDate,
     DateTime? dueDate,
-    //DateTime? startDate,
+    DateTime? startDateRange,
+    DateTime? endDateRange,
+    bool? isRecurring,
+    String? emoji,
     DateTime? completedAt,
   }) {
     return TaskModel(
@@ -51,7 +60,10 @@ class TaskModel {
       createdAt: createdAt ?? this.createdAt,
       startDate: startDate ?? this.startDate,
       dueDate: dueDate ?? this.dueDate,
-      //startDate: startDate ?? this.startDate,
+      startDateRange: startDateRange ?? this.startDateRange,
+      endDateRange: endDateRange ?? this.endDateRange,
+      isRecurring: isRecurring ?? this.isRecurring,
+      emoji: emoji ?? this.emoji,
       completedAt: completedAt ?? this.completedAt,
     );
   }
@@ -66,7 +78,10 @@ class TaskModel {
       'createdAt': createdAt.millisecondsSinceEpoch,
       'startDate': startDate?.millisecondsSinceEpoch,
       'dueDate': dueDate?.millisecondsSinceEpoch,
-      //'startDate': startDate?.millisecondsSinceEpoch,
+      'startDateRange': startDateRange?.millisecondsSinceEpoch,
+      'endDateRange': endDateRange?.millisecondsSinceEpoch,
+      'isRecurring': isRecurring,
+      'emoji': emoji,
       'completedAt': completedAt?.millisecondsSinceEpoch,
     };
   }
@@ -85,9 +100,14 @@ class TaskModel {
       dueDate: json['dueDate'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['dueDate'] as int)
           : null,
-      // startDate: json['startDate'] != null
-      //     ? DateTime.fromMillisecondsSinceEpoch(json['startDate'] as int)
-      //     : null,
+      startDateRange: json['startDateRange'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(json['startDateRange'] as int)
+          : null,
+      endDateRange: json['endDateRange'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(json['endDateRange'] as int)
+          : null,
+      isRecurring: json['isRecurring'] as bool? ?? false,
+      emoji: json['emoji'] as String?,
       completedAt: json['completedAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['completedAt'] as int)
           : null,

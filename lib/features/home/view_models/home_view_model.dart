@@ -15,19 +15,72 @@ class HomeViewModel with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  // 우선순위별 할일 목록 가져오기 (시간순 정렬)
+  // 우선순위별 할일 목록 가져오기 (현재 날짜 기준 필터링, 시간순 정렬)
   List<TaskModel> getTasksByPriority(TaskPriority priority) {
-    final filteredTasks = _tasks.where((task) => task.priority == priority && !task.isCompleted).toList();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     
-    // 시간순으로 정렬 (이른 시간부터)
+    final filteredTasks = _tasks.where((task) {
+      // 우선순위 필터링 (완료된 일정도 포함)
+      if (task.priority != priority) return false;
+      
+      // 현재 날짜 기준 필터링
+      if (task.isRecurring && task.startDateRange != null && task.endDateRange != null) {
+        // 반복 일정인 경우: 현재 날짜가 범위 내에 있는지 확인
+        final startRange = DateTime(
+          task.startDateRange!.year,
+          task.startDateRange!.month,
+          task.startDateRange!.day,
+        );
+        final endRange = DateTime(
+          task.endDateRange!.year,
+          task.endDateRange!.month,
+          task.endDateRange!.day,
+        );
+        
+        // 선택된 날짜가 범위 내에 있는지 확인
+        if (!today.isBefore(startRange) && !today.isAfter(endRange)) {
+          // 반복 일정의 실제 시작 시간이 오늘과 일치하는지 확인
+          if (task.startDate != null) {
+            final taskDate = DateTime(
+              task.startDate!.year,
+              task.startDate!.month,
+              task.startDate!.day,
+            );
+            return _isSameDay(taskDate, today);
+          }
+          return false;
+        }
+        return false;
+      } else {
+        // 일반 일정인 경우: 시작시간 또는 종료시간이 오늘인지 확인
+        final dateToCheck = task.startDate ?? task.dueDate;
+        if (dateToCheck == null) return false;
+        
+        final taskDate = DateTime(
+          dateToCheck.year,
+          dateToCheck.month,
+          dateToCheck.day,
+        );
+        return taskDate.isAtSameMomentAs(today);
+      }
+    }).toList();
+    
+    // 시간순으로 정렬 (시작시간 우선, 없으면 종료시간)
     filteredTasks.sort((a, b) {
-      if (a.dueDate == null && b.dueDate == null) return 0;
-      if (a.dueDate == null) return 1; // null은 뒤로
-      if (b.dueDate == null) return -1; // null은 뒤로
-      return a.dueDate!.compareTo(b.dueDate!);
+      final timeA = a.startDate ?? a.dueDate ?? DateTime.now();
+      final timeB = b.startDate ?? b.dueDate ?? DateTime.now();
+      return timeA.compareTo(timeB);
     });
     
     return filteredTasks;
+  }
+
+  // 같은 날짜인지 확인하는 헬퍼 메서드
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+           date1.month == date2.month &&
+           date1.day == date2.day;
   }
 
   // 우선순위별 할일 개수 가져오기

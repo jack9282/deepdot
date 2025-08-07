@@ -33,7 +33,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   DateTime _endDate = DateTime.now();
 
   bool _isNotificationEnabled = false;
-  String _selectedIcon = '😊';
+  String _selectedEmoji = '😊';
   String? _selectedPriority;
   String? _selectedNotificationTime;
   bool _isStartTimeSelected = false;
@@ -98,6 +98,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     }
     
     _startDateTime = task.startDate ?? DateTime.now();
+    _selectedEmoji = task.emoji ?? '😊';
     _endDateTime = task.dueDate ?? DateTime.now().add(const Duration(hours: 1));
     _startDate = task.startDate ?? DateTime.now();
     _endDate = task.dueDate ?? DateTime.now();
@@ -208,17 +209,17 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                return GestureDetector(
                  onTap: () {
                    setState(() {
-                     _selectedIcon = _emojis[index];
+                     _selectedEmoji = _emojis[index];
                    });
                    Navigator.pop(context);
                  },
                  child: Container(
                    decoration: BoxDecoration(
-                     color: _selectedIcon == _emojis[index] 
+                     color: _selectedEmoji == _emojis[index] 
                          ? const Color(0xFF1F5DFF).withOpacity(0.1)
                          : Colors.transparent,
                      borderRadius: BorderRadius.circular(8),
-                     border: _selectedIcon == _emojis[index]
+                     border: _selectedEmoji == _emojis[index]
                          ? Border.all(color: const Color(0xFF1F5DFF))
                          : null,
                    ),
@@ -598,32 +599,63 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       return;
     }
 
-    final task = TaskModel(
-      id: widget.taskToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      title: _titleController.text.trim(),
-      description: '${_locationController.text.trim()}\n${_memoController.text.trim()}',
-      priority: _getTaskPriorityFromString(_selectedPriority),
-      isCompleted: false,
-      createdAt: DateTime.now(),
-      startDate: _startDateTime,
-      dueDate: _endDateTime,
-    );
-
     final viewModel = Provider.of<ScheduleViewModel>(context, listen: false);
     
+    // 시작 날짜와 종료 날짜가 다른 경우 반복 일정으로 처리
+    final isRecurring = !_isSameDay(_startDate, _endDate);
+    
+    // 디버그 정보 출력
+    print('시작 날짜: $_startDate');
+    print('종료 날짜: $_endDate');
+    print('반복 일정 여부: $isRecurring');
+    
+    bool success = false;
     if (widget.taskToEdit != null) {
-      await viewModel.updateTask(task);
+      // 수정 모드
+      final updatedTask = widget.taskToEdit!.copyWith(
+        title: _titleController.text.trim(),
+        description: '${_locationController.text.trim()}\n${_memoController.text.trim()}',
+        priority: _getTaskPriorityFromString(_selectedPriority),
+        startDate: _startDateTime,
+        dueDate: _endDateTime,
+        startDateRange: isRecurring ? _startDate : null,
+        endDateRange: isRecurring ? _endDate : null,
+        isRecurring: isRecurring,
+        emoji: _selectedEmoji,
+      );
+      
+      success = await viewModel.updateTask(updatedTask);
     } else {
-      await viewModel.addTask(
-        title: task.title,
-        description: task.description,
-        startDate: task.startDate,
-        dueDate: task.dueDate,
-        priority: task.priority,
+      // 새 일정 추가
+      success = await viewModel.addTask(
+        title: _titleController.text.trim(),
+        description: '${_locationController.text.trim()}\n${_memoController.text.trim()}',
+        startDate: _startDateTime,
+        dueDate: _endDateTime,
+        startDateRange: isRecurring ? _startDate : null,
+        endDateRange: isRecurring ? _endDate : null,
+        isRecurring: isRecurring,
+        priority: _getTaskPriorityFromString(_selectedPriority),
+        emoji: _selectedEmoji,
       );
     }
 
-    _showSuccessDialog();
+    if (success) {
+      // 성공 시 즉시 화면 새로고침
+      await viewModel.refresh();
+      _showSuccessDialog();
+    } else {
+      // 실패 시 에러 메시지 표시
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(viewModel.errorMessage ?? '일정 저장에 실패했습니다')),
+      );
+    }
+  }
+
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+           date1.month == date2.month &&
+           date1.day == date2.day;
   }
 
   void _showSuccessDialog() {
@@ -633,7 +665,10 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
           isEditMode: widget.taskToEdit != null,
         ),
       ),
-    );
+    ).then((_) {
+      // 완료 화면에서 돌아온 후 이전 화면으로 돌아가기
+      Navigator.of(context).pop(true);
+    });
   }
 
   @override
@@ -702,7 +737,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                     ),
                     child: Center(
                       child: Text(
-                        _selectedIcon,
+                        _selectedEmoji,
                         style: const TextStyle(fontSize: 20),
                       ),
                     ),
@@ -788,6 +823,36 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                 ),
               ],
             ),
+            // 반복 일정 안내 메시지
+            if (_isStartDateSelected && _isEndDateSelected && !_isSameDay(_startDate, _endDate))
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0EDFF),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.repeat,
+                      color: Color(0xFF1F5DFF),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '선택한 날짜 범위 동안 매일 반복되는 일정으로 등록됩니다',
+                        style: const TextStyle(
+                          color: Color(0xFF1F5DFF),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 24),
 
             // 우선순위 선택 

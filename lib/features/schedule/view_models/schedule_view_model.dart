@@ -83,13 +83,17 @@ class ScheduleViewModel with ChangeNotifier {
     }
   }
 
-  // 할일 추가
+  // 할일 추가 (반복 일정 지원)
   Future<bool> addTask({
     required String title,
     String? description,
     DateTime? startDate,
     DateTime? dueDate,
+    DateTime? startDateRange,
+    DateTime? endDateRange,
+    bool isRecurring = false,
     TaskPriority? priority,
+    String? emoji,
   }) async {
     final taskPriority = priority ?? _currentPriority;
     
@@ -107,29 +111,129 @@ class ScheduleViewModel with ChangeNotifier {
         return false;
       }
 
-      final task = TaskModel(
-        id: 'task_${DateTime.now().millisecondsSinceEpoch}',
-        title: title,
-        description: description,
-        priority: taskPriority,
-        createdAt: DateTime.now(),
-        startDate: startDate,
-        dueDate: dueDate,
-      );
-
-      final success = await _taskRepository.addTask(task);
-      if (success) {
-        _setTasks(_taskRepository.tasks);
-        return true;
+      // 반복 일정인 경우
+      if (isRecurring && startDateRange != null && endDateRange != null) {
+        return await _addRecurringTask(
+          title: title,
+          description: description,
+          startDate: startDate,
+          dueDate: dueDate,
+          startDateRange: startDateRange,
+          endDateRange: endDateRange,
+          priority: taskPriority,
+          emoji: emoji,
+        );
       } else {
-        _setError('할일 추가에 실패했습니다');
-        return false;
+        // 단일 일정인 경우
+        final task = TaskModel(
+          id: 'task_${DateTime.now().millisecondsSinceEpoch}',
+          title: title,
+          description: description,
+          priority: taskPriority,
+          createdAt: DateTime.now(),
+          startDate: startDate,
+          dueDate: dueDate,
+          isRecurring: false,
+          emoji: emoji,
+        );
+
+        final success = await _taskRepository.addTask(task);
+        if (success) {
+          _setTasks(_taskRepository.tasks);
+          return true;
+        } else {
+          _setError('할일 추가에 실패했습니다');
+          return false;
+        }
       }
     } catch (e) {
       _setError('할일 추가 중 오류가 발생했습니다: ${e.toString()}');
       return false;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // 반복 일정 추가
+  Future<bool> _addRecurringTask({
+    required String title,
+    String? description,
+    DateTime? startDate,
+    DateTime? dueDate,
+    required DateTime startDateRange,
+    required DateTime endDateRange,
+    required TaskPriority priority,
+    String? emoji,
+  }) async {
+    try {
+      // 날짜 범위 내의 모든 날짜에 대해 일정 생성
+      DateTime currentDate = DateTime(
+        startDateRange.year,
+        startDateRange.month,
+        startDateRange.day,
+      );
+      final endDate = DateTime(
+        endDateRange.year,
+        endDateRange.month,
+        endDateRange.day,
+      );
+
+      int taskCount = 0;
+      print('반복 일정 생성 시작: $startDateRange ~ $endDateRange');
+      while (!currentDate.isAfter(endDate)) {
+        // 각 날짜에 대해 시작 시간과 종료 시간 설정
+        DateTime? taskStartDate;
+        DateTime? taskDueDate;
+
+        if (startDate != null) {
+          taskStartDate = DateTime(
+            currentDate.year,
+            currentDate.month,
+            currentDate.day,
+            startDate.hour,
+            startDate.minute,
+          );
+        }
+
+        if (dueDate != null) {
+          taskDueDate = DateTime(
+            currentDate.year,
+            currentDate.month,
+            currentDate.day,
+            dueDate.hour,
+            dueDate.minute,
+          );
+        }
+
+        final task = TaskModel(
+          id: 'task_${DateTime.now().millisecondsSinceEpoch}_${taskCount}_${currentDate.millisecondsSinceEpoch}',
+          title: title,
+          description: description,
+          priority: priority,
+          createdAt: DateTime.now(),
+          startDate: taskStartDate,
+          dueDate: taskDueDate,
+          startDateRange: startDateRange,
+          endDateRange: endDateRange,
+          isRecurring: true,
+          emoji: emoji,
+        );
+
+        final success = await _taskRepository.addTask(task);
+        if (!success) {
+          _setError('반복 일정 추가 중 오류가 발생했습니다');
+          return false;
+        }
+
+        taskCount++;
+        currentDate = currentDate.add(const Duration(days: 1));
+      }
+
+      _setTasks(_taskRepository.tasks);
+      return true;
+    } catch (e) {
+      _setError('반복 일정 추가 중 오류가 발생했습니다: ${e.toString()}');
+      return false;
     }
   }
 
