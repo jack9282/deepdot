@@ -305,14 +305,14 @@ class _GoalTabButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF3973F4) : const Color(0xFFF5F6FA),
+          color: selected ? const Color.fromARGB(255, 210, 225, 255) : const Color(0xFFF5F6FA),
           borderRadius: BorderRadius.circular(18),
-          border: selected ? null : Border.all(color: const Color(0xFFE0E0E0)),
+          border: selected ? Border.all(color: const Color(0xFF3973F4)) : Border.all(color: const Color(0xFF888888)),
         ),
         child: Text(
           text,
           style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF888888),
+            color: selected ? const Color(0xFF3973F4) : const Color(0xFF888888),
             fontWeight: FontWeight.w600,
             fontSize: 14,
           ),
