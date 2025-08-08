@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../view_models/routine_view_model.dart';
-// DayBubble 위젯을 이 파일 안에 포함시키므로 import 'day_bubble.dart'는 필요 없습니다.
 
 class RoutineListItem extends StatefulWidget {
   final Map<String, dynamic> routine;
