@@ -16,7 +16,7 @@ class AuthViewModel with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _currentUser != null;
 
-  // 아이디 중복 확인 (더미)
+  // 아이디 중복 확인
   bool _isIdAvailable = false;
   bool get isIdAvailable => _isIdAvailable;
   Future<bool> checkIdDuplication(String username) async {
@@ -27,12 +27,24 @@ class AuthViewModel with ChangeNotifier {
         _setError('아이디를 입력해주세요');
         return false;
       }
-      // 실제 구현에서는 서버 API 호출
-      await Future.delayed(const Duration(seconds: 1));
-      // 더미: 항상 사용 가능
-      _isIdAvailable = true;
+      
+      // 사용자명 형식 검증 (4~12자, 영문 소문자, 숫자 조합)
+      if (!RegExp(r'^[a-z0-9]{4,12}$').hasMatch(username)) {
+        _setError('아이디는 4~12자의 영문 소문자와 숫자 조합이어야 합니다');
+        return false;
+      }
+      
+      final isAvailable = await _authRepository.checkUsernameAvailability(username);
+      _isIdAvailable = isAvailable;
+      
+      if (isAvailable) {
+        _setError(null);
+      } else {
+        _setError('이미 사용 중인 아이디입니다');
+      }
+      
       notifyListeners();
-      return true;
+      return isAvailable;
     } catch (e) {
       _setError('아이디 중복 확인 중 오류가 발생했습니다');
       return false;
@@ -41,17 +53,19 @@ class AuthViewModel with ChangeNotifier {
     }
   }
 
-  // 이메일 인증 코드 요청 (더미)
+  // 이메일 인증 코드 요청 (더미 - API 확장 시 실제 구현 필요)
   bool _isEmailCodeSent = false;
   bool get isEmailCodeSent => _isEmailCodeSent;
   Future<bool> requestEmailCode(String email) async {
     _setLoading(true);
     _setError(null);
     try {
-      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}  $').hasMatch(email)) {
+      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
         _setError('올바른 이메일 형식을 입력해주세요');
         return false;
       }
+      
+      // TODO: 실제 이메일 인증 API 구현 시 여기에 API 호출 추가
       await Future.delayed(const Duration(seconds: 1));
       _isEmailCodeSent = true;
       notifyListeners();
@@ -64,7 +78,7 @@ class AuthViewModel with ChangeNotifier {
     }
   }
 
-  // 이메일 인증 코드 확인 (더미)
+  // 이메일 인증 코드 확인 (더미 - API 확장 시 실제 구현 필요)
   bool _isEmailVerified = false;
   bool get isEmailVerified => _isEmailVerified;
   Future<bool> verifyEmailCode(String code) async {
@@ -75,10 +89,19 @@ class AuthViewModel with ChangeNotifier {
         _setError('인증 코드를 입력해주세요');
         return false;
       }
-      await Future.delayed(const Duration(seconds: 1));
-      _isEmailVerified = true;
-      notifyListeners();
-      return true;
+      
+      // TODO: 실제 이메일 인증 API 구현 시 여기에 API 호출 추가
+      // 현재는 6자리 코드를 입력하면 자동으로 인증 완료
+      if (code.length == 6) {
+        await Future.delayed(const Duration(seconds: 1));
+        _isEmailVerified = true;
+        _setError(null);
+        notifyListeners();
+        return true;
+      } else {
+        _setError('올바른 인증 코드를 입력해주세요');
+        return false;
+      }
     } catch (e) {
       _setError('이메일 인증 중 오류가 발생했습니다');
       return false;

@@ -345,6 +345,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
+
                         // Password 입력 섹션
                         const Text(
                           '비밀번호',
