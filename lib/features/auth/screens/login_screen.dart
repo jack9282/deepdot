@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../common/theme/app_theme.dart';
 import '../view_models/auth_view_model.dart';
+import '../../../alert/snak_bar.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -124,10 +125,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                 if (value == null || value.isEmpty) {
                                   return '아이디를 입력해주세요';
                                 }
-                                if (authViewModel.errorMessage != null) {
+                                // 로그인 실패 시에만 에러 메시지 표시
+                                if (authViewModel.errorMessage != null && 
+                                    authViewModel.errorMessage!.contains('로그인')) {
                                   return '아이디 혹은 비밀번호가 맞지 않습니다';
                                 }
                                 return null;
+                              },
+                              onChanged: (value) {
+                                authViewModel.clearError();
                               },
                             ),
 
@@ -188,10 +194,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                 if (value == null || value.isEmpty) {
                                   return '비밀번호를 입력해주세요';
                                 }
-                                if (authViewModel.errorMessage != null) {
+                                // 로그인 실패 시에만 에러 메시지 표시
+                                if (authViewModel.errorMessage != null && 
+                                    authViewModel.errorMessage!.contains('로그인')) {
                                   return '아이디 혹은 비밀번호가 맞지 않습니다';
                                 }
                                 return null;
+                              },
+                              onChanged: (value) {
+                                authViewModel.clearError();
                               },
                             ),
 
@@ -397,6 +408,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin(AuthViewModel authViewModel) async {
+    // 로그인 시도 전에 에러 메시지 초기화
+    authViewModel.clearError();
+    
     final success = await authViewModel.login(
       _idController.text.trim(),
       _passwordController.text.trim(),
@@ -404,6 +418,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (success && mounted) {
       context.go('/home');
+    } else if (!success && mounted) {
+      // 로그인 실패 시 스낵바로 경고 메시지 표시
+      CustomSnackBar.showError(
+        context,
+        authViewModel.errorMessage ?? '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.',
+      );
+      
+      // 폼 유효성 검사를 다시 실행하여 에러 메시지 표시
+      setState(() {
+        _formKey.currentState?.validate();
+      });
     }
   }
 }

@@ -52,14 +52,15 @@ class AuthRepository {
   }
 
   // 회원가입
-  Future<bool> signUp(String username, String email, String password) async {
+  Future<bool> signUp(String username, String email, String password, String confirmPassword) async {
     try {
       final signupRequest = SignupRequest(
-        userId: 0, // API에서 userId가 0으로 고정되어 있음
+        userId: 0, // 서버에서 자동 생성될 예정
         username: username,
         email: email,
         password: password,
-        role: 'USER', // 기본 역할
+        confirmPassword: confirmPassword,
+        role: 'ADMIN', // API 문서에 따라 ADMIN으로 설정
       );
 
       final authResponse = await AuthAPI.signup(signupRequest);
@@ -89,13 +90,16 @@ class AuthRepository {
   }
 
   // 사용자명 중복 확인
-  Future<bool> checkUsernameAvailability(String username) async {
+  Future<UsernameCheckResponse> checkUsernameAvailability(String username) async {
     try {
       final response = await AuthAPI.checkUsername(username);
-      return response.isAvailable;
+      return response;
     } catch (e) {
       print('Username check error: $e');
-      return false;
+      return UsernameCheckResponse(
+        isAvailable: false,
+        message: '사용자명 확인 중 오류가 발생했습니다',
+      );
     }
   }
 

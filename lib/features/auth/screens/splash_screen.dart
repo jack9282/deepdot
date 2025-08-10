@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../view_models/auth_view_model.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -31,10 +33,19 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     
     _animationController.forward();
     
-    // 2초 후 온보딩 화면으로 이동
-    Future.delayed(const Duration(seconds: 2), () {
+    // 2초 후 자동 로그인 확인 후 적절한 화면으로 이동
+    Future.delayed(const Duration(seconds: 2), () async {
       if (mounted) {
-        context.go('/onboarding');
+        final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
+        final isAutoLoggedIn = await authViewModel.checkAutoLogin();
+        
+        if (isAutoLoggedIn) {
+          // 자동 로그인 성공 시 메인 화면으로 이동
+          context.go('/main');
+        } else {
+          // 자동 로그인 실패 시 온보딩 화면으로 이동
+          context.go('/onboarding');
+        }
       }
     });
   }

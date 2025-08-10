@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../common/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import '../view_models/auth_view_model.dart';
+import '../../../alert/snak_bar.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -22,8 +23,6 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
-  // 중복 함수 및 상태 변수 삭제
-
   @override
   void dispose() {
     _idController.dispose();
@@ -33,12 +32,6 @@ class _SignupScreenState extends State<SignupScreen> {
     _emailCodeController.dispose();
     super.dispose();
   }
-
-  // 아래 중복 함수들 삭제
-  // void _checkIdDuplication() async { ... }
-  // void _requestEmailCode() async { ... }
-  // void _verifyEmailCode() async { ... }
-  // void _handleSignup() async { ... }
 
   @override
   Widget build(BuildContext context) {
@@ -93,11 +86,15 @@ class _SignupScreenState extends State<SignupScreen> {
                                   hintText: '아이디 입력',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -117,16 +114,31 @@ class _SignupScreenState extends State<SignupScreen> {
                                   if (value == null || value.isEmpty) {
                                     return '아이디를 입력해주세요';
                                   }
+                                  
+                                  // 아이디 형식 검증 (4자 미만일 때는 경고하지 않음)
+                                  if (value.length >= 4 && !RegExp(r'^[a-z0-9]{4,12}$').hasMatch(value)) {
+                                    return '아이디는 4~12자의 영문 소문자와 숫자 조합이어야 합니다';
+                                  }
+                                  
+                                  // 중복 확인이 완료되지 않은 경우 (4자 이상일 때만)
+                                  if (value.length >= 4 && !authViewModel.isIdAvailable && authViewModel.errorMessage == null) {
+                                    return '아이디 중복 확인을 완료해주세요';
+                                  }
+                                  
+                                  // 중복 확인 실패한 경우
                                   if (!authViewModel.isIdAvailable && authViewModel.errorMessage != null) {
                                     return authViewModel.errorMessage;
                                   }
+                                  
                                   return null;
                                 },
                                 onChanged: (value) {
+                                  // 아이디가 변경되면 중복 확인 상태 초기화
+                                  if (authViewModel.isIdAvailable) {
+                                    authViewModel.clearIdAvailability();
+                                  }
                                   authViewModel.clearError();
-                                  setState(() {
-                                    _formKey.currentState?.validate();
-                                  });
+                                  // validate는 호출하지 않음 - 사용자가 중복확인 버튼을 누를 때만 검증
                                 },
                               ),
                             ),
@@ -135,11 +147,47 @@ class _SignupScreenState extends State<SignupScreen> {
                               height: 58,
                               width: 120,
                               child: ElevatedButton(
-                                onPressed: authViewModel.isLoading || authViewModel.isIdAvailable
+                                onPressed:
+                                    authViewModel.isLoading
                                     ? null
                                     : () async {
-                                        final result = await authViewModel.checkIdDuplication(_idController.text.trim());
-                                        setState(() {}); // validator에서 에러 메시지 노출
+                                        if (_idController.text.trim().isEmpty) {
+                                          CustomSnackBar.showError(
+                                            context,
+                                            '아이디를 입력해주세요',
+                                          );
+                                          return;
+                                        }
+                                        
+                                        // 아이디 형식 검증
+                                        if (!RegExp(r'^[a-z0-9]{4,12}$').hasMatch(_idController.text.trim())) {
+                                          CustomSnackBar.showError(
+                                            context,
+                                            '아이디는 4~12자의 영문 소문자와 숫자 조합이어야 합니다',
+                                          );
+                                          return;
+                                        }
+                                        
+                                        final result = await authViewModel
+                                            .checkIdDuplication(
+                                              _idController.text.trim(),
+                                            );
+                                        
+                                        if (result) {
+                                          // 중복 확인 성공 (사용 가능)
+                                          CustomSnackBar.showSuccess(
+                                            context,
+                                            '사용 가능한 아이디입니다',
+                                          );
+                                        } else {
+                                          // 중복 확인 실패 (사용 불가능)
+                                          CustomSnackBar.showError(
+                                            context,
+                                            authViewModel.errorMessage ?? '이미 사용 중인 아이디입니다',
+                                          );
+                                        }
+                                        
+                                        setState(() {}); // UI 업데이트
                                       },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
@@ -159,14 +207,17 @@ class _SignupScreenState extends State<SignupScreen> {
                                         height: 20,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(
-                                            Colors.black,
-                                          ),
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.black,
+                                              ),
                                         ),
                                       )
-                                    : const Text(
-                                        '중복확인',
-                                        style: TextStyle(
+                                    : Text(
+                                        authViewModel.isIdAvailable 
+                                            ? '확인완료' 
+                                            : '중복확인',
+                                        style: const TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -175,7 +226,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                           ],
                         ),
-                                                const SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Text(
                           '4~12자/영문 소문자(숫자 조합가능)',
                           style: TextStyle(
@@ -205,11 +256,15 @@ class _SignupScreenState extends State<SignupScreen> {
                                   hintText: '이메일 입력',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -234,16 +289,15 @@ class _SignupScreenState extends State<SignupScreen> {
                                   ).hasMatch(value)) {
                                     return '올바른 이메일 형식을 입력해주세요';
                                   }
-                                  if (!authViewModel.isEmailCodeSent && authViewModel.errorMessage != null) {
+                                  if (!authViewModel.isEmailCodeSent &&
+                                      authViewModel.errorMessage != null) {
                                     return authViewModel.errorMessage;
                                   }
                                   return null;
                                 },
                                 onChanged: (value) {
                                   authViewModel.clearError();
-                                  setState(() {
-                                    _formKey.currentState?.validate();
-                                  });
+                                  // validate는 호출하지 않음
                                 },
                               ),
                             ),
@@ -252,11 +306,21 @@ class _SignupScreenState extends State<SignupScreen> {
                               height: 58,
                               width: 120,
                               child: ElevatedButton(
-                                onPressed: authViewModel.isLoading || authViewModel.isEmailCodeSent
+                                onPressed:
+                                    authViewModel.isLoading
                                     ? null
                                     : () async {
-                                        final result = await authViewModel.requestEmailCode(_emailController.text.trim());
-                                        setState(() {}); // validator에서 에러 메시지 노출
+                                        final result = await authViewModel
+                                            .requestEmailCode(
+                                              _emailController.text.trim(),
+                                            );
+                                        if (result) {
+                                          CustomSnackBar.showSuccess(
+                                            context,
+                                            '인증코드가 이메일로 전송되었습니다.',
+                                          );
+                                        }
+                                        setState(() {});
                                       },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
@@ -276,14 +340,17 @@ class _SignupScreenState extends State<SignupScreen> {
                                         height: 20,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(
-                                            Colors.black,
-                                          ),
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.black,
+                                              ),
                                         ),
                                       )
-                                    : const Text(
-                                        '인증코드 요청',
-                                        style: TextStyle(
+                                    : Text(
+                                        authViewModel.isEmailCodeSent 
+                                            ? '재전송' 
+                                            : '인증코드 요청',
+                                        style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -293,56 +360,66 @@ class _SignupScreenState extends State<SignupScreen> {
                           ],
                         ),
                         const SizedBox(height: 20),
-                        SizedBox(
-                          height: 58,
-                          child: TextFormField(
-                            controller: _emailCodeController,
-                            keyboardType: TextInputType.number,
-                            enabled: authViewModel.isEmailCodeSent && !authViewModel.isEmailVerified,
-                            decoration: InputDecoration(
-                              hintText: '인증코드를 입력하세요',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.grey.shade300),
+                        TextFormField(
+                          controller: _emailCodeController,
+                          keyboardType: TextInputType.number,
+                          enabled: authViewModel.isEmailCodeSent,
+                          decoration: InputDecoration(
+                            hintText: '인증코드를 입력하세요',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.grey.shade300),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: AppTheme.primaryColor,
-                                  width: 2.0,
-                                ),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey.shade50,
                             ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return '인증 코드를 입력해주세요';
-                              }
-                              if (!authViewModel.isEmailVerified && authViewModel.errorMessage != null) {
-                                return authViewModel.errorMessage;
-                              }
-                              return null;
-                            },
-                            onChanged: (value) async {
-                              authViewModel.clearError();
-                              setState(() {
-                                _formKey.currentState?.validate();
-                              });
-                              if (authViewModel.isEmailCodeSent && !authViewModel.isEmailVerified && value.length >= 6) {
-                                final result = await authViewModel.verifyEmailCode(value.trim());
-                                setState(() {}); // 인증 상태 갱신
-                              }
-                            },
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: AppTheme.primaryColor,
+                                width: 2.0,
+                              ),
+                            ),
+
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
                           ),
+                          validator: (value) {
+                            if (authViewModel.isEmailCodeSent && (value == null || value.isEmpty)) {
+                              return '인증 코드를 입력해주세요';
+                            }
+                            if (authViewModel.isEmailCodeSent && !authViewModel.isEmailVerified &&
+                                authViewModel.errorMessage != null) {
+                              return authViewModel.errorMessage;
+                            }
+                            return null;
+                          },
+                          onChanged: (value) async {
+                            authViewModel.clearError();
+                            // validate는 호출하지 않음
+                            if (authViewModel.isEmailCodeSent &&
+                                !authViewModel.isEmailVerified &&
+                                value.length == 6) {
+                              final result = await authViewModel
+                                  .verifyEmailCode(value.trim());
+                              if (result) {
+                                CustomSnackBar.showSuccess(
+                                  context,
+                                  '이메일 인증이 완료되었습니다.',
+                                );
+                              }
+                              setState(() {}); // 인증 상태 갱신
+                            }
+                          },
                         ),
                         const SizedBox(height: 20),
 
@@ -359,16 +436,20 @@ class _SignupScreenState extends State<SignupScreen> {
                         TextFormField(
                           controller: _passwordController,
                           obscureText: !_isPasswordVisible,
-                          enabled: authViewModel.isEmailVerified,
+                          enabled: true,
                           decoration: InputDecoration(
                             hintText: '비밀번호',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -398,39 +479,40 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                           ),
                           validator: (value) {
-                            if (!authViewModel.isEmailVerified)
-                              return null;
                             if (value == null || value.isEmpty) {
                               return '비밀번호를 입력해주세요';
                             }
                             if (value.length < 6) {
                               return '비밀번호는 6자 이상이어야 합니다';
                             }
-                            if (authViewModel.errorMessage != null && authViewModel.errorMessage!.contains('비밀번호')) {
+                            if (authViewModel.errorMessage != null &&
+                                authViewModel.errorMessage!.contains('비밀번호')) {
                               return authViewModel.errorMessage;
                             }
                             return null;
                           },
                           onChanged: (value) {
-                            setState(() {
-                              _formKey.currentState?.validate();
-                            });
+                            // validate는 호출하지 않음
                           },
                         ),
                         const SizedBox(height: 20),
                         TextFormField(
                           controller: _confirmPasswordController,
                           obscureText: !_isConfirmPasswordVisible,
-                          enabled: authViewModel.isEmailVerified,
+                          enabled: true,
                           decoration: InputDecoration(
                             hintText: '비밀번호 확인',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -454,29 +536,27 @@ class _SignupScreenState extends State<SignupScreen> {
                               ),
                               onPressed: () {
                                 setState(() {
-                                  _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                                  _isConfirmPasswordVisible =
+                                      !_isConfirmPasswordVisible;
                                 });
                               },
                             ),
                           ),
                           validator: (value) {
-                            if (!authViewModel.isEmailVerified)
-                              return null;
                             if (value == null || value.isEmpty) {
                               return '비밀번호 확인을 입력해주세요';
                             }
                             if (value != _passwordController.text) {
                               return '비밀번호가 일치하지 않습니다';
                             }
-                            if (authViewModel.errorMessage != null && authViewModel.errorMessage!.contains('비밀번호')) {
+                            if (authViewModel.errorMessage != null &&
+                                authViewModel.errorMessage!.contains('비밀번호')) {
                               return authViewModel.errorMessage;
                             }
                             return null;
                           },
                           onChanged: (value) {
-                            setState(() {
-                              _formKey.currentState?.validate();
-                            });
+                            // validate는 호출하지 않음
                           },
                         ),
                       ],
@@ -489,25 +569,41 @@ class _SignupScreenState extends State<SignupScreen> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed:
-                        (authViewModel.isIdAvailable &&
-                            authViewModel.isEmailVerified &&
-                            _formKey.currentState?.validate() == true)
-                        ? () async {
-                            final result = await authViewModel.signUp(
-                              _idController.text.trim(),
-                              _emailController.text.trim(),
-                              _passwordController.text.trim(),
-                            );
-                            if (result && context.mounted) {
-                              context.go('/login');
-                            } else if (authViewModel.errorMessage != null && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(authViewModel.errorMessage!)),
-                              );
-                            }
-                          }
-                        : null,
+                    onPressed: () async {
+                      // 폼 검증 먼저 수행
+                      if (!_formKey.currentState!.validate()) {
+                        CustomSnackBar.showError(
+                          context,
+                          '입력 정보를 확인해주세요',
+                        );
+                        return;
+                      }
+                      
+                      // 아이디 중복 확인이 완료되지 않은 경우
+                      if (!authViewModel.isIdAvailable) {
+                        CustomSnackBar.showError(
+                          context,
+                          '아이디 중복 확인을 완료해주세요',
+                        );
+                        return;
+                      }
+                      
+                      final result = await authViewModel.signUp(
+                        _idController.text.trim(),
+                        _emailController.text.trim(),
+                        _passwordController.text.trim(),
+                        _confirmPasswordController.text.trim(),
+                      );
+                      if (result && context.mounted) {
+                        context.go('/login');
+                      } else if (authViewModel.errorMessage != null &&
+                          context.mounted) {
+                        CustomSnackBar.showError(
+                          context,
+                          authViewModel.errorMessage!,
+                        );
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.white,

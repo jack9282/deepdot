@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/models/user_model.dart';
+import '../../../utils/token_manager.dart';
 
 class AuthViewModel with ChangeNotifier {
   final AuthRepository _authRepository = AuthRepository();
@@ -15,6 +16,33 @@ class AuthViewModel with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _currentUser != null;
+
+  // 앱 시작 시 저장된 토큰으로 자동 로그인 확인
+  Future<bool> checkAutoLogin() async {
+    try {
+      final isLoggedIn = await TokenManager.instance.isLoggedIn();
+      final hasValidToken = await TokenManager.instance.hasValidToken();
+      
+      if (isLoggedIn && hasValidToken) {
+        final username = await TokenManager.instance.getUsername();
+        if (username != null) {
+          // 저장된 사용자 정보로 UserModel 생성
+          _currentUser = UserModel(
+            id: '0', // 실제 사용자 ID는 서버에서 가져와야 함
+            username: username,
+            email: '', // 이메일은 별도로 저장하지 않으므로 빈 문자열
+            createdAt: DateTime.now(), // 임시로 현재 시간 사용
+          );
+          notifyListeners();
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      print('Auto login check error: $e');
+      return false;
+    }
+  }
 
   // 아이디 중복 확인
   bool _isIdAvailable = false;
@@ -34,17 +62,18 @@ class AuthViewModel with ChangeNotifier {
         return false;
       }
       
-      final isAvailable = await _authRepository.checkUsernameAvailability(username);
-      _isIdAvailable = isAvailable;
+      // 실제 사용자명 중복 확인 API 호출
+      final response = await _authRepository.checkUsernameAvailability(username);
+      _isIdAvailable = response.isAvailable;
       
-      if (isAvailable) {
-        _setError(null);
+      if (!response.isAvailable) {
+        _setError(response.message);
       } else {
-        _setError('이미 사용 중인 아이디입니다');
+        _setError(null);
       }
       
       notifyListeners();
-      return isAvailable;
+      return response.isAvailable;
     } catch (e) {
       _setError('아이디 중복 확인 중 오류가 발생했습니다');
       return false;
@@ -53,21 +82,28 @@ class AuthViewModel with ChangeNotifier {
     }
   }
 
-  // 이메일 인증 코드 요청 (더미 - API 확장 시 실제 구현 필요)
+  // 이메일 인증 코드 요청
   bool _isEmailCodeSent = false;
   bool get isEmailCodeSent => _isEmailCodeSent;
   Future<bool> requestEmailCode(String email) async {
     _setLoading(true);
     _setError(null);
     try {
+      if (email.isEmpty) {
+        _setError('이메일을 입력해주세요');
+        return false;
+      }
+      
       if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
         _setError('올바른 이메일 형식을 입력해주세요');
         return false;
       }
       
       // TODO: 실제 이메일 인증 API 구현 시 여기에 API 호출 추가
+      // 현재는 더미 구현
       await Future.delayed(const Duration(seconds: 1));
       _isEmailCodeSent = true;
+      _isEmailVerified = false; // 재전송 시 인증 상태 초기화
       notifyListeners();
       return true;
     } catch (e) {
@@ -78,7 +114,7 @@ class AuthViewModel with ChangeNotifier {
     }
   }
 
-  // 이메일 인증 코드 확인 (더미 - API 확장 시 실제 구현 필요)
+  // 이메일 인증 코드 확인
   bool _isEmailVerified = false;
   bool get isEmailVerified => _isEmailVerified;
   Future<bool> verifyEmailCode(String code) async {
@@ -98,8 +134,11 @@ class AuthViewModel with ChangeNotifier {
         _setError(null);
         notifyListeners();
         return true;
+      } else if (code.length > 6) {
+        _setError('인증 코드는 6자리입니다');
+        return false;
       } else {
-        _setError('올바른 인증 코드를 입력해주세요');
+        // 6자리 미만일 때는 에러 메시지를 표시하지 않음
         return false;
       }
     } catch (e) {
@@ -201,15 +240,21 @@ class AuthViewModel with ChangeNotifier {
   }
 
   // 회원가입
-  Future<bool> signUp(String username, String email, String password) async {
+  Future<bool> signUp(String username, String email, String password, String confirmPassword) async {
     _setLoading(true);
     _setError(null);
 
     try {
-      if (username.isEmpty || email.isEmpty || password.isEmpty) {
+      if (username.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
         _setError('모든 필드를 입력해주세요');
         return false;
       }
+
+      // 아이디 중복 확인은 선택사항으로 변경 (중복확인을 하지 않아도 회원가입 가능)
+      // if (!_isIdAvailable) {
+      //   _setError('아이디 중복 확인을 완료해주세요');
+      //   return false;
+      // }
 
       // 이메일 형식 검증
       if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
@@ -223,7 +268,13 @@ class AuthViewModel with ChangeNotifier {
         return false;
       }
 
-      final success = await _authRepository.signUp(username, email, password);
+      // 비밀번호 확인 검증
+      if (password != confirmPassword) {
+        _setError('비밀번호가 일치하지 않습니다');
+        return false;
+      }
+
+      final success = await _authRepository.signUp(username, email, password, confirmPassword);
       if (success) {
         _setUser(_authRepository.currentUser);
         return true;
@@ -245,6 +296,7 @@ class AuthViewModel with ChangeNotifier {
     
     try {
       await _authRepository.logout();
+      await TokenManager.instance.clearAuthData();
       _setUser(null);
     } catch (e) {
       _setError('로그아웃 중 오류가 발생했습니다');
@@ -286,6 +338,15 @@ class AuthViewModel with ChangeNotifier {
 
   // 에러 메시지 지우기
   void clearError() {
-    _setError(null);
+    if (_errorMessage != null) {
+      _errorMessage = null;
+      notifyListeners();
+    }
+  }
+  
+  // 아이디 중복 확인 상태 초기화
+  void clearIdAvailability() {
+    _isIdAvailable = false;
+    notifyListeners();
   }
 } 
