@@ -518,7 +518,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
       builder: (context, viewModel, child) {
         return Container(
           width: double.infinity,
-          height: 350, // 카드 높이 설정
+          // height: 350, // 카드 높이 설정 -> 내용에 맞게 자동 조절
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -531,37 +531,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 헤더
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      '하루 집중시간',
-                      style: TextStyle(
-                        color: Color(0xFF3A71FF),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      '${DateTime.now().month}월 ${DateTime.now().day}일',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 20),
-                
-                // 진행률이 0인 경우 빈 상태 표시
-                if (viewModel.dailyFocusMinutes == 0)
+            padding: const EdgeInsets.all(16),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                // 🔧 수정: 집중 기록이 없는 경우 빈 상태 표시
+                if (!viewModel.hasDailyFocusRecord())
                   const Center(
                     child: Column(
                       children: [
@@ -579,117 +555,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                     ),
                   )
                 else
-                  // 진행률 아크 차트
-                  _buildProgressArc(viewModel),
-                
-                const SizedBox(height: 20),
-                
-                // 루틴 달성률 정보
-                if (viewModel.dailyFocusMinutes > 0) ...[
-                  Text(
-                    '집중 루틴 달성률',
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        const TextSpan(
-                          text: '목표 ',
-                          style: TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        TextSpan(
-                          text: '${viewModel.totalRoutines}',
-                          style: const TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        const TextSpan(
-                          text: '개 중 ',
-                          style: TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        TextSpan(
-                          text: '${viewModel.completedRoutines}',
-                          style: const TextStyle(
-                            color: Color(0xFF3A71FF),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const TextSpan(
-                          text: '개 달성 (',
-                          style: TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        TextSpan(
-                          text: '${(viewModel.getRoutineAchievementRate() * 100).toInt()}%',
-                          style: const TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        const TextSpan(
-                          text: ')',
-                          style: TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        const TextSpan(
-                          text: '최장 집중 루틴 : \'',
-                          style: TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        TextSpan(
-                          text: viewModel.longestRoutine,
-                          style: const TextStyle(
-                            color: Color(0xFF3A71FF),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const TextSpan(
-                          text: '\'',
-                          style: TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                  // 🔧 수정: 하루 집중시간 총합 표시 및 진행률 아크 차트 (집중 루틴 달성률 포함)
+                  _buildDailyFocusContent(viewModel),
               ],
+              ),
             ),
           ),
         );
@@ -697,10 +566,250 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
     );
   }
 
-  // 진행률 아크 차트
-  Widget _buildProgressArc(StatisticsViewModel viewModel) {
-    final progress = viewModel.getDailyProgress();
-    final percentage = (progress * 100).toInt();
+  // 🆕 하루 집중시간 콘텐츠 위젯 (이미지 디자인에 맞게 수정)
+  Widget _buildDailyFocusContent(StatisticsViewModel viewModel) {
+    final progress = viewModel.dailyAchievementRate;
+    final percentage = (progress * 100).round();
+    
+    return Column(
+      children: [
+        // 헤더 (아크차트 바로 위에 배치)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '하루 집중시간',
+              style: TextStyle(
+                color: Color(0xFF3A71FF),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              '${DateTime.now().month}월 ${DateTime.now().day}일',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+        
+        // 아크 차트와 중앙 텍스트 (헤더와 완전히 붙임)
+        SizedBox(
+          width: 160,
+          height: 160,
+          child: Stack(
+            children: [
+              // 배경 아크
+              CustomPaint(
+                size: const Size(160, 160),
+                painter: ArcPainter(
+                  progress: 1.0,
+                  color: const Color(0xFFE8E8E8),
+                  strokeWidth: 12,
+                ),
+              ),
+              // 진행률 아크
+              CustomPaint(
+                size: const Size(160, 160),
+                painter: ArcPainter(
+                  progress: progress,
+                  color: const Color(0xFF3A71FF),
+                  strokeWidth: 12,
+                ),
+              ),
+              // 중앙 퍼센트 텍스트
+              Center(
+                child: Text(
+                  '$percentage%',
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        
+        // 범례
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildLegendItem('진행률', const Color(0xFF3A71FF)),
+            const SizedBox(width: 24),
+            _buildLegendItem('하루시간', const Color(0xFFE8E8E8)),
+          ],
+        ),
+        
+        const SizedBox(height: 16), // 범례와 집중 루틴 달성률 사이 여백
+        
+        // 집중 루틴 달성률 정보 (회색 카드 제거, 직접 배치)
+        Text(
+          '집중 루틴 달성률',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        // 좌우 배치: 좌측에 목표 달성률, 우측에 최장 집중 루틴
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 좌측: 목표 달성률
+            Expanded(
+              child: RichText(
+                text: TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: '목표 ',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    TextSpan(
+                      text: '${viewModel.completedTasksCount}',
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const TextSpan(
+                      text: '개 중 ',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    TextSpan(
+                      text: '${viewModel.completedTasksCount}',
+                      style: const TextStyle(
+                        color: Color(0xFF3A71FF),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const TextSpan(
+                      text: '개 ',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const TextSpan(
+                      text: '달성 (',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    TextSpan(
+                      text: viewModel.getFormattedDailyAchievementRate(),
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const TextSpan(
+                      text: ')',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(width: 16),
+            
+            // 우측: 최장 집중 루틴
+            Flexible(
+              child: RichText(
+                textAlign: TextAlign.right,
+                text: TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: '최장 집중 루틴: \'',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    TextSpan(
+                      text: viewModel.longestRoutine,
+                      style: const TextStyle(
+                        color: Color(0xFF3A71FF),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const TextSpan(
+                      text: '\'',
+                      style: TextStyle(
+                        color: Color(0xFF666666),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // 범례 아이템
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 진행률 아크 차트 (사용하지 않음 - 대신 _buildDailyFocusContent 사용)
+  Widget _buildProgressArc_unused(StatisticsViewModel viewModel) {
+    final progress = viewModel.dailyAchievementRate;
+    final percentage = (progress * 100).round();
     
     return Center(
       child: Column(
@@ -787,8 +896,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                   Text(
                     '하루시간',
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                      fontSize: 14,
+                      color: Colors.black,
                     ),
                   ),
                 ],
@@ -839,4 +948,6 @@ class ArcPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     return true;
   }
-} 
+}
+
+ 

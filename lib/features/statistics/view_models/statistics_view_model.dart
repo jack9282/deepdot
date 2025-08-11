@@ -21,6 +21,10 @@ class StatisticsViewModel with ChangeNotifier {
   // 주간 데이터 (일별 집중 시간)
   List<int> _weeklyData = [0, 0, 0, 0, 0, 0, 0]; // 월~일
   List<double> _weeklyAchievementRates = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]; // 주간 달성률
+  
+  // 🆕 하루 집중시간 관련 데이터
+  double _dailyAchievementRate = 0.0; // 하루 집중 달성률
+  int _completedTasksCount = 0; // 완료한 일정 개수
 
   // Getters
   int get weeklyFocusMinutes => _weeklyFocusMinutes;
@@ -34,6 +38,10 @@ class StatisticsViewModel with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   List<int> get weeklyData => _weeklyData;
   List<double> get weeklyAchievementRates => _weeklyAchievementRates;
+  
+  // 🆕 하루 집중시간 관련 getters
+  double get dailyAchievementRate => _dailyAchievementRate;
+  int get completedTasksCount => _completedTasksCount;
 
   StatisticsViewModel() {
     _currentWeekStart = _getWeekStart(DateTime.now());
@@ -146,6 +154,12 @@ class StatisticsViewModel with ChangeNotifier {
     
     // 최장 집중 루틴 업데이트
     final longestTask = _focusRepository.getLongestFocusTask(today);
+    
+    // 🆕 하루 집중시간 관련 데이터 계산
+    final dailyAchievementRate = _focusRepository.getFocusAchievementRateByDate(today);
+    final dailySessions = _focusRepository.getSessionsByDate(today);
+    final completedTasksCount = dailySessions.length; // 완료한 일정 개수
+    final totalPlannedMinutes = _focusRepository.getTotalPlannedTimeByDate(today);
 
     _weeklyFocusMinutes = weeklyFocusMinutes;
     _previousWeekFocusMinutes = previousWeekFocusMinutes;
@@ -153,6 +167,10 @@ class StatisticsViewModel with ChangeNotifier {
     _weeklyData = weeklyData;
     _weeklyAchievementRates = weeklyAchievementRates;
     _longestRoutine = longestTask;
+    
+    // 🆕 하루 집중시간 관련 데이터 업데이트
+    _dailyAchievementRate = dailyAchievementRate;
+    _completedTasksCount = completedTasksCount;
     
     notifyListeners();
   }
@@ -235,6 +253,23 @@ class StatisticsViewModel with ChangeNotifier {
   // 주간 비교 메시지 표시 여부
   bool shouldShowWeeklyComparison() {
     return isCurrentWeekBetterThanPrevious() && _previousWeekFocusMinutes > 0;
+  }
+
+  // 🆕 하루 집중시간 관련 메서드들
+  
+  // 하루 집중 달성률을 퍼센트로 포맷팅
+  String getFormattedDailyAchievementRate() {
+    return '${(_dailyAchievementRate * 100).round()}%';
+  }
+  
+  // 완료한 일정 개수 텍스트
+  String getCompletedTasksText() {
+    return '$_completedTasksCount개 달성';
+  }
+  
+  // 집중 기록이 있는지 확인
+  bool hasDailyFocusRecord() {
+    return _dailyFocusMinutes > 0;
   }
 
   // 데이터 새로고침
