@@ -236,41 +236,72 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-                         // 일정 정보 섹션
-             Row(
-               children: [
-                 // 일정 제목
-                 Expanded(
-                   child: Text(
-                     widget.task.title,
-                     style: const TextStyle(
-                       fontSize: 18,
-                       fontWeight: FontWeight.w600,
-                       color: Colors.black,
-                     ),
-                   ),
-                 ),
-                 // 일정 수정 버튼
-                 GestureDetector(
-                   onTap: () {
-                     Navigator.push(
-                       context,
-                       MaterialPageRoute(
-                         builder: (context) => ScheduleAddScreen(
-                           priority: widget.task.priority,
-                           taskToEdit: widget.task,
-                         ),
-                       ),
-                     );
-                   },
-                   child: const Icon(
-                     Icons.chevron_right,
-                     color: Colors.black,
-                     size: 24,
-                   ),
-                 ),
-               ],
-             ),
+            // 일정 정보 섹션
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // 텍스트 크기를 측정하여 필요한 너비 계산
+                final textSpan = TextSpan(
+                  text: widget.task.title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                );
+                final textPainter = TextPainter(
+                  text: textSpan,
+                  textDirection: TextDirection.ltr,
+                  maxLines: 1,
+                );
+                textPainter.layout();
+                
+                final textWidth = textPainter.width;
+                final availableWidth = constraints.maxWidth;
+                final buttonWidth = 24.0; // 아이콘 크기
+                final spacing = 8.0; // 간격
+                
+                // 텍스트가 너무 길면 줄임표 표시
+                final shouldTruncate = textWidth > (availableWidth - buttonWidth - spacing);
+                
+                return Row(
+                  children: [
+                    // 일정 제목 (동적 너비)
+                    Expanded(
+                      child: Text(
+                        widget.task.title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
+                        overflow: shouldTruncate ? TextOverflow.ellipsis : null,
+                        maxLines: 1,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 일정 수정 버튼
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ScheduleAddScreen(
+                              priority: widget.task.priority,
+                              taskToEdit: widget.task,
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Icon(
+                        Icons.chevron_right,
+                        color: Colors.black,
+                        size: 24,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
             const SizedBox(height: 16),
             
                          // Tip 문구와 시간 수정 버튼
