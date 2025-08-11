@@ -385,12 +385,28 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                       child: ElevatedButton(
                         onPressed: selectedStartDate != null && selectedEndDate != null
                                                          ? () {
-                                 setState(() {
-                                   _startDate = selectedStartDate!;
-                                   _endDate = selectedEndDate!;
-                                   _isStartDateSelected = true;
-                                   _isEndDateSelected = true;
-                                 });
+                                                                setState(() {
+                                 _startDate = selectedStartDate!;
+                                 _endDate = selectedEndDate!;
+                                 _isStartDateSelected = true;
+                                 _isEndDateSelected = true;
+                                 
+                                 // 🔧 수정: startDateTime과 endDateTime도 선택된 날짜로 업데이트
+                                 _startDateTime = DateTime(
+                                   selectedStartDate!.year,
+                                   selectedStartDate!.month,
+                                   selectedStartDate!.day,
+                                   _startDateTime.hour,
+                                   _startDateTime.minute,
+                                 );
+                                 _endDateTime = DateTime(
+                                   selectedEndDate!.year,
+                                   selectedEndDate!.month,
+                                   selectedEndDate!.day,
+                                   _endDateTime.hour,
+                                   _endDateTime.minute,
+                                 );
+                               });
                                  _unfocusAll(); // 포커스 해제
                                  Navigator.pop(context);
                                }
@@ -604,10 +620,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     // 시작 날짜와 종료 날짜가 다른 경우 반복 일정으로 처리
     final isRecurring = !_isSameDay(_startDate, _endDate);
     
-    // 디버그 정보 출력
-    print('시작 날짜: $_startDate');
-    print('종료 날짜: $_endDate');
-    print('반복 일정 여부: $isRecurring');
+
     
     bool success = false;
     if (widget.taskToEdit != null) {

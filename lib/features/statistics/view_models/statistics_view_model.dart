@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/task_repository.dart';
-import '../../../data/models/task_model.dart';
+import '../../../data/repositories/focus_session_repository.dart';
 
 class StatisticsViewModel with ChangeNotifier {
   final TaskRepository _taskRepository = TaskRepository();
+  final FocusSessionRepository _focusRepository = FocusSessionRepository();
 
   // 상태 변수들
   DateTime _currentWeekStart = DateTime.now();
   int _weeklyFocusMinutes = 0;
+  int _previousWeekFocusMinutes = 0; // 이전 주 집중시간
   int _dailyFocusMinutes = 0;
   int _dailyTargetMinutes = 300; // 하루 목표 시간 (5시간)
   int _completedRoutines = 3; // 완료된 루틴 수
@@ -18,9 +20,11 @@ class StatisticsViewModel with ChangeNotifier {
 
   // 주간 데이터 (일별 집중 시간)
   List<int> _weeklyData = [0, 0, 0, 0, 0, 0, 0]; // 월~일
+  List<double> _weeklyAchievementRates = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]; // 주간 달성률
 
   // Getters
   int get weeklyFocusMinutes => _weeklyFocusMinutes;
+  int get previousWeekFocusMinutes => _previousWeekFocusMinutes;
   int get dailyFocusMinutes => _dailyFocusMinutes;
   int get dailyTargetMinutes => _dailyTargetMinutes;
   int get completedRoutines => _completedRoutines;
@@ -29,6 +33,7 @@ class StatisticsViewModel with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<int> get weeklyData => _weeklyData;
+  List<double> get weeklyAchievementRates => _weeklyAchievementRates;
 
   StatisticsViewModel() {
     _currentWeekStart = _getWeekStart(DateTime.now());
@@ -49,7 +54,9 @@ class StatisticsViewModel with ChangeNotifier {
   // 주의 시작일 계산 (월요일)
   DateTime _getWeekStart(DateTime date) {
     final weekday = date.weekday;
-    return date.subtract(Duration(days: weekday - 1));
+    final startDate = date.subtract(Duration(days: weekday - 1));
+    // 시간 정보를 제거하고 날짜만 반환
+    return DateTime(startDate.year, startDate.month, startDate.day);
   }
 
   // 현재 주 텍스트 반환
@@ -57,14 +64,13 @@ class StatisticsViewModel with ChangeNotifier {
     final now = DateTime.now();
     final thisWeekStart = _getWeekStart(now);
     
+    // _getWeekStart는 이미 시간 정보가 제거된 날짜를 반환
     if (_currentWeekStart.isAtSameMomentAs(thisWeekStart)) {
       return '이번주';
     } else if (_currentWeekStart.isBefore(thisWeekStart)) {
       final weeksDiff = thisWeekStart.difference(_currentWeekStart).inDays ~/ 7;
       if (weeksDiff == 1) {
         return '저번주';
-      } else if (weeksDiff == 0) {
-        return '이번주';
       } else {
         return '$weeksDiff주 전';
       }
@@ -72,8 +78,6 @@ class StatisticsViewModel with ChangeNotifier {
       final weeksDiff = _currentWeekStart.difference(thisWeekStart).inDays ~/ 7;
       if (weeksDiff == 1) {
         return '다음주';
-      } else if (weeksDiff == 0) {
-        return '이번주';
       } else {
         return '$weeksDiff주 후';
       }
@@ -114,6 +118,7 @@ class StatisticsViewModel with ChangeNotifier {
 
     try {
       await _taskRepository.loadTasksFromStorage();
+      await _focusRepository.loadSessionsFromStorage();
       _calculateFocusTime();
     } catch (e) {
       _setError('통계 데이터를 불러오는데 실패했습니다: ${e.toString()}');
@@ -124,58 +129,32 @@ class StatisticsViewModel with ChangeNotifier {
 
   // 집중 시간 계산
   void _calculateFocusTime() {
-    final tasks = _taskRepository.tasks;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final weekEnd = _currentWeekStart.add(const Duration(days: 6));
 
-    int weeklyTotal = 0;
-    int dailyTotal = 0;
-    List<int> weeklyData = [0, 0, 0, 0, 0, 0, 0]; // 월~일
-
-    for (final task in tasks) {
-      // 루틴은 제외 (일정만 포함)
-      final taskDate = DateTime(
-        task.createdAt.year,
-        task.createdAt.month,
-        task.createdAt.day,
-      );
-
-      // 주간 집중 시간 계산
-      if (taskDate.isAfter(_currentWeekStart.subtract(const Duration(days: 1))) &&
-          taskDate.isBefore(weekEnd.add(const Duration(days: 1)))) {
-        final focusTime = _calculateTaskFocusTime(task);
-        weeklyTotal += focusTime;
-        
-        // 해당 요일의 집중 시간 추가
-        final dayOfWeek = taskDate.weekday - 1; // 월요일이 0
-        weeklyData[dayOfWeek] += focusTime;
-      }
-
-      // 오늘 집중 시간 계산
-      if (taskDate.isAtSameMomentAs(today)) {
-        dailyTotal += _calculateTaskFocusTime(task);
-      }
-    }
-
-    _weeklyFocusMinutes = weeklyTotal;
-    _dailyFocusMinutes = dailyTotal;
-    _weeklyData = weeklyData;
-    notifyListeners();
-  }
-
-  // 개별 태스크의 집중 시간 계산
-  int _calculateTaskFocusTime(TaskModel task) {
-    // 기본 60분 기준으로 진행률 계산
-    // 실제로는 포모도로 타이머의 실제 집중 시간을 사용해야 하지만,
-    // 현재는 임의로 계산 (완료된 태스크는 100%, 미완료는 50% 가정)
-    const baseFocusMinutes = 60;
+    // 현재 주 데이터 계산
+    final weeklyFocusMinutes = _focusRepository.getTotalWeeklyFocusTime(_currentWeekStart);
+    final dailyFocusMinutes = _focusRepository.getTotalFocusTimeByDate(today);
+    final weeklyData = _focusRepository.getWeeklyFocusTime(_currentWeekStart);
+    final weeklyAchievementRates = _focusRepository.getWeeklyFocusAchievementRates(_currentWeekStart);
     
-    if (task.isCompleted) {
-      return baseFocusMinutes; // 완료된 태스크는 전체 집중 시간
-    } else {
-      return (baseFocusMinutes * 0.5).round(); // 미완료 태스크는 50% 가정
-    }
+    // 데이터 계산 완료
+    
+    // 이전 주 데이터 계산
+    final previousWeekStart = _currentWeekStart.subtract(const Duration(days: 7));
+    final previousWeekFocusMinutes = _focusRepository.getTotalWeeklyFocusTime(previousWeekStart);
+    
+    // 최장 집중 루틴 업데이트
+    final longestTask = _focusRepository.getLongestFocusTask(today);
+
+    _weeklyFocusMinutes = weeklyFocusMinutes;
+    _previousWeekFocusMinutes = previousWeekFocusMinutes;
+    _dailyFocusMinutes = dailyFocusMinutes;
+    _weeklyData = weeklyData;
+    _weeklyAchievementRates = weeklyAchievementRates;
+    _longestRoutine = longestTask;
+    
+    notifyListeners();
   }
 
   // 주간 집중 시간 포맷팅
@@ -220,11 +199,42 @@ class StatisticsViewModel with ChangeNotifier {
     return (_completedRoutines / _totalRoutines).clamp(0.0, 1.0);
   }
 
-  // 주간 최대 집중 시간 (차트 스케일링용)
+  // 주간 최대 집중 시간 (차트 스케일링용) - 최대 8시간
   int getWeeklyMaxFocusTime() {
-    if (_weeklyData.isEmpty) return 100;
+    const maxHours = 1; // 최대 8시간 (테스트로 인해 1시간으로 설정)
+    const maxMinutes = maxHours * 60; // 480분
+    
+    if (_weeklyData.isEmpty) return maxMinutes;
     final max = _weeklyData.reduce((a, b) => a > b ? a : b);
-    return max > 0 ? max : 100;
+    
+    // 실제 최대값과 설정된 최대값 중 더 큰 값을 사용하되, 차트 스케일링을 위해 최소 480분 유지
+    return max > maxMinutes ? max : maxMinutes;
+  }
+
+  // 주간 비교 결과 확인
+  bool isCurrentWeekBetterThanPrevious() {
+    return _weeklyFocusMinutes > _previousWeekFocusMinutes;
+  }
+
+  // 주간 비교 메시지 가져오기
+  String? getWeeklyComparisonMessage() {
+    if (isCurrentWeekBetterThanPrevious()) {
+      return '전주보다 집중했어요!';
+    }
+    return null; // 메시지를 숨김
+  }
+
+  // 주간 비교 이모지 가져오기
+  String? getWeeklyComparisonEmoji() {
+    if (isCurrentWeekBetterThanPrevious()) {
+      return '🔥';
+    }
+    return null;
+  }
+
+  // 주간 비교 메시지 표시 여부
+  bool shouldShowWeeklyComparison() {
+    return isCurrentWeekBetterThanPrevious() && _previousWeekFocusMinutes > 0;
   }
 
   // 데이터 새로고침

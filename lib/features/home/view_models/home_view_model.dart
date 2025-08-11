@@ -62,6 +62,7 @@ class HomeViewModel with ChangeNotifier {
           dateToCheck.month,
           dateToCheck.day,
         );
+        
         return taskDate.isAtSameMomentAs(today);
       }
     }).toList();

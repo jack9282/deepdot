@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/task_repository.dart';
+import '../../../data/repositories/focus_session_repository.dart';
 import '../../../data/models/task_model.dart';
 import 'dart:math';
 
 class ScheduleViewModel with ChangeNotifier {
   final TaskRepository _taskRepository = TaskRepository();
+  final FocusSessionRepository _focusRepository = FocusSessionRepository();
 
   // 상태 변수들
   List<TaskModel> _tasks = [];
@@ -258,9 +260,22 @@ class ScheduleViewModel with ChangeNotifier {
   // 할일 삭제
   Future<bool> deleteTask(String taskId) async {
     try {
+      // 🔧 수정: 삭제하기 전에 일정 정보를 가져와서 제목 확인
+      final taskToDelete = getTaskById(taskId);
+      if (taskToDelete == null) {
+        _setError('삭제할 일정을 찾을 수 없습니다');
+        return false;
+      }
+      
+      // 일정 삭제
       final success = await _taskRepository.deleteTask(taskId);
       if (success) {
+        // 🆕 추가: 해당 일정의 집중시간 데이터도 함께 삭제
+        await _focusRepository.loadSessionsFromStorage();
+        await _focusRepository.deleteSessionsByTaskTitle(taskToDelete.title);
+        
         _setTasks(_taskRepository.tasks);
+        print('일정 "${taskToDelete.title}" 삭제 완료 (집중시간 데이터 포함)');
         return true;
       } else {
         _setError('할일 삭제에 실패했습니다');

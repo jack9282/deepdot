@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
+import '../../../data/models/focus_session_model.dart';
+import '../../../data/repositories/focus_session_repository.dart';
 import '../view_models/schedule_view_model.dart';
 import 'schedule_add_screen.dart';
 
@@ -30,6 +32,10 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
   
   bool _isFocusMode = true; // true: 집중 시간, false: 휴식 시간
   bool _showTimeEdit = false; // 시간 수정 UI 표시 여부
+  
+  // 집중시간 추적을 위한 변수들
+  DateTime? _focusStartTime; // 집중 시작 시간
+  final FocusSessionRepository _focusRepository = FocusSessionRepository();
 
   @override
   void initState() {
@@ -55,6 +61,11 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
 
   void _startTimer() {
     if (_timer != null) return;
+    
+    // 집중 모드일 때만 시작 시간 기록
+    if (_isFocusMode && _focusStartTime == null) {
+      _focusStartTime = DateTime.now();
+    }
     
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
@@ -91,7 +102,8 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
   void _onTimerComplete() {
     // 타이머 완료 시 처리
     if (_isFocusMode) {
-      // 집중 시간 완료 -> 휴식 시간으로 전환
+      // 집중 시간 완료 -> 집중시간 저장
+      _saveFocusSession(true); // 자연스럽게 완료됨
       _showCompletionDialog('집중 시간이 완료되었습니다!', '휴식 시간을 시작하시겠습니까?');
     } else {
       // 휴식 시간 완료 -> 집중 시간으로 전환
@@ -129,7 +141,70 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
     setState(() {
       _isFocusMode = !_isFocusMode;
       _initializeTimer();
+      // 집중 모드로 전환 시 시작 시간 초기화
+      if (_isFocusMode) {
+        _focusStartTime = null;
+      }
     });
+  }
+
+  // 집중 세션 저장
+  Future<void> _saveFocusSession(bool completedNaturally) async {
+    if (!_isFocusMode || _focusStartTime == null) return;
+
+    final endTime = DateTime.now();
+    final totalSeconds = endTime.difference(_focusStartTime!).inSeconds;
+    final focusMinutes = (totalSeconds / 60).round();
+
+    // 최소 1분 이상 집중한 경우만 저장
+    if (focusMinutes < 1) return;
+
+    // 일정의 실제 날짜 사용 (startDate 또는 dueDate)
+    final taskDate = widget.task.startDate ?? widget.task.dueDate ?? DateTime.now();
+    final targetDate = DateTime(taskDate.year, taskDate.month, taskDate.day);
+    
+    // 디버깅: 날짜 정보 출력
+    print('Task info - startDate: ${widget.task.startDate}, dueDate: ${widget.task.dueDate}');
+    print('Used taskDate: $taskDate');
+    print('Target date: $targetDate');
+    print('Target weekday: ${targetDate.weekday} (1=월, 2=화, 3=수, 4=목, 5=금, 6=토, 7=일)');
+    
+    // 집중 세션의 createdAt을 일정 날짜로 설정
+    final sessionCreatedAt = DateTime(
+      targetDate.year,
+      targetDate.month,
+      targetDate.day,
+      endTime.hour,
+      endTime.minute,
+      endTime.second,
+    );
+
+    final session = FocusSessionModel(
+      id: 'focus_${DateTime.now().millisecondsSinceEpoch}',
+      taskTitle: widget.task.title,
+      focusMinutes: focusMinutes,
+      plannedMinutes: _focusTimeMinutes, // 설정된 집중시간
+      startTime: _focusStartTime!,
+      endTime: endTime,
+      completedNaturally: completedNaturally,
+      createdAt: sessionCreatedAt, // 일정의 날짜로 설정
+    );
+
+    try {
+      await _focusRepository.loadSessionsFromStorage();
+      final success = await _focusRepository.addFocusSession(session);
+      
+      if (success) {
+        print('집중 세션 저장 완료: ${session.taskTitle} - ${session.focusMinutes}분 / ${session.plannedMinutes}분 (${(session.focusMinutes / session.plannedMinutes * 100).toInt()}%)');
+      } else {
+        print('집중 세션 저장 실패');
+      }
+    } catch (e) {
+      print('집중 세션 저장 중 오류: $e');
+    }
+
+    // 시작 시간 초기화
+    _focusStartTime = null;
   }
 
   void _toggleTimeEdit() {
@@ -180,8 +255,13 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
     );
   }
 
-  void _markTaskAsCompleted() {
+  void _markTaskAsCompleted() async {
     final viewModel = Provider.of<ScheduleViewModel>(context, listen: false);
+    
+    // 집중 모드이고 타이머가 진행 중이었다면 집중시간 저장
+    if (_isFocusMode && _focusStartTime != null) {
+      await _saveFocusSession(false); // 수동으로 완료됨
+    }
     
     // 일정을 완료 상태로 변경
     final updatedTask = widget.task.copyWith(
@@ -190,11 +270,6 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
     );
     
     viewModel.updateTask(updatedTask);
-    
-    // 통계 데이터 기록 (집중 시간)
-    final completedFocusTime = _totalSeconds - _remainingSeconds;
-    // TODO: 통계 데이터 저장 로직 구현
-    print('완료된 집중 시간: ${completedFocusTime}초');
     
     // 이전 화면으로 돌아가기
     Navigator.pop(context, true); // 완료 상태를 전달
@@ -223,7 +298,7 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          '뽀모도로',
+          '포모도로',
           style: TextStyle(
             color: Colors.black,
             fontSize: 18,
