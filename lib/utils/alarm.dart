@@ -90,6 +90,83 @@ class AlarmUtility {
     await _notificationsPlugin.cancel(id);
   }
 
+  /// 주간 반복 알람을 설정합니다.
+  static Future<void> setWeeklyAlarm({
+    required int id,
+    required DateTime scheduledTime,
+    required String title,
+    required String body,
+    required List<int> weekdays, // 1=월요일, 2=화요일, ..., 7=일요일
+  }) async {
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    
+    // 각 요일별로 알람을 설정합니다
+    for (int weekday in weekdays) {
+      tz.TZDateTime scheduledDate = tz.TZDateTime(
+        tz.local,
+        scheduledTime.year,
+        scheduledTime.month,
+        scheduledTime.day,
+        scheduledTime.hour,
+        scheduledTime.minute,
+      );
+
+      // 현재 날짜가 설정된 시간보다 이전이면 다음 주로 설정
+      if (scheduledDate.isBefore(now)) {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
+      }
+
+      // 요일에 맞게 날짜를 조정합니다
+      int currentWeekday = scheduledDate.weekday;
+      int daysToAdd = weekday - currentWeekday;
+      if (daysToAdd <= 0) {
+        daysToAdd += 7;
+      }
+      scheduledDate = scheduledDate.add(Duration(days: daysToAdd));
+
+      const AndroidNotificationDetails androidPlatformChannelSpecifics =
+          AndroidNotificationDetails(
+            'weekly_alarm_channel',
+            'Weekly Alarm Channel',
+            channelDescription: 'Channel for weekly alarm notifications',
+            importance: Importance.max,
+            priority: Priority.high,
+            ticker: 'ticker',
+            sound: RawResourceAndroidNotificationSound('alarm_sound'),
+            icon: '@mipmap/ic_launcher',
+          );
+
+      const DarwinNotificationDetails iOSPlatformChannelSpecifics =
+          DarwinNotificationDetails(sound: 'alarm_sound.aiff');
+
+      const NotificationDetails platformChannelSpecifics = NotificationDetails(
+        android: androidPlatformChannelSpecifics,
+        iOS: iOSPlatformChannelSpecifics,
+      );
+
+      // 각 요일별로 고유한 ID를 생성합니다
+      int weeklyAlarmId = id * 10 + weekday;
+
+      await _notificationsPlugin.zonedSchedule(
+        weeklyAlarmId,
+        title,
+        body,
+        scheduledDate,
+        platformChannelSpecifics,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+    }
+  }
+
+  /// 주간 반복 알람을 취소합니다.
+  static Future<void> cancelWeeklyAlarm(int baseId, List<int> weekdays) async {
+    for (int weekday in weekdays) {
+      int weeklyAlarmId = baseId * 10 + weekday;
+      await _notificationsPlugin.cancel(weeklyAlarmId);
+    }
+  }
+
   /// 모든 알람을 취소합니다.
   static Future<void> cancelAllAlarms() async {
     await _notificationsPlugin.cancelAll();

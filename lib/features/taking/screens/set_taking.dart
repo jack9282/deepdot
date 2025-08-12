@@ -259,8 +259,12 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
             const SizedBox(height: 24),
             const Text(
               '어떤 약을 복용하고 계신가요?',
@@ -625,7 +629,10 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                 ),
               ],
             ),
-            const Spacer(),
+                  ],
+                ),
+              ),
+            ),
             // 저장하기 버튼
             SizedBox(
               width: double.infinity,
