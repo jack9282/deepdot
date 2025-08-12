@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
+import '../../../utils/snak_bar.dart';
 import '../view_models/auth_view_model.dart';
 import 'reset_password_widget.dart';
 
@@ -25,9 +26,6 @@ class _ForgotPasswordWidgetState extends State<ForgotPasswordWidget> {
   @override
   void initState() {
     super.initState();
-    _idController.text = 'user123'; // 예시 아이디
-    _emailController.text = 'example@gmail.com'; // 예시 이메일
-    _codeController.text = '749583'; // 예시 인증 코드
   }
 
   @override
@@ -152,6 +150,7 @@ class _ForgotPasswordWidgetState extends State<ForgotPasswordWidget> {
                         }
                         return null;
                       },
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -161,13 +160,16 @@ class _ForgotPasswordWidgetState extends State<ForgotPasswordWidget> {
                       onPressed: authViewModel.isLoading || _isCodeSent
                           ? null
                           : () async {
-                              if (!_formKey.currentState!.validate()) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('필수 정보를 올바르게 입력해주세요.')),
-                                );
+                              // 아이디와 이메일 필드만 검증
+                              if (_idController.text.isEmpty) {
+                                CustomSnackBar.showError(context, '아이디를 입력해주세요');
                                 return;
                               }
-                              final result = await authViewModel.requestEmailCode(_emailController.text.trim());
+                              if (_emailController.text.isEmpty || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(_emailController.text)) {
+                                CustomSnackBar.showError(context, '올바른 이메일 형식을 입력해주세요');
+                                return;
+                              }
+                              final result = await authViewModel.sendResetCode(_idController.text.trim(), _emailController.text.trim());
                               if (result && context.mounted) {
                                 setState(() {
                                   _isCodeSent = true;
@@ -178,9 +180,7 @@ class _ForgotPasswordWidgetState extends State<ForgotPasswordWidget> {
                                   const SnackBar(content: Text('인증 코드가 전송되었습니다.')),
                                 );
                               } else if (authViewModel.errorMessage != null && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(authViewModel.errorMessage!)),
-                                );
+                                CustomSnackBar.showError(context, authViewModel.errorMessage!);
                               }
                             },
                       style: ElevatedButton.styleFrom(
@@ -281,6 +281,7 @@ class _ForgotPasswordWidgetState extends State<ForgotPasswordWidget> {
                   }
                   return null;
                 },
+                autovalidateMode: _isCodeSent ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
               ),
               const Spacer(),
               if (_codeController.text.isNotEmpty) ...[
@@ -294,7 +295,7 @@ class _ForgotPasswordWidgetState extends State<ForgotPasswordWidget> {
                             if (!_formKey.currentState!.validate()) {
                               return;
                             }
-                            final result = await authViewModel.verifyEmailCode(_codeController.text.trim());
+                            final result = await authViewModel.verifyResetCode(_idController.text.trim(), _emailController.text.trim(), _codeController.text.trim());
                             if (result && context.mounted) {
                               // 비밀번호 재설정 화면으로 이동
                               Navigator.of(context).push(
@@ -320,9 +321,7 @@ class _ForgotPasswordWidgetState extends State<ForgotPasswordWidget> {
                                 ),
                               );
                             } else if (authViewModel.errorMessage != null && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(authViewModel.errorMessage!)),
-                              );
+                              CustomSnackBar.showError(context, authViewModel.errorMessage!);
                             }
                           },
                     style: ElevatedButton.styleFrom(

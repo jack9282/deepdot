@@ -25,7 +25,8 @@ class _RoutineScreenBody extends StatefulWidget {
   State<_RoutineScreenBody> createState() => _RoutineScreenBodyState();
 }
 
-class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBindingObserver {
+class _RoutineScreenBodyState extends State<_RoutineScreenBody>
+    with WidgetsBindingObserver {
   String _selectedGoal = '';
 
   @override
@@ -61,7 +62,9 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
   @override
   Widget build(BuildContext context) {
     final routineVM = context.watch<RoutineViewModel>();
-    final List<String> goals = routineVM.routineList.map((r) => r.name).toList();
+    final List<String> goals = routineVM.routineList
+        .map((r) => r.name)
+        .toList();
     if (_selectedGoal.isEmpty && goals.isNotEmpty) {
       _selectedGoal = goals.first;
     }
@@ -121,10 +124,7 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
                   const SizedBox(height: 8),
                   const Text(
                     '오른쪽 상단의 + 버튼을 눌러\n루틴을 추가해보세요',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -133,13 +133,25 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
           : Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 16, left: 24, right: 24, bottom: 8),
+                  padding: const EdgeInsets.only(
+                    top: 16,
+                    left: 24,
+                    right: 24,
+                    bottom: 8,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Row(
                         children: [
-                          Text('목표', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black)),
+                          Text(
+                            '목표',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                              color: Colors.black,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -167,24 +179,36 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 0,
+                    ),
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
                       child: Column(
                         children: [
                           Expanded(
                             child: Consumer<RoutineViewModel>(
                               builder: (context, routineVM, _) {
-                                final routineList = routineVM.routineList.where((routine) => routine.name == _selectedGoal).toList();
+                                final routineList = routineVM.routineList
+                                    .where(
+                                      (routine) =>
+                                          routine.name == _selectedGoal,
+                                    )
+                                    .toList();
 
                                 if (routineList.isEmpty) {
                                   return Center(
                                     child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Icon(
                                           Icons.assignment_outlined,
@@ -222,15 +246,24 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
                                         Expanded(
                                           child: ListView.separated(
                                             itemCount: routineList.length,
-                                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                            separatorBuilder: (_, __) =>
+                                                const SizedBox(height: 8),
                                             itemBuilder: (context, index) {
-                                              final routine = routineList[index];
-                                              final checks = routineVM.getChecksForRoutine(routineVM.routineList.indexOf(routine));
+                                              final routine =
+                                                  routineList[index];
+                                              final checks = routineVM
+                                                  .getChecksForRoutine(
+                                                    routineVM.routineList
+                                                        .indexOf(routine),
+                                                  );
                                               final routineMap = {
                                                 'id': routine.id,
                                                 'name': routine.name,
-                                                'items': routine.items.map((e) => e.toJson()).toList(),
-                                                'notificationEnabled': routine.notificationEnabled,
+                                                'items': routine.items
+                                                    .map((e) => e.toJson())
+                                                    .toList(),
+                                                'notificationEnabled':
+                                                    routine.notificationEnabled,
                                                 'hour': routine.hour,
                                                 'minute': routine.minute,
                                                 'isAM': routine.isAM,
@@ -240,10 +273,13 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
                                               };
                                               return RoutineListItem(
                                                 routine: routineMap,
-                                                index: routineVM.routineList.indexOf(routine),
+                                                index: routineVM.routineList
+                                                    .indexOf(routine),
                                                 routineVM: routineVM,
                                                 onDelete: (originalIndex) {
-                                                  routineVM.removeRoutine(originalIndex);
+                                                  routineVM.removeRoutine(
+                                                    originalIndex,
+                                                  );
                                                 },
                                               );
                                             },
@@ -265,7 +301,7 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
             ),
     );
   }
-  
+
   Widget _buildDaysHeader() {
     final List<String> days = ['월', '화', '수', '목', '금', '토', '일'];
     return Container(
@@ -273,18 +309,23 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody> with WidgetsBind
       child: Row(
         children: [
           const SizedBox(width: 120),
-          ...List.generate(days.length, (i) => Expanded(
-            child: Center(
-              child: Text(
-                days[i],
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: i == 6 ? const Color(0xFFFF5A5A) : const Color(0xFFB0B0B0),
+          ...List.generate(
+            days.length,
+            (i) => Expanded(
+              child: Center(
+                child: Text(
+                  days[i],
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: i == 6
+                        ? const Color(0xFFFF5A5A)
+                        : const Color(0xFFB0B0B0),
+                  ),
                 ),
               ),
             ),
-          )),
+          ),
         ],
       ),
     );
@@ -305,9 +346,13 @@ class _GoalTabButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? const Color.fromARGB(255, 210, 225, 255) : const Color(0xFFF5F6FA),
+          color: selected
+              ? const Color.fromARGB(255, 210, 225, 255)
+              : const Color(0xFFF5F6FA),
           borderRadius: BorderRadius.circular(18),
-          border: selected ? Border.all(color: const Color(0xFF3973F4)) : Border.all(color: const Color(0xFF888888)),
+          border: selected
+              ? Border.all(color: const Color(0xFF3973F4))
+              : Border.all(color: const Color(0xFF888888)),
         ),
         child: Text(
           text,

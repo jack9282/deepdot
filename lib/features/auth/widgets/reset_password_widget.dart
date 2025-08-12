@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
+import '../../../utils/snak_bar.dart';
+import '../view_models/auth_view_model.dart';
 
 class ResetPasswordWidget extends StatefulWidget {
   const ResetPasswordWidget({super.key});
@@ -21,9 +24,6 @@ class _ResetPasswordWidgetState extends State<ResetPasswordWidget> {
   @override
   void initState() {
     super.initState();
-    _idController.text = 'deepdot123'; // 예시 아이디
-    _newPasswordController.text = '***********'; // 예시 비밀번호 (마스킹)
-    _confirmPasswordController.text = 'deep010231'; // 예시 비밀번호 확인
   }
 
   @override
@@ -36,6 +36,7 @@ class _ResetPasswordWidgetState extends State<ResetPasswordWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final authViewModel = Provider.of<AuthViewModel>(context);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -201,15 +202,44 @@ class _ResetPasswordWidgetState extends State<ResetPasswordWidget> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () async {
-                    if (!_formKey.currentState!.validate()) {
-                      return;
-                    }
-                    // 비밀번호 재설정 로직
-                    if (context.mounted) {
-                      context.go('/login');
-                    }
-                  },
+                  onPressed: authViewModel.isLoading
+                      ? null
+                      : () async {
+                          if (!_formKey.currentState!.validate()) {
+                            return;
+                          }
+                          final result = await authViewModel.resetPassword(
+                            _newPasswordController.text.trim(),
+                            _confirmPasswordController.text.trim(),
+                          );
+                          if (result && context.mounted) {
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) => AlertDialog(
+                                title: const Text('비밀번호 재설정 완료'),
+                                content: const Text(
+                                  '비밀번호가 성공적으로 재설정되었습니다.\n새로운 비밀번호로 로그인해주세요.',
+                                  style: TextStyle(height: 1.4),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      context.go('/login');
+                                    },
+                                    child: const Text(
+                                      '확인',
+                                      style: TextStyle(color: AppTheme.primaryColor),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                                                     } else if (authViewModel.errorMessage != null && context.mounted) {
+                             CustomSnackBar.showError(context, authViewModel.errorMessage!);
+                           }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
@@ -218,13 +248,22 @@ class _ResetPasswordWidgetState extends State<ResetPasswordWidget> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    '완료',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: authViewModel.isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text(
+                          '완료',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
             ],

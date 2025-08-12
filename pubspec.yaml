@@ -55,6 +55,9 @@ dependencies:
   
   # HTTP Client
   http: ^1.2.1
+  
+  # Animation
+  lottie: ^3.1.2
 
 dev_dependencies:
   flutter_test:
@@ -82,6 +85,7 @@ flutter:
   assets:
     - assets/images/
     - assets/fonts/
+    - assets/animation/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

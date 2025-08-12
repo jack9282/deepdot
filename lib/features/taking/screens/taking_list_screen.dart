@@ -24,7 +24,8 @@ class _TakingListScreenBody extends StatefulWidget {
   State<_TakingListScreenBody> createState() => _TakingListScreenBodyState();
 }
 
-class _TakingListScreenBodyState extends State<_TakingListScreenBody> with WidgetsBindingObserver {
+class _TakingListScreenBodyState extends State<_TakingListScreenBody>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -94,7 +95,7 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody> with Widge
               child: Consumer<TakingViewModel>(
                 builder: (context, takingVM, _) {
                   final takingList = takingVM.takingList;
-                  
+
                   // 데이터가 없을 때 빈 상태 UI
                   if (takingList.isEmpty) {
                     return Center(
@@ -128,7 +129,7 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody> with Widge
                       ),
                     );
                   }
-                  
+
                   return ListView.separated(
                     itemCount: takingList.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 20),
@@ -142,11 +143,7 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody> with Widge
                         times: times,
                         checks: checks,
                         onCheckChanged: (timeIdx, val) {
-                          takingVM.updateCheck(
-                            idx,
-                            timeIdx,
-                            val,
-                          );
+                          takingVM.updateCheck(idx, timeIdx, val);
                         },
                         onEditPressed: () {
                           // 수정 화면으로 이동
@@ -210,7 +207,8 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody> with Widge
                                                     style: TextStyle(
                                                       color: Color(0xFF666666),
                                                       fontSize: 16,
-                                                      fontWeight: FontWeight.w400,
+                                                      fontWeight:
+                                                          FontWeight.w400,
                                                     ),
                                                   ),
                                                 ),
@@ -232,7 +230,8 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody> with Widge
                                                     style: TextStyle(
                                                       color: Colors.red,
                                                       fontSize: 16,
-                                                      fontWeight: FontWeight.w400,
+                                                      fontWeight:
+                                                          FontWeight.w400,
                                                     ),
                                                   ),
                                                 ),

@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../common/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import '../view_models/auth_view_model.dart';
-import '../../../alert/snak_bar.dart';
+import '../../../utils/snak_bar.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});

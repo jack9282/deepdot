@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lottie/lottie.dart';
 import '../../../common/theme/app_theme.dart';
 
 class TakingAddCompleteScreen extends StatelessWidget {
@@ -21,30 +22,21 @@ class _AddCompleteScreenBody extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        toolbarHeight: 0, // Remove app bar space
+        toolbarHeight: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           children: [
             const Spacer(),
-            // 성공 아이콘 (중앙 상단)
+            // Lottie 애니메이션 (중앙 상단)
             Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE0E0E0),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFFE0E0E0),
-                  width: 1,
-                ),
-              ),
-              child: const Icon(
-                Icons.check,
-                color: Colors.white,
-                size: 60,
-                weight: 900,
+              width: 120,
+              height: 120,
+              child: Lottie.asset(
+                'assets/animation/Success.json',
+                fit: BoxFit.contain,
+                repeat: false,
               ),
             ),
             const SizedBox(height: 45),

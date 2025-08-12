@@ -226,7 +226,24 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 ),
                               );
                             } else if (authViewModel.errorMessage != null && context.mounted) {
-                              // 모든 ScaffoldMessenger.of(context).showSnackBar 관련 코드 제거
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('오류'),
+                                  content: Text(authViewModel.errorMessage!),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: const Text(
+                                        '확인',
+                                        style: TextStyle(color: AppTheme.primaryColor),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
                             }
                           },
                     style: ElevatedButton.styleFrom(

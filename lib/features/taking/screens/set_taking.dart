@@ -348,8 +348,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
-                            _nameController.text = item['name']!;
-                            _searchFocusNode.unfocus();
+                            _selectMedication(item['name']!);
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 6),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
+import '../../../utils/snak_bar.dart';
 import '../view_models/auth_view_model.dart';
 
 class EmailVerifyWidget extends StatefulWidget {
@@ -24,8 +25,6 @@ class _EmailVerifyWidgetState extends State<EmailVerifyWidget> {
   @override
   void initState() {
     super.initState();
-    _emailController.text = 'example@gmail.com'; // 예시 이메일
-    _codeController.text = '749583'; // 예시 인증 코드
   }
 
   @override
@@ -115,6 +114,7 @@ class _EmailVerifyWidgetState extends State<EmailVerifyWidget> {
                             }
                             return null;
                           },
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -124,10 +124,9 @@ class _EmailVerifyWidgetState extends State<EmailVerifyWidget> {
                           onPressed: authViewModel.isLoading || _isCodeSent
                               ? null
                               : () async {
-                                  if (!_formKey.currentState!.validate()) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('올바른 이메일 형식을 입력해주세요')),
-                                    );
+                                  // 이메일 필드만 검증
+                                  if (_emailController.text.isEmpty || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(_emailController.text)) {
+                                    CustomSnackBar.showError(context, '올바른 이메일 형식을 입력해주세요');
                                     return;
                                   }
                                   final result = await authViewModel.requestEmailCode(_emailController.text.trim());
@@ -141,9 +140,7 @@ class _EmailVerifyWidgetState extends State<EmailVerifyWidget> {
                                       const SnackBar(content: Text('인증 코드가 전송되었습니다.')),
                                     );
                                   } else if (authViewModel.errorMessage != null && context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text(authViewModel.errorMessage!)),
-                                    );
+                                    CustomSnackBar.showError(context, authViewModel.errorMessage!);
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
@@ -244,6 +241,7 @@ class _EmailVerifyWidgetState extends State<EmailVerifyWidget> {
                       }
                       return null;
                     },
+                    autovalidateMode: _isCodeSent ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
                   ),
                   const Spacer(),
                   if (_codeController.text.isNotEmpty) ...[
@@ -257,17 +255,15 @@ class _EmailVerifyWidgetState extends State<EmailVerifyWidget> {
                                 if (!_formKey.currentState!.validate()) {
                                   return;
                                 }
-                                final result = await authViewModel.verifyEmailCode(_codeController.text.trim());
-                                if (result && context.mounted) {
-                                  final String retrievedId = 'user12345'; // 실제로는 서버에서 받아온 ID 사용
+                                final result = await authViewModel.verifyIdEmail(_emailController.text.trim(), _codeController.text.trim());
+                                if (result['success'] && context.mounted) {
+                                  final String retrievedId = result['username'];
                                   widget.onVerificationSuccess(retrievedId);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(content: Text('인증이 완료되었습니다. 다음 화면으로 이동합니다.')),
                                   );
                                 } else if (authViewModel.errorMessage != null && context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(authViewModel.errorMessage!)),
-                                  );
+                                  CustomSnackBar.showError(context, authViewModel.errorMessage!);
                                 }
                               },
                         style: ElevatedButton.styleFrom(

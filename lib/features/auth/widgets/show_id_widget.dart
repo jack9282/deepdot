@@ -80,7 +80,7 @@ class _ShowIdWidgetState extends State<ShowIdWidget> {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
-                        context.push('/forgot-password?tab=1');
+                        context.go('/forgot-account?tab=1');
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,

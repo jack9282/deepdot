@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/models/user_model.dart';
 import '../../../utils/token_manager.dart';
+import '../../../api/password-reset-api.dart';
+import '../../../api/find-id-api.dart';
 
 class AuthViewModel with ChangeNotifier {
   final AuthRepository _authRepository = AuthRepository();
@@ -99,13 +101,16 @@ class AuthViewModel with ChangeNotifier {
         return false;
       }
       
-      // TODO: 실제 이메일 인증 API 구현 시 여기에 API 호출 추가
-      // 현재는 더미 구현
-      await Future.delayed(const Duration(seconds: 1));
-      _isEmailCodeSent = true;
-      _isEmailVerified = false; // 재전송 시 인증 상태 초기화
-      notifyListeners();
-      return true;
+      final success = await FindIdApi.sendEmailCode(email);
+      if (success) {
+        _isEmailCodeSent = true;
+        _isEmailVerified = false; // 재전송 시 인증 상태 초기화
+        notifyListeners();
+        return true;
+      } else {
+        _setError('인증 코드 전송에 실패했습니다');
+        return false;
+      }
     } catch (e) {
       _setError('이메일 코드 요청 중 오류가 발생했습니다');
       return false;
@@ -149,28 +154,43 @@ class AuthViewModel with ChangeNotifier {
     }
   }
 
-  // 비밀번호 재설정 (더미)
+  // 비밀번호 재설정
   Future<bool> resetPassword(String newPassword, String confirmPassword) async {
     _setLoading(true);
     _setError(null);
+
     try {
-      if (newPassword.isEmpty || confirmPassword.isEmpty) {
-        _setError('비밀번호를 입력해주세요');
+      if (newPassword.isEmpty) {
+        _setError('새 비밀번호를 입력해주세요');
         return false;
       }
+
       if (newPassword.length < 6) {
         _setError('비밀번호는 6자 이상이어야 합니다');
         return false;
       }
+
       if (newPassword != confirmPassword) {
         _setError('비밀번호가 일치하지 않습니다');
         return false;
       }
-      await Future.delayed(const Duration(seconds: 2));
-      // 실제로는 서버에 비밀번호 변경 요청
-      return true;
+
+      // 현재 로그인된 사용자의 username 가져오기
+      final username = await TokenManager.instance.getUsername();
+      if (username == null) {
+        _setError('사용자 정보를 찾을 수 없습니다');
+        return false;
+      }
+
+      final success = await PasswordResetApi.resetPassword(username, newPassword);
+      if (success) {
+        return true;
+      } else {
+        _setError('비밀번호 재설정에 실패했습니다');
+        return false;
+      }
     } catch (e) {
-      _setError('비밀번호 재설정 중 오류가 발생했습니다');
+      _setError('비밀번호 재설정 중 오류가 발생했습니다: ${e.toString()}');
       return false;
     } finally {
       _setLoading(false);
@@ -331,6 +351,109 @@ class AuthViewModel with ChangeNotifier {
     } catch (e) {
       _setError('이메일 전송 중 오류가 발생했습니다: ${e.toString()}');
       return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // 비밀번호 재설정 코드 전송
+  Future<bool> sendResetCode(String username, String email) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      if (username.isEmpty) {
+        _setError('아이디를 입력해주세요');
+        return false;
+      }
+
+      if (email.isEmpty) {
+        _setError('이메일을 입력해주세요');
+        return false;
+      }
+
+      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+        _setError('올바른 이메일 형식을 입력해주세요');
+        return false;
+      }
+
+      final success = await PasswordResetApi.sendResetCode(username, email);
+      if (success) {
+        return true;
+      } else {
+        _setError('인증 코드 전송에 실패했습니다');
+        return false;
+      }
+    } catch (e) {
+      _setError('인증 코드 전송 중 오류가 발생했습니다: ${e.toString()}');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // 비밀번호 재설정 코드 검증
+  Future<bool> verifyResetCode(String username, String email, String code) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      if (username.isEmpty) {
+        _setError('아이디를 입력해주세요');
+        return false;
+      }
+
+      if (email.isEmpty) {
+        _setError('이메일을 입력해주세요');
+        return false;
+      }
+
+      if (code.isEmpty) {
+        _setError('인증 코드를 입력해주세요');
+        return false;
+      }
+
+      final success = await PasswordResetApi.verifyResetCode(username, email, code);
+      if (success) {
+        return true;
+      } else {
+        _setError('인증 코드가 올바르지 않습니다');
+        return false;
+      }
+    } catch (e) {
+      _setError('인증 코드 검증 중 오류가 발생했습니다: ${e.toString()}');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // 아이디 찾기 이메일 인증
+  Future<Map<String, dynamic>> verifyIdEmail(String email, String code) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      if (email.isEmpty) {
+        _setError('이메일을 입력해주세요');
+        return {'success': false, 'message': '이메일을 입력해주세요'};
+      }
+
+      if (code.isEmpty) {
+        _setError('인증 코드를 입력해주세요');
+        return {'success': false, 'message': '인증 코드를 입력해주세요'};
+      }
+
+      final result = await FindIdApi.verifyIdEmail(email, code);
+      if (result['success']) {
+        return result;
+      } else {
+        _setError(result['message']);
+        return result;
+      }
+    } catch (e) {
+      _setError('아이디 찾기 중 오류가 발생했습니다: ${e.toString()}');
+      return {'success': false, 'message': '네트워크 오류가 발생했습니다'};
     } finally {
       _setLoading(false);
     }
