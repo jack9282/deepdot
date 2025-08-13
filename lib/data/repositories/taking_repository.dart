@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/taking_model.dart';
+import '../../api/taking-api.dart';
 
 class TakingRepository {
   static const String _takingListKey = 'taking_list';
@@ -37,28 +38,59 @@ class TakingRepository {
   }
 
   Future<void> addTaking(String name, List<String> times) async {
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final newTaking = TakingModel(
-      id: id,
-      name: name,
-      times: times,
-      createdAt: DateTime.now(),
-    );
-    _takingList.add(newTaking);
-    _takingChecks[id] = List.generate(times.length, (_) => false);
-    await saveToStorage();
+    try {
+      // API 호출
+      final newTaking = await TakingApi.createMedication(
+        name: name,
+        alarm: true, // 기본값으로 true 설정
+      );
+      
+      // 로컬 저장소에 추가
+      _takingList.add(newTaking);
+      _takingChecks[newTaking.id] = List.generate(times.length, (_) => false);
+      await saveToStorage();
+    } catch (e) {
+      // API 실패 시 로컬에만 저장
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
+      final newTaking = TakingModel(
+        id: id,
+        name: name,
+        times: times,
+        createdAt: DateTime.now(),
+      );
+      _takingList.add(newTaking);
+      _takingChecks[id] = List.generate(times.length, (_) => false);
+      await saveToStorage();
+      throw e;
+    }
   }
 
   Future<void> updateTaking(int index, String name, List<String> times) async {
     if (index >= 0 && index < _takingList.length) {
       final oldId = _takingList[index].id;
-      _takingList[index] = TakingModel(
-        id: oldId,
-        name: name,
-        times: times,
-        createdAt: _takingList[index].createdAt,
-        updatedAt: DateTime.now(),
-      );
+      
+      try {
+        // API 호출
+        final updatedTaking = await TakingApi.updateMedication(
+          medicationId: int.parse(oldId),
+          name: name,
+          alarm: true, // 기본값으로 true 설정
+        );
+        
+        // 로컬 저장소 업데이트
+        _takingList[index] = updatedTaking;
+      } catch (e) {
+        // API 실패 시 로컬에만 업데이트
+        _takingList[index] = TakingModel(
+          id: oldId,
+          name: name,
+          times: times,
+          createdAt: _takingList[index].createdAt,
+          updatedAt: DateTime.now(),
+        );
+        throw e;
+      }
+      
       // Update checks if times length changed
       if (_takingChecks.containsKey(oldId)) {
         final currentChecks = _takingChecks[oldId]!;
@@ -73,6 +105,15 @@ class TakingRepository {
   Future<void> removeTaking(int index) async {
     if (index >= 0 && index < _takingList.length) {
       final id = _takingList[index].id;
+      
+      try {
+        // API 호출
+        await TakingApi.deleteMedication(int.parse(id));
+      } catch (e) {
+        // API 실패 시에도 로컬에서 삭제
+        print('API 삭제 실패, 로컬에서만 삭제: $e');
+      }
+      
       _takingList.removeAt(index);
       _takingChecks.remove(id);
       await saveToStorage();
@@ -115,4 +156,24 @@ class TakingRepository {
   }
 
   int getTakingCount() => _takingList.length;
+
+  /// API에서 모든 약물 데이터 동기화
+  Future<void> syncFromApi() async {
+    try {
+      final apiMedications = await TakingApi.getAllMedications();
+      _takingList = apiMedications;
+      
+      // 체크 상태 초기화
+      for (final medication in _takingList) {
+        if (!_takingChecks.containsKey(medication.id)) {
+          _takingChecks[medication.id] = List.generate(medication.times.length, (_) => false);
+        }
+      }
+      
+      await saveToStorage();
+    } catch (e) {
+      print('API 동기화 실패: $e');
+      // API 실패 시 로컬 데이터 유지
+    }
+  }
 } 

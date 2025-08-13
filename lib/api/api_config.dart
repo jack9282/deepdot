@@ -18,4 +18,7 @@ class ApiConfig {
   static const String signupEndpointAlt = '/api/auth/signup'; // 대체 엔드포인트
   static const String loginEndpoint = '/api/user/login';
   static const String checkUsernameEndpoint = '/api/user/check-username';
+  
+  // Medication API 엔드포인트들
+  static const String medicationEndpoint = '/api/medication';
 } 
