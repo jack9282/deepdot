@@ -61,9 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // 화면이 빌드될 때마다 상태바 스타일 설정
     _setStatusBarStyle();
     
-    return ChangeNotifierProvider<HomeViewModel>(
-      create: (_) => HomeViewModel()..loadTasks(),
-      child: Scaffold(
+    return Scaffold(
         backgroundColor: Colors.white,
         body: Column(
           children: [
@@ -172,8 +170,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                       try {
                                         final viewModel = context.read<HomeViewModel>();
                                         viewModel.refresh();
-                                        // UI 강제 업데이트
-                                        viewModel.notifyListeners();
                                       } catch (e) {
                                         // Provider가 없는 경우 무시
                                       }
@@ -333,7 +329,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 

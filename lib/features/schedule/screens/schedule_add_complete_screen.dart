@@ -87,23 +87,9 @@ class _AddCompleteScreenBody extends StatelessWidget {
             // 완료 버튼
             GestureDetector(
               onTap: () {
-                // TaskRepository에서 데이터 강제 새로고침
-                final taskRepository = TaskRepository();
-                taskRepository.forceRefresh();
-                
-                // 완료 화면과 일정 추가 화면을 모두 닫고 이전 화면으로 돌아가기
+                // 완료 화면과 일정 추가 화면을 모두 닫고 새로고침 결과와 함께 돌아가기
                 Navigator.of(context).pop(); // 완료 화면 닫기
-                Navigator.of(context).pop(); // 일정 추가 화면 닫기
-                
-                // 홈 화면의 데이터 새로고침을 위해 잠시 후 실행
-                Future.delayed(const Duration(milliseconds: 200), () {
-                  try {
-                    final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
-                    homeViewModel.refresh();
-                  } catch (e) {
-                    // HomeViewModel이 없는 경우 무시
-                  }
-                });
+                Navigator.of(context).pop(true); // 일정 추가 화면 닫기 + 새로고침 신호
               },
               child: Container(
                 width: double.infinity,

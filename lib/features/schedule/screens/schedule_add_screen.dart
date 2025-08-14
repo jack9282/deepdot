@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../view_models/schedule_view_model.dart';
+import '../../home/view_models/home_view_model.dart';
 import 'schedule_add_complete_screen.dart';
 
 class ScheduleAddScreen extends StatefulWidget {
@@ -681,8 +682,17 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     }
 
     if (success) {
-      // 성공 시 즉시 화면 새로고침
+      // 성공 시 모든 관련 ViewModel 새로고침
       await viewModel.refresh();
+      
+      // HomeViewModel도 함께 새로고침 (Provider가 존재하는 경우에만)
+      try {
+        final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+        await homeViewModel.refresh();
+      } catch (e) {
+        // HomeViewModel이 없는 경우 무시
+      }
+      
       _showSuccessDialog();
     } else {
       // 실패 시 에러 메시지 표시

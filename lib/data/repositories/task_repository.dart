@@ -1,8 +1,9 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import '../models/task_model.dart';
 import 'dart:convert';
 
-class TaskRepository {
+class TaskRepository extends ChangeNotifier {
   static const String _tasksKey = 'tasks';
   
   // Singleton 패턴 구현
@@ -36,6 +37,7 @@ class TaskRepository {
     try {
       _tasks.add(task);
       await _saveTasksToStorage();
+      notifyListeners(); // 변경사항 알림
       return true;
     } catch (e) {
       return false;
@@ -49,6 +51,7 @@ class TaskRepository {
       if (index != -1) {
         _tasks[index] = updatedTask;
         await _saveTasksToStorage();
+        notifyListeners(); // 변경사항 알림
         return true;
       }
       return false;
@@ -62,6 +65,7 @@ class TaskRepository {
     try {
       _tasks.removeWhere((task) => task.id == taskId);
       await _saveTasksToStorage();
+      notifyListeners(); // 변경사항 알림
       return true;
     } catch (e) {
       return false;
@@ -80,6 +84,7 @@ class TaskRepository {
         );
         _tasks[index] = updatedTask;
         await _saveTasksToStorage();
+        notifyListeners(); // 변경사항 알림
         return true;
       }
       return false;

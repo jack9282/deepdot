@@ -4,6 +4,22 @@ import '../../../data/models/task_model.dart';
 
 class HomeViewModel with ChangeNotifier {
   final TaskRepository _taskRepository = TaskRepository();
+  
+  // 생성자에서 Repository 변경사항 구독
+  HomeViewModel() {
+    _taskRepository.addListener(_onRepositoryChanged);
+  }
+  
+  @override
+  void dispose() {
+    _taskRepository.removeListener(_onRepositoryChanged);
+    super.dispose();
+  }
+  
+  // Repository 변경사항 감지 시 UI 업데이트
+  void _onRepositoryChanged() {
+    _setTasks(_taskRepository.tasks);
+  }
 
   // 상태 변수들
   List<TaskModel> _tasks = [];
@@ -180,6 +196,8 @@ class HomeViewModel with ChangeNotifier {
       final success = await _taskRepository.toggleTaskCompletion(taskId);
       if (success) {
         _setTasks(_taskRepository.tasks);
+        // UI 즉시 업데이트
+        notifyListeners();
         return true;
       } else {
         _setError('할일 상태 변경에 실패했습니다');
