@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/models/user_model.dart';
-import '../../../utils/token_manager.dart';
+import '../../../api/token_manager.dart';
 import '../../../api/password-reset-api.dart';
 import '../../../api/find-id-api.dart';
 

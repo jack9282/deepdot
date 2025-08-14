@@ -20,91 +20,82 @@ class RoutineListItem extends StatefulWidget {
 }
 
 class _RoutineListItemState extends State<RoutineListItem> {
-  late List<List<bool>> checks;
-
   static const Color naverBlue = Color(0xFF3973F4);
 
   @override
-  void initState() {
-    super.initState();
-    checks = List<List<bool>>.from(widget.routine['checks'] ?? []);
-  }
-
-  @override
-  void didUpdateWidget(covariant RoutineListItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.routine['checks'] != widget.routine['checks']) {
-      checks = List<List<bool>>.from(widget.routine['checks'] ?? []);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final Color mainColor = naverBlue;
-    final List<dynamic> items = widget.routine['items'] ?? [];
+    final String routineName = widget.routine['name'] ?? '';
+    final List<String> days = List<String>.from(widget.routine['days'] ?? []);
+    final List<bool> checks = widget.routineVM.getRoutineChecks(widget.index);
 
-    return Column(
-      children: [
-        for (int itemIdx = 0; itemIdx < items.length; itemIdx++)
-          Container(
-            height: 44,
-            margin: const EdgeInsets.symmetric(vertical: 2),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 120,
-                  child: Text(
-                    items[itemIdx]['name'] ?? '',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xFF222222),
-                      letterSpacing: -0.2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                ...List.generate(7, (dayIndex) {
-                  final bool isDayActive = (items[itemIdx]['days'] as List).contains(_dayString(dayIndex));
-                  
-                  return Expanded(
-                    child: Center(
-                      child: isDayActive
-                          ? GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  checks[itemIdx][dayIndex] = !checks[itemIdx][dayIndex];
-                                });
-                                widget.routineVM.updateCheck(widget.index, itemIdx, dayIndex, checks[itemIdx][dayIndex]);
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 120),
-                                width: 28,
-                                height: 28,
-                                margin: const EdgeInsets.symmetric(vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: checks[itemIdx][dayIndex] ? mainColor : Colors.white,
-                                  border: Border.all(
-                                    color: checks[itemIdx][dayIndex] ? mainColor : const Color(0xFFD1D5DB),
-                                    width: 1.7,
-                                  ),
-                                  borderRadius: BorderRadius.circular(7),
-                                ),
-                                child: checks[itemIdx][dayIndex]
-                                    ? const Icon(Icons.check, color: Colors.white, size: 20)
-                                    : null,
-                              ),
-                            )
-                          : const DayBubble(),
-                    ),
-                  );
-                }),
-              ],
+    return Container(
+      height: 44,
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              routineName,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFF222222),
+                letterSpacing: -0.2,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-      ],
+          ...List.generate(7, (dayIndex) {
+            final bool isDayActive = days.contains(_dayString(dayIndex));
+            final bool isChecked = checks[dayIndex];
+            
+            return Expanded(
+              child: Center(
+                child: isDayActive
+                    ? GestureDetector(
+                        onTap: () {
+                          widget.routineVM.updateRoutineCheck(
+                            widget.index,
+                            dayIndex,
+                            !isChecked,
+                          );
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeInOut,
+                          width: 28,
+                          height: 28,
+                          margin: const EdgeInsets.symmetric(vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isChecked ? naverBlue : Colors.white,
+                            border: Border.all(
+                              color: isChecked ? naverBlue : Colors.grey[400]!,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 150),
+                            child: isChecked
+                                ? const Icon(
+                                    Icons.check,
+                                    key: ValueKey('checked'),
+                                    color: Colors.white,
+                                    size: 20,
+                                  )
+                                : const SizedBox.shrink(key: ValueKey('unchecked')),
+                          ),
+                        ),
+                      )
+                    : const DayBubble(),
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 
@@ -125,7 +116,7 @@ class _DayBubbleState extends State<DayBubble> {
   OverlayEntry? _overlayEntry;
 
   void _showOverlay(BuildContext context) {
-    if (_overlayEntry != null) return; // 이미 오버레이가 있다면 새로 띄우지 않음
+    if (_overlayEntry != null) return;
 
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
     final size = renderBox.size;
@@ -133,8 +124,8 @@ class _DayBubbleState extends State<DayBubble> {
 
     _overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
-        left: offset.dx - 100, // 좌측으로 이동하여 체크박스 중앙에 위치
-        top: offset.dy + size.height + 4, // 체크박스 바로 아래
+        left: offset.dx - 100,
+        top: offset.dy + size.height + 4,
         child: Material(
           color: Colors.transparent,
           child: Container(
@@ -154,7 +145,6 @@ class _DayBubbleState extends State<DayBubble> {
 
     Overlay.of(context).insert(_overlayEntry!);
 
-    // 2초 후에 오버레이 제거
     Future.delayed(const Duration(seconds: 2), () {
       _removeOverlay();
     });
@@ -169,7 +159,7 @@ class _DayBubbleState extends State<DayBubble> {
 
   @override
   void dispose() {
-    _removeOverlay(); // 위젯이 사라질 때 오버레이도 정리
+    _removeOverlay();
     super.dispose();
   }
 
@@ -184,14 +174,55 @@ class _DayBubbleState extends State<DayBubble> {
         height: 28,
         margin: const EdgeInsets.symmetric(vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.grey[200],
-          border: Border.all(
-            color: const Color(0xFFD1D5DB),
-            width: 1.7,
-          ),
-          borderRadius: BorderRadius.circular(7),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: CustomPaint(
+          painter: DashedBorderPainter(),
         ),
       ),
     );
   }
+}
+
+class DashedBorderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFD1D5DB)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    const dashWidth = 5.0;
+    const dashSpace = 4.5;
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final path = Path()
+      ..addRRect(RRect.fromRectAndRadius(rect, const Radius.circular(7)));
+
+    // 점선 패턴 생성
+    final dashPattern = <double>[dashWidth, dashSpace];
+    final dashedPath = Path();
+    
+    // 경로를 따라 점선 그리기
+    final pathMetrics = path.computeMetrics().first;
+    double distance = 0;
+    bool draw = true;
+    
+    while (distance < pathMetrics.length) {
+      final length = dashPattern[draw ? 0 : 1];
+      if (draw) {
+        final start = pathMetrics.getTangentForOffset(distance)?.position ?? Offset.zero;
+        final end = pathMetrics.getTangentForOffset(distance + length)?.position ?? Offset.zero;
+        dashedPath.moveTo(start.dx, start.dy);
+        dashedPath.lineTo(end.dx, end.dy);
+      }
+      distance += length;
+      draw = !draw;
+    }
+    
+    canvas.drawPath(dashedPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

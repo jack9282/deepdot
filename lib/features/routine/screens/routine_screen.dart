@@ -63,8 +63,10 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
   Widget build(BuildContext context) {
     final routineVM = context.watch<RoutineViewModel>();
     final List<String> goals = routineVM.routineList
-        .map((r) => r.name)
+        .expand((routine) => routine.goals)
+        .toSet()
         .toList();
+    
     if (_selectedGoal.isEmpty && goals.isNotEmpty) {
       _selectedGoal = goals.first;
     }
@@ -102,7 +104,7 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
           ),
         ],
       ),
-      body: goals.isEmpty
+      body: routineVM.routineList.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -200,7 +202,7 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
                                 final routineList = routineVM.routineList
                                     .where(
                                       (routine) =>
-                                          routine.name == _selectedGoal,
+                                          routine.goals.contains(_selectedGoal),
                                     )
                                     .toList();
 
@@ -251,25 +253,16 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
                                             itemBuilder: (context, index) {
                                               final routine =
                                                   routineList[index];
-                                              final checks = routineVM
-                                                  .getChecksForRoutine(
-                                                    routineVM.routineList
-                                                        .indexOf(routine),
-                                                  );
                                               final routineMap = {
                                                 'id': routine.id,
                                                 'name': routine.name,
-                                                'items': routine.items
-                                                    .map((e) => e.toJson())
-                                                    .toList(),
+                                                'goals': routine.goals,
+                                                'days': routine.days,
                                                 'notificationEnabled':
                                                     routine.notificationEnabled,
-                                                'hour': routine.hour,
-                                                'minute': routine.minute,
-                                                'isAM': routine.isAM,
+                                                'memo': routine.memo,
                                                 'createdAt': routine.createdAt,
                                                 'updatedAt': routine.updatedAt,
-                                                'checks': checks,
                                               };
                                               return RoutineListItem(
                                                 routine: routineMap,

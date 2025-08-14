@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../api/api_config.dart';
-import 'token_manager.dart';
+import '../api/token_manager.dart';
 
 class HttpClient {
   /// GET 요청 (토큰 자동 포함)

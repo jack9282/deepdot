@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';
-import '../utils/token_manager.dart';
+import 'token_manager.dart';
 
 // 회원가입 요청 모델
 class SignupRequest {

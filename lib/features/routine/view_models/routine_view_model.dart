@@ -7,58 +7,55 @@ class RoutineViewModel extends ChangeNotifier {
 
   List<RoutineModel> get routineList => List.unmodifiable(_routineList);
 
-  // 초기화
   Future<void> initialize() async {
     await RoutineRepository().loadFromStorage();
     _loadRoutineList();
   }
 
-  // 데이터 로드
   void _loadRoutineList() {
     _routineList = RoutineRepository().routineList;
     notifyListeners();
   }
 
-  // 루틴 추가
-  Future<void> addRoutine(String name, List<RoutineItem> items, bool notificationEnabled, int hour, int minute, bool isAM) async {
-    await RoutineRepository().addRoutine(name, items, notificationEnabled, hour, minute, isAM);
+  Future<void> addRoutine(String name, List<String> goals, List<String> days, bool notificationEnabled, String memo) async {
+    await RoutineRepository().addRoutine(name, goals, days, notificationEnabled, memo);
     _loadRoutineList();
   }
 
-  // 루틴 수정
-  Future<void> updateRoutine(int index, String name, List<RoutineItem> items, bool notificationEnabled, int hour, int minute, bool isAM) async {
-    await RoutineRepository().updateRoutine(index, name, items, notificationEnabled, hour, minute, isAM);
+  Future<void> updateRoutine(int index, String name, List<String> goals, List<String> days, bool notificationEnabled, String memo) async {
+    await RoutineRepository().updateRoutine(index, name, goals, days, notificationEnabled, memo);
     _loadRoutineList();
   }
 
-  // 루틴 삭제
   Future<void> removeRoutine(int index) async {
     await RoutineRepository().removeRoutine(index);
     _loadRoutineList();
   }
 
-  // 체크박스 상태 업데이트
-  Future<void> updateCheck(int routineIndex, int itemIndex, int dayIndex, bool value) async {
-    await RoutineRepository().updateRoutineCheckByIndex(routineIndex, itemIndex, dayIndex, value);
+  Future<void> updateRoutineCheck(int routineIndex, int dayIndex, bool isChecked) async {
+    await RoutineRepository().updateRoutineCheck(routineIndex, dayIndex, isChecked);
     _loadRoutineList();
   }
 
-  // 체크 상태 가져오기
-  List<List<bool>> getChecksForRoutine(int index) {
-    if (index >= 0 && index < _routineList.length) {
-      final id = _routineList[index].id;
-      return RoutineRepository().getRoutineChecks(id);
+  List<bool> getRoutineChecks(int routineIndex) {
+    if (routineIndex >= 0 && routineIndex < _routineList.length) {
+      final routine = _routineList[routineIndex];
+      
+      // 체크 상태 배열이 비어있거나 잘못된 경우 기본값 반환
+      if (routine.checks.isEmpty || routine.checks.length != 7) {
+        return List.generate(7, (_) => false);
+      }
+      
+      return routine.checks.map((check) => check.isNotEmpty ? check.first : false).toList();
     }
-    return [];
+    return List.generate(7, (_) => false);
   }
 
-  // 리스트 초기화 (테스트용)
   Future<void> clearAll() async {
     RoutineRepository().clearAllData();
     _loadRoutineList();
   }
 
-  // 강제 새로고침
   Future<void> refresh() async {
     await RoutineRepository().loadFromStorage();
     _loadRoutineList();
