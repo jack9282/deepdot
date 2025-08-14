@@ -102,7 +102,6 @@ class _MainScreenState extends State<MainScreen> {
             height: 90,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(
                   index: 0,
@@ -140,46 +139,52 @@ class _MainScreenState extends State<MainScreen> {
     final isSelected = _currentIndex == index;
     final color = isSelected ? AppTheme.primaryColor : AppTheme.textSecondaryColor;
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
-        switch (index) {
-          case 0:
-            context.go('/home');
-            break;
-          case 1:
-            context.go('/taking-list');
-            break;
-          case 2:
-            context.go('/routine');
-            break;
-          case 3:
-            context.go('/settings');
-            break;
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SvgPicture.asset(
-            icon,
-            width: 24,
-            height: 24,
-            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _currentIndex = index;
+          });
+          switch (index) {
+            case 0:
+              context.go('/home');
+              break;
+            case 1:
+              context.go('/taking-list');
+              break;
+            case 2:
+              context.go('/routine');
+              break;
+            case 3:
+              context.go('/settings');
+              break;
+          }
+        },
+        child: SizedBox(
+          height: 90,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SvgPicture.asset(
+                icon,
+                width: 24,
+                height: 24,
+                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontFamily: 'Pretendard',
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 14,
-              fontFamily: 'Pretendard',
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
