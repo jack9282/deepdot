@@ -528,60 +528,66 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                                 color: priorityColor,
                               ),
                       ),
-                      // 제목
-                      Flexible(
-                        child: Text(
-                          task.title,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: task.isCompleted
-                                ? Colors.grey[500]
-                                : Colors.black,
-                            decoration: task.isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
-                          softWrap: false,
-                          overflow: TextOverflow.visible,
-                        ),
-                      ),
-                      // 재생 버튼
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ScheduleTimerScreen(task: task),
+                      // 제목과 재생 버튼을 함께 배치
+                      Expanded(
+                        child: Row(
+                          children: [
+                            // 제목 (필요한 만큼만 차지)
+                            Flexible(
+                              child: Text(
+                                task.title,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: task.isCompleted
+                                      ? Colors.grey[500]
+                                      : Colors.black,
+                                  decoration: task.isCompleted
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
                             ),
-                          );
-                        },
-                        child: Container(
-                          width: 24,
-                          height: 24,
-                          margin: const EdgeInsets.only(left: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.play_arrow,
-                            size: 16,
-                            color: Colors.grey,
-                          ),
+                            // 재생 버튼 (텍스트 바로 오른쪽)
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        ScheduleTimerScreen(task: task),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: 24,
+                                height: 24,
+                                margin: const EdgeInsets.only(left: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow,
+                                  size: 16,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+                            // 반복 일정 표시
+                            if (task.isRecurring)
+                              Container(
+                                margin: const EdgeInsets.only(left: 8),
+                                child: const Icon(
+                                  Icons.repeat,
+                                  size: 16,
+                                  color: Color(0xFF1F5DFF),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      // 반복 일정 표시
-                      if (task.isRecurring)
-                        Container(
-                          margin: const EdgeInsets.only(left: 8),
-                          child: const Icon(
-                            Icons.repeat,
-                            size: 16,
-                            color: Color(0xFF1F5DFF),
-                          ),
-                        ),
-                      const Spacer(flex: 3),
                       // 완료 체크박스 (우측 끝)
                       GestureDetector(
                         onTap: () {
