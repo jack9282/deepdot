@@ -1,4 +1,6 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../view_models/statistics_view_model.dart';
 import '../../../data/repositories/focus_session_repository.dart';
@@ -596,37 +598,44 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
           ],
         ),
         
-        // 아크 차트와 중앙 텍스트 (헤더와 완전히 붙임)
+        const SizedBox(height: 30), // 헤더와 아크 차트 사이 여백 추가
+        
+        // 스트로크 기반 아크 차트와 중앙 텍스트
         SizedBox(
-          width: 160,
-          height: 160,
+          width: 180,
+          height: 110,
           child: Stack(
             children: [
-              // 배경 아크
+              // 배경 아크 (회색 스트로크)
               CustomPaint(
-                size: const Size(160, 160),
-                painter: ArcPainter(
+                size: const Size(180, 90),
+                painter: StrokeArcPainter(
                   progress: 1.0,
-                  color: const Color(0xFFE8E8E8),
-                  strokeWidth: 12,
+                  color: const Color(0xFFEFF4FF),
+                  strokeWidth: 16,
                 ),
               ),
-              // 진행률 아크
+              // 진행률 아크 (그라데이션 스트로크)
               CustomPaint(
-                size: const Size(160, 160),
-                painter: ArcPainter(
+                size: const Size(180, 90),
+                painter: StrokeArcPainter(
                   progress: progress,
-                  color: const Color(0xFF3A71FF),
-                  strokeWidth: 12,
+                  color: const Color(0xFF1F5DFF),
+                  strokeWidth: 16,
+                  useGradient: true,
                 ),
               ),
               // 중앙 퍼센트 텍스트
-              Center(
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 10,
                 child: Text(
                   '$percentage%',
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 32,
+                    color: Color(0xFF74787B),
+                    fontSize: 26,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -640,21 +649,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildLegendItem('진행률', const Color(0xFF3A71FF)),
+            _buildLegendItem('진행률', const Color(0xFF377FF8)),
             const SizedBox(width: 24),
-            _buildLegendItem('하루시간', const Color(0xFFE8E8E8)),
+            _buildLegendItem('하루시간', const Color(0xFFEFF4FF)),
           ],
         ),
         
         const SizedBox(height: 16), // 범례와 집중 루틴 달성률 사이 여백
         
         // 집중 루틴 달성률 정보 (회색 카드 제거, 직접 배치)
-        Text(
-          '집중 루틴 달성률',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            '집중 루틴 달성률',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -786,8 +798,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: 16, // 8에서 12로 크기 증가
+          height: 16, // 8에서 12로 크기 증가
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
@@ -796,9 +808,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
         const SizedBox(width: 6),
         Text(
           label,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
+          style: const TextStyle(
+            color: Colors.black, 
+            fontSize: 15,
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -910,7 +922,254 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
   }
 }
 
-// 아크 차트를 그리기 위한 CustomPainter
+// 스트로크 기반 아크를 그리는 CustomPainter
+class StrokeArcPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final double strokeWidth;
+  final bool useGradient;
+
+  StrokeArcPainter({
+    required this.progress,
+    required this.color,
+    required this.strokeWidth,
+    this.useGradient = false,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height);
+    final radius = (size.width - strokeWidth) / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    
+    Paint paint;
+    
+    if (useGradient) {
+      // 그라데이션 생성 (#799EFF -> #1F5DFF)
+      final gradient = SweepGradient(
+        startAngle: math.pi, // 좌측 하단에서 시작 (180도)
+        endAngle: 2 * math.pi, // 우측 하단에서 끝 (360도)
+        colors: const [
+          Color(0xFF799EFF), // 시작 색상
+          Color(0xFF1F5DFF), // 끝 색상
+        ],
+        stops: const [0.0, 1.0],
+      );
+      
+      paint = Paint()
+        ..shader = gradient.createShader(rect)
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+    } else {
+      // 단색 사용
+      paint = Paint()
+        ..color = color
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+    }
+
+    // 하단 반원 아크 그리기 (좌측 하단에서 시작하여 우측 하단으로)
+    canvas.drawArc(
+      rect,
+      math.pi, // 시작 각도 (좌측 하단, 180도)
+      math.pi * progress, // 진행률에 따른 각도 (π = 180도, 반원)
+      false,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return oldDelegate is StrokeArcPainter && 
+           (oldDelegate.progress != progress || 
+            oldDelegate.color != color ||
+            oldDelegate.strokeWidth != strokeWidth ||
+            oldDelegate.useGradient != useGradient);
+  }
+}
+
+// 아크 진행률을 위한 CustomClipper (간단한 버전)
+class ArcProgressClipper extends CustomClipper<Path> {
+  final double progress;
+
+  ArcProgressClipper({required this.progress});
+
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    if (progress <= 0) {
+      return path; // 빈 패스 반환
+    }
+
+    // 하단 반원의 시작점 (좌측 하단, 180도)
+    final startAngle = math.pi;
+    // 진행률에 따른 끝 각도 (최대 180도까지)
+    final sweepAngle = math.pi * progress;
+
+    // 중심에서 시작점으로 선
+    final startPoint = Offset(
+      center.dx + radius * math.cos(startAngle),
+      center.dy + radius * math.sin(startAngle),
+    );
+
+    // 패스 생성
+    path.moveTo(center.dx, center.dy);
+    path.lineTo(startPoint.dx, startPoint.dy);
+
+    // 아크 그리기
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    path.arcTo(rect, startAngle, sweepAngle, false);
+
+    // 중심으로 돌아가기
+    path.lineTo(center.dx, center.dy);
+    path.close();
+
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) {
+    return oldClipper is ArcProgressClipper && oldClipper.progress != progress;
+  }
+}
+
+// 반원 진행률을 위한 CustomClipper
+class SemiCircleProgressClipper extends CustomClipper<Path> {
+  final double progress;
+
+  SemiCircleProgressClipper({required this.progress});
+
+  @override
+  Path getClip(Size size) {
+    var path = Path(); // final을 var로 변경
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    if (progress <= 0) {
+      return path; // 빈 패스 반환
+    }
+
+    // 하단 반원의 시작점 (좌측 하단, 180도)
+    final startAngle = math.pi;
+    // 진행률에 따른 끝 각도 (최대 180도까지)
+    final endAngle = startAngle + (math.pi * progress);
+
+    // 반원 영역만 클리핑
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    
+    // 먼저 전체 반원 영역을 만들고
+    path.addArc(rect, math.pi, math.pi);
+    
+    // 진행률에 따라 추가로 마스킹할 영역을 제거
+    if (progress < 1.0) {
+      final maskPath = Path();
+      
+      // 진행률 끝점에서 중심으로의 선
+      final endPoint = Offset(
+        center.dx + radius * math.cos(endAngle),
+        center.dy + radius * math.sin(endAngle),
+      );
+      
+      // 우측 하단점 (360도/0도 지점)
+      final rightPoint = Offset(
+        center.dx + radius,
+        center.dy,
+      );
+      
+      // 마스킹할 영역 (진행률 이후 부분)
+      maskPath.moveTo(center.dx, center.dy);
+      maskPath.lineTo(endPoint.dx, endPoint.dy);
+      maskPath.arcTo(rect, endAngle, math.pi * (1 - progress), false);
+      maskPath.lineTo(center.dx, center.dy);
+      maskPath.close();
+      
+      // 전체에서 마스킹 영역 제거
+      path = Path.combine(PathOperation.difference, path, maskPath);
+    }
+
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) {
+    return oldClipper is SemiCircleProgressClipper && oldClipper.progress != progress;
+  }
+}
+
+// 하단 반원 아크를 그리는 CustomPainter
+class HalfArcPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final double strokeWidth;
+  final bool useGradient;
+
+  HalfArcPainter({
+    required this.progress,
+    required this.color,
+    required this.strokeWidth,
+    this.useGradient = false,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    
+    Paint paint;
+    
+    if (useGradient) {
+      // 그라데이션 생성 (#799EFF -> #1F5DFF)
+      final gradient = SweepGradient(
+        startAngle: math.pi, // 좌측 하단에서 시작 (180도)
+        endAngle: 2 * math.pi, // 우측 하단에서 끝 (360도)
+        colors: const [
+          Color(0xFF799EFF), // 시작 색상
+          Color(0xFF1F5DFF), // 끝 색상
+        ],
+        stops: const [0.0, 1.0],
+      );
+      
+      paint = Paint()
+        ..shader = gradient.createShader(rect)
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+    } else {
+      // 단색 사용
+      paint = Paint()
+        ..color = color
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+    }
+
+    // 하단 반원 아크 그리기 (좌측 하단에서 시작하여 우측 하단으로)
+    canvas.drawArc(
+      rect,
+      math.pi, // 시작 각도 (좌측 하단, 180도)
+      math.pi * progress, // 진행률에 따른 각도 (π = 180도, 반원)
+      false,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return oldDelegate is HalfArcPainter && 
+           (oldDelegate.progress != progress || 
+            oldDelegate.color != color ||
+            oldDelegate.strokeWidth != strokeWidth ||
+            oldDelegate.useGradient != useGradient);
+  }
+}
+
+// 아크 차트를 그리기 위한 CustomPainter (사용하지 않음 - SVG 사용)
 class ArcPainter extends CustomPainter {
   final double progress;
   final Color color;
@@ -924,21 +1183,44 @@ class ArcPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
-    
-    // 아크 그리기 (왼쪽에서 시작하여 시계방향으로 오른쪽까지)
     final rect = Rect.fromCircle(center: center, radius: radius);
+    
+    Paint paint;
+    
+    // 진행률 아크인 경우 그라데이션 적용, 배경 아크인 경우 단색 사용
+    if (color == const Color(0xFF3A71FF)) {
+      // 그라데이션 생성 (#799EFF -> #1F5DFF)
+      final gradient = SweepGradient(
+        startAngle: math.pi, // 좌측 하단에서 시작
+        endAngle: 2 * math.pi, // 우측 하단에서 끝
+        colors: const [
+          Color(0xFF799EFF), // 시작 색상
+          Color(0xFF1F5DFF), // 끝 색상
+        ],
+        stops: const [0.0, 1.0],
+      );
+      
+      paint = Paint()
+        ..shader = gradient.createShader(rect)
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+    } else {
+      // 배경 아크는 단색 사용
+      paint = Paint()
+        ..color = color
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+    }
+
+    // 하단 반원 아크 그리기 (좌측 하단에서 시작하여 우측 하단으로)
     canvas.drawArc(
       rect,
-      -0.5, // 시작 각도 (왼쪽)
-      1.0 * progress, // 진행률에 따른 각도 (0.5π = 90도)
+      math.pi, // 시작 각도 (좌측 하단, 180도)
+      math.pi * progress, // 진행률에 따른 각도 (π = 180도, 반원)
       false,
       paint,
     );

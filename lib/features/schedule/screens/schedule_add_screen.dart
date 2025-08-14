@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../view_models/schedule_view_model.dart';
@@ -27,8 +26,32 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   final _memoController = TextEditingController();
   final _focusNode = FocusNode(); // 포커스 관리를 위한 FocusNode 추가
   
-  DateTime _startDateTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 0, 0);
-  DateTime _endDateTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 1, 0);
+  // 주어진 시간을 분 단위로 반올림하는 static 함수
+  static DateTime _roundToNearestInterval(DateTime dateTime, int minuteInterval) {
+    final roundedMinute = (dateTime.minute / minuteInterval).round() * minuteInterval;
+    
+    // 60분 이상인 경우 시간을 1 증가시키고 분을 0으로 설정
+    if (roundedMinute >= 60) {
+      return DateTime(
+        dateTime.year,
+        dateTime.month,
+        dateTime.day,
+        dateTime.hour + 1,
+        0,
+      );
+    }
+    
+    return DateTime(
+      dateTime.year,
+      dateTime.month,
+      dateTime.day,
+      dateTime.hour,
+      roundedMinute,
+    );
+  }
+  
+  DateTime _startDateTime = _roundToNearestInterval(DateTime.now(), 5);
+  DateTime _endDateTime = _roundToNearestInterval(DateTime.now().add(const Duration(hours: 1)), 5);
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
 
@@ -162,8 +185,11 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   String _formatDate(DateTime date) {
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
-    final weekday = ['월', '화', '수', '목', '금', '토', '일'][date.weekday - 1];
-    return '$month월 $day일 ($weekday)';
+    // Flutter의 weekday: 월요일=1, 화요일=2, ..., 일요일=7
+    // 헤더가 ['일', '월', '화', '수', '목', '금', '토'] 순서이므로 일요일=0이 되도록 조정
+    final weekdayIndex = date.weekday % 7; // 일요일=0, 월요일=1, ..., 토요일=6
+    final weekday = ['일', '월', '화', '수', '목', '금', '토'][weekdayIndex];
+    return '${month}월 $day일 ($weekday)';
   }
 
   // 포커스 해제 메서드
@@ -450,10 +476,11 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   }) {
     final firstDayOfMonth = DateTime(currentMonth.year, currentMonth.month, 1);
     final lastDayOfMonth = DateTime(currentMonth.year, currentMonth.month + 1, 0);
-    final firstDayOfWeek = firstDayOfMonth.weekday;
+    // Flutter의 weekday를 일요일=0 기준으로 변환 (일요일=0, 월요일=1, ..., 토요일=6)
+    final firstDayOfWeek = firstDayOfMonth.weekday % 7;
     
     final daysInMonth = lastDayOfMonth.day;
-    final totalDays = firstDayOfWeek - 1 + daysInMonth;
+    final totalDays = firstDayOfWeek + daysInMonth;
     final weeks = (totalDays / 7).ceil();
     
     return Column(
@@ -518,7 +545,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
             itemBuilder: (context, weekIndex) {
               return Row(
                 children: List.generate(7, (dayIndex) {
-                  final dayNumber = weekIndex * 7 + dayIndex - (firstDayOfWeek - 1) + 1;
+                  final dayNumber = weekIndex * 7 + dayIndex - firstDayOfWeek + 1;
                   
                   if (dayNumber <= 0 || dayNumber > daysInMonth) {
                     // 이전/다음 달의 날짜
