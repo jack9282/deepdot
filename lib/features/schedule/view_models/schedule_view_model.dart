@@ -70,14 +70,14 @@ class ScheduleViewModel with ChangeNotifier {
     notifyListeners();
   }
 
-  // 특정 우선순위의 할일들 로드
+  // 특정 우선순위의 할일들 로드 (API 동기화 포함)
   Future<void> loadTasksByPriority(TaskPriority priority) async {
     _setLoading(true);
     _setError(null);
     _currentPriority = priority;
 
     try {
-      await _taskRepository.loadTasksFromStorage();
+      await _taskRepository.loadTasksWithSync();
       _setTasks(_taskRepository.tasks);
     } catch (e) {
       _setError('할일 목록을 불러오는데 실패했습니다: ${e.toString()}');
@@ -86,14 +86,14 @@ class ScheduleViewModel with ChangeNotifier {
     }
   }
 
-  // 모든 할일들 로드
+  // 모든 할일들 로드 (API 동기화 포함)
   Future<void> loadAllTasks() async {
     _setLoading(true);
     _setError(null);
     _currentPriority = null;
 
     try {
-      await _taskRepository.loadTasksFromStorage();
+      await _taskRepository.loadTasksWithSync();
       _setTasks(_taskRepository.tasks);
     } catch (e) {
       _setError('할일 목록을 불러오는데 실패했습니다: ${e.toString()}');
@@ -389,6 +389,21 @@ class ScheduleViewModel with ChangeNotifier {
       await loadTasksByPriority(_currentPriority!);
     } else {
       await loadAllTasks();
+    }
+  }
+
+  /// API에서 데이터 강제 동기화
+  Future<void> syncFromApi() async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      await _taskRepository.syncFromApi();
+      _setTasks(_taskRepository.tasks);
+    } catch (e) {
+      _setError('서버와 동기화하는데 실패했습니다: ${e.toString()}');
+    } finally {
+      _setLoading(false);
     }
   }
 } 

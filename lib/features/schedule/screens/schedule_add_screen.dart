@@ -4,8 +4,11 @@ import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../view_models/schedule_view_model.dart';
-import '../../home/view_models/home_view_model.dart';
+
 import 'schedule_add_complete_screen.dart';
+import '../../../utils/date_time_formatter.dart';
+import '../../../api/token_manager.dart';
+import '../../../api/schedule_api.dart';
 
 class ScheduleAddScreen extends StatefulWidget {
   final TaskPriority priority;
@@ -172,6 +175,128 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
         return '나중에 처리해요';
       case TaskPriority.neither:
         return '시간이 남을 때 해요';
+    }
+  }
+
+  /// 우선순위를 API에서 요구하는 형식으로 변환
+  String _convertPriorityForApi(String? priority) {
+    switch (priority) {
+      case '지금 바로 해야해요':
+        return '긴급';
+      case '미리 계획해서 준비해요':
+        return '중요';
+      case '나중에 처리해요':
+        return '보통';
+      case '시간이 남을 때 해요':
+        return '낮음';
+      default:
+        return '보통';
+    }
+  }
+
+  /// 이모지를 API에서 요구하는 아이콘 코드로 변환
+  String _convertEmojiToIconCode(String emoji) {
+    // 이모지별 아이콘 코드 매핑
+    final emojiToIconMap = {
+      '😀': 'SMILE',
+      '😃': 'HAPPY',
+      '😄': 'JOY',
+      '😁': 'GRIN',
+      '😆': 'LAUGH',
+      '🥹': 'TOUCHED',
+      '😅': 'SWEAT',
+      '😂': 'CRY_LAUGH',
+      '🤣': 'ROFL',
+      '🥲': 'TEAR_JOY',
+      '☺️': 'BLUSH',
+      '😊': 'HAPPY_EYES',
+      '🙂': 'SLIGHT_SMILE',
+      '😍': 'HEART_EYES',
+      '🥰': 'LOVE',
+      '😘': 'KISS',
+      '😙': 'KISS_SMILE',
+      '😚': 'KISS_EYES',
+      '😋': 'YUM',
+      '😝': 'TONGUE',
+      '🤨': 'RAISED_EYEBROW',
+      '🤓': 'NERD',
+      '😎': 'COOL',
+      '😏': 'SMIRK',
+      '🥳': 'PARTY',
+      '😟': 'WORRIED',
+      '😖': 'CONFOUNDED',
+      '😫': 'TIRED',
+      '🥺': 'PLEADING',
+      '😡': 'ANGRY',
+      '🤒': 'SICK',
+      '🫠': 'MELT',
+      '😱': 'SCREAM',
+      '🫢': 'GASP',
+      '😪': 'SLEEPY',
+      '😮': 'SURPRISE',
+      '👍': 'THUMBS_UP',
+      '👎': 'THUMBS_DOWN',
+      '🙏': 'PRAY',
+      '🫵': 'POINT',
+      '⚽': 'SOCCER',
+      '🎨': 'ART',
+      '🎟️': 'TICKET',
+      '🧩': 'PUZZLE',
+      '🎤': 'MIC',
+      '🎬': 'MOVIE',
+      '🖥️': 'COMPUTER',
+      '💡': 'IDEA',
+      '⏰': 'ALARM',
+      '💊': 'PILL',
+      '🛁': 'BATH',
+      '🧻': 'TISSUE',
+      '🚴‍♂️': 'BIKE',
+      '🎮': 'GAME',
+      '🍎': 'APPLE',
+      '🥗': 'SALAD',
+      '❤️': 'HEART',
+      '💣': 'BOMB',
+      '🎉': 'PARTY_POPPER',
+      '🍀': 'CLOVER',
+      '🌙': 'MOON',
+      '🐶': 'DOG',
+      '💪': 'MUSCLE',
+      '🎾': 'TENNIS',
+      '🏃': 'RUN',
+      '🚩': 'FLAG',
+      '🧶': 'YARN',
+      '🔥': 'FIRE',
+      '💼': 'BRIEFCASE',
+      '🍽️': 'DINNER',
+      '☕': 'COFFEE',
+      '🪥': 'TOOTHBRUSH',
+      '🚗': 'CAR',
+      '🏥': 'HOSPITAL',
+      '📱': 'PHONE',
+    };
+
+    return emojiToIconMap[emoji] ?? 'NOTE'; // 기본값은 NOTE
+  }
+
+  /// API 요청용 데이터 생성
+  Future<Map<String, dynamic>> _createApiRequestData() async {
+    try {
+      final userId = await TokenManager.instance.getCurrentUserId();
+      
+      return {
+        'userId': userId,
+        'title': _titleController.text.trim(),
+        'memo': _memoController.text.trim(),
+        'location': _locationController.text.trim(),
+        'alarm': _isNotificationEnabled,
+        'calendarDate': DateTimeFormatter.toDateString(_startDate),
+        'startTime': DateTimeFormatter.toTimeString(_startDateTime),
+        'endTime': DateTimeFormatter.toTimeString(_endDateTime),
+        'type': _convertPriorityForApi(_selectedPriority),
+        'icon': _convertEmojiToIconCode(_selectedEmoji),
+      };
+    } catch (e) {
+      throw Exception('API 요청 데이터 생성 실패: $e');
     }
   }
 
@@ -567,14 +692,14 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                   final date = DateTime(currentMonth.year, currentMonth.month, dayNumber);
                   final isSelected = selectedStartDate != null && 
                       selectedEndDate != null &&
-                      (date.isAtSameMomentAs(selectedStartDate!) || 
-                       date.isAtSameMomentAs(selectedEndDate!) ||
-                       (date.isAfter(selectedStartDate!) && date.isBefore(selectedEndDate!)));
+                      (date.isAtSameMomentAs(selectedStartDate) || 
+                       date.isAtSameMomentAs(selectedEndDate) ||
+                       (date.isAfter(selectedStartDate) && date.isBefore(selectedEndDate)));
                   
                   final isStartDate = selectedStartDate != null && 
-                      date.isAtSameMomentAs(selectedStartDate!);
+                      date.isAtSameMomentAs(selectedStartDate);
                   final isEndDate = selectedEndDate != null && 
-                      date.isAtSameMomentAs(selectedEndDate!);
+                      date.isAtSameMomentAs(selectedEndDate);
                   
                   return Expanded(
                     child: GestureDetector(
@@ -621,7 +746,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       );
       return;
     }
-    
+
     if (!_isStartTimeSelected || !_isEndTimeSelected) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('시작 시간과 종료 시간을 선택해주세요')),
@@ -643,20 +768,24 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       return;
     }
 
-    final viewModel = Provider.of<ScheduleViewModel>(context, listen: false);
-    
-    // 시작 날짜와 종료 날짜가 다른 경우 반복 일정으로 처리
-    final isRecurring = !_isSameDay(_startDate, _endDate);
-    
-
-    
-    bool success = false;
+    // 수정 모드일 때도 API 형식에 맞게 데이터 변환
     if (widget.taskToEdit != null) {
-      // 수정 모드
+      final viewModel = Provider.of<ScheduleViewModel>(context, listen: false);
+      final isRecurring = !_isSameDay(_startDate, _endDate);
+      
+      // API 형식에 맞게 데이터 변환
       final updatedTask = widget.taskToEdit!.copyWith(
         title: _titleController.text.trim(),
-        description: '${_locationController.text.trim()}\n${_memoController.text.trim()}',
+        memo: _memoController.text.trim(),
+        location: _locationController.text.trim(),
         priority: _getTaskPriorityFromString(_selectedPriority),
+        alarm: _isNotificationEnabled,
+        calendarDate: DateTimeFormatter.toDateString(_startDate),
+        startTime: DateTimeFormatter.toTimeString(_startDateTime),
+        endTime: DateTimeFormatter.toTimeString(_endDateTime),
+        icon: _convertEmojiToIconCode(_selectedEmoji),
+        // 기존 필드들도 업데이트 (하위 호환성)
+        description: '${_locationController.text.trim()}\n${_memoController.text.trim()}',
         startDate: _startDateTime,
         dueDate: _endDateTime,
         startDateRange: isRecurring ? _startDate : null,
@@ -665,40 +794,83 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
         emoji: _selectedEmoji,
       );
       
-      success = await viewModel.updateTask(updatedTask);
-    } else {
-      // 새 일정 추가
-      success = await viewModel.addTask(
-        title: _titleController.text.trim(),
-        description: '${_locationController.text.trim()}\n${_memoController.text.trim()}',
-        startDate: _startDateTime,
-        dueDate: _endDateTime,
-        startDateRange: isRecurring ? _startDate : null,
-        endDateRange: isRecurring ? _endDate : null,
-        isRecurring: isRecurring,
-        priority: _getTaskPriorityFromString(_selectedPriority),
-        emoji: _selectedEmoji,
-      );
+      final success = await viewModel.updateTask(updatedTask);
+      if (success) {
+        await viewModel.refresh();
+        _showSuccessDialog();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(viewModel.errorMessage ?? '일정 수정에 실패했습니다')),
+        );
+      }
+      return;
     }
 
-    if (success) {
-      // 성공 시 모든 관련 ViewModel 새로고침
-      await viewModel.refresh();
+    // 새로운 일정 추가 - API 요청 데이터 생성 및 API 호출
+    try {
+      final apiData = await _createApiRequestData();
+      print('=== API 요청 데이터 ===');
+      print('userId: ${apiData['userId']}');
+      print('title: ${apiData['title']}');
+      print('memo: ${apiData['memo']}');
+      print('location: ${apiData['location']}');
+      print('alarm: ${apiData['alarm']}');
+      print('calendarDate: ${apiData['calendarDate']}');
+      print('startTime: ${apiData['startTime']}');
+      print('endTime: ${apiData['endTime']}');
+      print('type: ${apiData['type']}');
+      print('icon: ${apiData['icon']}');
+      print('==================');
+
+      // 실제 API 호출
+      final request = ScheduleCreateRequest(
+        userId: apiData['userId'] as int,
+        title: apiData['title'] as String,
+        memo: apiData['memo'] as String,
+        location: apiData['location'] as String,
+        alarm: apiData['alarm'] as bool,
+        calendarDate: apiData['calendarDate'] as String,
+        startTime: apiData['startTime'] as String,
+        endTime: apiData['endTime'] as String,
+        type: apiData['type'] as String,
+        icon: apiData['icon'] as String,
+      );
+
+      final response = await ScheduleApi.createSchedule(request);
       
-      // HomeViewModel도 함께 새로고침 (Provider가 존재하는 경우에만)
-      try {
-        final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
-        await homeViewModel.refresh();
-      } catch (e) {
-        // HomeViewModel이 없는 경우 무시
-      }
+      print('=== API 응답 ===');
+      print('scheduleId: ${response.scheduleId}');
+      print('message: ${response.message}');
+      print('===============');
+
+      // API 성공 시 성공 다이얼로그 표시
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('일정이 성공적으로 등록되었습니다! (ID: ${response.scheduleId})'),
+          backgroundColor: Colors.green,
+        ),
+      );
       
       _showSuccessDialog();
-    } else {
-      // 실패 시 에러 메시지 표시
+      return;
+
+    } catch (e) {
+      print('API 호출 오류: $e');
+      
+      String errorMessage = '일정 등록에 실패했습니다';
+      if (e is ScheduleApiException) {
+        errorMessage = '${e.errorMessage} (${e.errorCode})';
+      } else {
+        errorMessage = '일정 등록 중 오류가 발생했습니다: $e';
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(viewModel.errorMessage ?? '일정 저장에 실패했습니다')),
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
       );
+      return;
     }
   }
 

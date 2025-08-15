@@ -4,6 +4,7 @@ class TokenManager {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _usernameKey = 'username';
+  static const String _userIdKey = 'user_id';
   static const String _isLoggedInKey = 'is_logged_in';
 
   static TokenManager? _instance;
@@ -32,6 +33,12 @@ class TokenManager {
     await prefs.setString(_usernameKey, username);
   }
 
+  /// 사용자 ID 저장
+  Future<void> saveUserId(int userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_userIdKey, userId);
+  }
+
   /// 로그인 상태 저장
   Future<void> setLoggedIn(bool isLoggedIn) async {
     final prefs = await SharedPreferences.getInstance();
@@ -56,6 +63,12 @@ class TokenManager {
     return prefs.getString(_usernameKey);
   }
 
+  /// 사용자 ID 가져오기
+  Future<int?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_userIdKey);
+  }
+
   /// 로그인 상태 확인
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
@@ -67,13 +80,21 @@ class TokenManager {
     required String accessToken,
     required String refreshToken,
     required String username,
+    int? userId,
   }) async {
-    await Future.wait([
+    final futures = [
       saveAccessToken(accessToken),
       saveRefreshToken(refreshToken),
       saveUsername(username),
       setLoggedIn(true),
-    ]);
+    ];
+    
+    // userId가 제공된 경우에만 저장
+    if (userId != null) {
+      futures.add(saveUserId(userId));
+    }
+    
+    await Future.wait(futures);
   }
 
   /// 모든 토큰 및 사용자 정보 삭제 (로그아웃)
@@ -83,6 +104,7 @@ class TokenManager {
       prefs.remove(_accessTokenKey),
       prefs.remove(_refreshTokenKey),
       prefs.remove(_usernameKey),
+      prefs.remove(_userIdKey),
       setLoggedIn(false),
     ]);
   }
@@ -96,5 +118,30 @@ class TokenManager {
   Future<bool> hasValidToken() async {
     final token = await getAccessToken();
     return isTokenValid(token);
+  }
+
+  /// username을 기반으로 임시 userId 생성
+  /// 백엔드에서 실제 userId를 제공할 때까지 사용하는 임시 방법
+  int generateUserIdFromUsername(String username) {
+    // username의 해시코드를 양수로 변환하여 userId로 사용
+    return username.hashCode.abs();
+  }
+
+  /// 현재 사용자 ID 가져오기 (없으면 username 기반으로 생성)
+  Future<int> getCurrentUserId() async {
+    int? userId = await getUserId();
+    
+    if (userId == null) {
+      // userId가 없으면 username 기반으로 생성
+      final username = await getUsername();
+      if (username != null) {
+        userId = generateUserIdFromUsername(username);
+        await saveUserId(userId); // 생성된 userId 저장
+      } else {
+        throw Exception('사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.');
+      }
+    }
+    
+    return userId;
   }
 } 

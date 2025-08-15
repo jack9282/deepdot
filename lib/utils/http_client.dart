@@ -33,6 +33,16 @@ class HttpClient {
     );
   }
 
+  /// PATCH 요청 (토큰 자동 포함)
+  static Future<http.Response> patch(String endpoint, {Map<String, dynamic>? body}) async {
+    final headers = await _getAuthHeaders();
+    return await http.patch(
+      Uri.parse('${ApiConfig.baseUrl}$endpoint'),
+      headers: headers,
+      body: body != null ? jsonEncode(body) : null,
+    );
+  }
+
   /// DELETE 요청 (토큰 자동 포함)
   static Future<http.Response> delete(String endpoint) async {
     final headers = await _getAuthHeaders();

@@ -21,4 +21,7 @@ class ApiConfig {
   
   // Medication API 엔드포인트들
   static const String medicationEndpoint = '/api/medication';
+  
+  // Schedule API 엔드포인트들
+  static const String scheduleEndpoint = '/api/schedule';
 } 
