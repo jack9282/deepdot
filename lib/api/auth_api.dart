@@ -177,11 +177,19 @@ class AuthAPI {
   /// POST /api/user/login
   static Future<AuthResponse> login(LoginRequest request) async {
     try {
+      print('Login request: ${jsonEncode(request.toJson())}');
+      print('Login URL: ${ApiConfig.baseUrl}${ApiConfig.loginEndpoint}');
+      print('Login headers: ${ApiConfig.defaultHeaders}');
+      
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.loginEndpoint}'),
         headers: ApiConfig.defaultHeaders,
         body: jsonEncode(request.toJson()),
-      );
+      ).timeout(const Duration(seconds: 30));
+      
+      print('Login response status: ${response.statusCode}');
+      print('Login response headers: ${response.headers}');
+      print('Login response body: ${response.body}');
       
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
@@ -196,9 +204,19 @@ class AuthAPI {
         
         return authResponse;
       } else {
-        throw Exception('로그인 실패: ${response.statusCode}');
+        String errorMessage = '로그인 실패: ${response.statusCode}';
+        if (response.body.isNotEmpty) {
+          try {
+            final errorData = jsonDecode(response.body);
+            errorMessage = errorData['message'] ?? errorMessage;
+          } catch (e) {
+            errorMessage = '${errorMessage} - ${response.body}';
+          }
+        }
+        throw Exception(errorMessage);
       }
     } catch (e) {
+      print('Login API error: $e');
       throw Exception('로그인 중 오류 발생: $e');
     }
   }

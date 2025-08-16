@@ -289,10 +289,6 @@ class _SignupScreenState extends State<SignupScreen> {
                                   ).hasMatch(value)) {
                                     return '올바른 이메일 형식을 입력해주세요';
                                   }
-                                  if (!authViewModel.isEmailCodeSent &&
-                                      authViewModel.errorMessage != null) {
-                                    return authViewModel.errorMessage;
-                                  }
                                   return null;
                                 },
                                 onChanged: (value) {
@@ -306,22 +302,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               height: 58,
                               width: 120,
                               child: ElevatedButton(
-                                onPressed:
-                                    authViewModel.isLoading
-                                    ? null
-                                    : () async {
-                                        final result = await authViewModel
-                                            .requestEmailCode(
-                                              _emailController.text.trim(),
-                                            );
-                                        if (result) {
-                                          CustomSnackBar.showSuccess(
-                                            context,
-                                            '인증코드가 이메일로 전송되었습니다.',
-                                          );
-                                        }
-                                        setState(() {});
-                                      },
+                                onPressed: null, // 비활성화
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   foregroundColor: Colors.black,
@@ -363,7 +344,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         TextFormField(
                           controller: _emailCodeController,
                           keyboardType: TextInputType.number,
-                          enabled: authViewModel.isEmailCodeSent,
+                          enabled: false, // 비활성화
                           decoration: InputDecoration(
                             hintText: '인증코드를 입력하세요',
                             border: OutlineInputBorder(
@@ -385,7 +366,6 @@ class _SignupScreenState extends State<SignupScreen> {
                                 width: 2.0,
                               ),
                             ),
-
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 16,
@@ -394,31 +374,10 @@ class _SignupScreenState extends State<SignupScreen> {
                             fillColor: Colors.grey.shade50,
                           ),
                           validator: (value) {
-                            if (authViewModel.isEmailCodeSent && (value == null || value.isEmpty)) {
-                              return '인증 코드를 입력해주세요';
-                            }
-                            if (authViewModel.isEmailCodeSent && !authViewModel.isEmailVerified &&
-                                authViewModel.errorMessage != null) {
-                              return authViewModel.errorMessage;
-                            }
-                            return null;
+                            return null; // 검증 비활성화
                           },
-                          onChanged: (value) async {
-                            authViewModel.clearError();
-                            // validate는 호출하지 않음
-                            if (authViewModel.isEmailCodeSent &&
-                                !authViewModel.isEmailVerified &&
-                                value.length == 6) {
-                              final result = await authViewModel
-                                  .verifyEmailCode(value.trim());
-                              if (result) {
-                                CustomSnackBar.showSuccess(
-                                  context,
-                                  '이메일 인증이 완료되었습니다.',
-                                );
-                              }
-                              setState(() {}); // 인증 상태 갱신
-                            }
+                          onChanged: (value) {
+                            // 기능 비활성화
                           },
                         ),
                         const SizedBox(height: 20),

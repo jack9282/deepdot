@@ -4,6 +4,7 @@ import '../models/routine_model.dart';
 
 class RoutineRepository {
   static const String _routineListKey = 'routine_list';
+  static const String _lastSyncKey = 'routine_last_sync_timestamp';
 
   static final RoutineRepository _instance = RoutineRepository._internal();
   factory RoutineRepository() => _instance;
@@ -21,18 +22,10 @@ class RoutineRepository {
       _routineList = jsonList.map((item) {
         final routine = RoutineModel.fromJson(item);
         
-        // 기존 데이터에 체크 상태가 없는 경우 초기화
-        if (routine.checks.isEmpty || routine.checks.length != 7) {
-          return RoutineModel(
-            id: routine.id,
-            name: routine.name,
-            goals: routine.goals,
-            days: routine.days,
-            notificationEnabled: routine.notificationEnabled,
-            memo: routine.memo,
-            checks: List.generate(7, (_) => [false]),
-            createdAt: routine.createdAt,
-            updatedAt: routine.updatedAt,
+        // 체크 상태가 올바르지 않은 경우 초기화
+        if (routine.checks.length != 7) {
+          return routine.copyWith(
+            checks: List.generate(7, (_) => false),
           );
         }
         return routine;
@@ -43,12 +36,12 @@ class RoutineRepository {
   Future<void> saveToStorage() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_routineListKey, jsonEncode(_routineList.map((e) => e.toJson()).toList()));
+    await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
   }
 
-  Future<void> addRoutine(String name, List<String> goals, List<String> days, bool notificationEnabled, String memo) async {
+  Future<void> addRoutine(String name, List<String> goals, List<String> days, bool notificationEnabled, String notificationTime, String memo) async {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
-    // 체크 상태 초기화 (7일 모두 false로 설정)
-    final checks = List.generate(7, (_) => [false]);
+    final checks = List.generate(7, (_) => false);
     
     final newRoutine = RoutineModel(
       id: id,
@@ -56,6 +49,7 @@ class RoutineRepository {
       goals: goals,
       days: days,
       notificationEnabled: notificationEnabled,
+      notificationTime: notificationTime,
       memo: memo,
       checks: checks,
       createdAt: DateTime.now(),
@@ -64,18 +58,16 @@ class RoutineRepository {
     await saveToStorage();
   }
 
-  Future<void> updateRoutine(int index, String name, List<String> goals, List<String> days, bool notificationEnabled, String memo) async {
+  Future<void> updateRoutine(int index, String name, List<String> goals, List<String> days, bool notificationEnabled, String notificationTime, String memo) async {
     if (index >= 0 && index < _routineList.length) {
-      final oldId = _routineList[index].id;
-      _routineList[index] = RoutineModel(
-        id: oldId,
+      final oldRoutine = _routineList[index];
+      _routineList[index] = oldRoutine.copyWith(
         name: name,
         goals: goals,
         days: days,
         notificationEnabled: notificationEnabled,
+        notificationTime: notificationTime,
         memo: memo,
-        checks: _routineList[index].checks,
-        createdAt: _routineList[index].createdAt,
         updatedAt: DateTime.now(),
       );
       await saveToStorage();
@@ -86,29 +78,21 @@ class RoutineRepository {
     if (routineIndex >= 0 && routineIndex < _routineList.length) {
       final routine = _routineList[routineIndex];
       
-      // 체크 상태 배열이 비어있거나 잘못된 경우 초기화
-      List<List<bool>> newChecks;
-      if (routine.checks.isEmpty || routine.checks.length != 7) {
-        newChecks = List.generate(7, (_) => [false]);
+      // 체크 상태 배열이 올바르지 않은 경우 초기화
+      List<bool> newChecks;
+      if (routine.checks.length != 7) {
+        newChecks = List.generate(7, (_) => false);
       } else {
-        newChecks = List<List<bool>>.from(routine.checks);
+        newChecks = List<bool>.from(routine.checks);
       }
       
       // 요일 인덱스가 유효한지 확인
       if (dayIndex >= 0 && dayIndex < 7) {
-        // 해당 요일의 체크 상태를 업데이트
-        newChecks[dayIndex] = [isChecked];
+        newChecks[dayIndex] = isChecked;
       }
       
-      _routineList[routineIndex] = RoutineModel(
-        id: routine.id,
-        name: routine.name,
-        goals: routine.goals,
-        days: routine.days,
-        notificationEnabled: routine.notificationEnabled,
-        memo: routine.memo,
+      _routineList[routineIndex] = routine.copyWith(
         checks: newChecks,
-        createdAt: routine.createdAt,
         updatedAt: DateTime.now(),
       );
       await saveToStorage();
@@ -136,4 +120,37 @@ class RoutineRepository {
   }
 
   int getRoutineCount() => _routineList.length;
+
+  /// 마지막 동기화 시간 확인
+  Future<DateTime?> getLastSyncTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final timestamp = prefs.getInt(_lastSyncKey);
+    return timestamp != null ? DateTime.fromMillisecondsSinceEpoch(timestamp) : null;
+  }
+
+  /// 특정 목표의 루틴 목록 조회
+  List<RoutineModel> getRoutinesByGoal(String goal) {
+    return _routineList.where((routine) => routine.goals.contains(goal)).toList();
+  }
+
+  /// 체크 상태 통계 조회
+  Map<String, dynamic> getRoutineStats() {
+    int totalRoutines = _routineList.length;
+    int totalChecks = 0;
+    int completedChecks = 0;
+
+    for (final routine in _routineList) {
+      for (final check in routine.checks) {
+        totalChecks++;
+        if (check) completedChecks++;
+      }
+    }
+
+    return {
+      'totalRoutines': totalRoutines,
+      'totalChecks': totalChecks,
+      'completedChecks': completedChecks,
+      'completionRate': totalChecks > 0 ? (completedChecks / totalChecks) : 0.0,
+    };
+  }
 } 

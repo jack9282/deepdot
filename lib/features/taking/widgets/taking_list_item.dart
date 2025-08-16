@@ -82,14 +82,14 @@ class _TakingListItemState extends State<TakingListItem> {
                 widget.name,
                 style: const TextStyle(
                   fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.primaryColor, // 파란색
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2563EB),
                 ),
               ),
               PopupMenuButton<String>(
                 icon: const Icon(
                   Icons.more_vert,
-                  color: Color(0xFFB0B0B0),
+                  color: Color(0xFF2563EB),
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -153,11 +153,12 @@ class _TakingListItemState extends State<TakingListItem> {
                     style: const TextStyle(
                       fontSize: 15,
                       color: Colors.black,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(width: 4),
                   Transform.scale(
-                    scale: 1.1,
+                    scale: 1.5,
                     child: Checkbox(
                       value: _checks[timeIdx],
                       onChanged: (val) {

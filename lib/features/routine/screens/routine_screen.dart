@@ -66,7 +66,7 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
         .expand((routine) => routine.goals)
         .toSet()
         .toList();
-    
+
     if (_selectedGoal.isEmpty && goals.isNotEmpty) {
       _selectedGoal = goals.first;
     }
@@ -78,8 +78,8 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
           child: Text(
             '루틴 체크리스트',
             style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
           ),
@@ -104,194 +104,265 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
           ),
         ],
       ),
-      body: routineVM.routineList.isEmpty
-          ? Center(
+      body: routineVM.isLoading
+          ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.assignment_outlined,
-                    size: 80,
-                    color: Colors.grey[400],
+                  CircularProgressIndicator(
+                    color: Color(0xFF2563EB),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    '루틴이 없습니다',
+                  SizedBox(height: 16),
+                  Text(
+                    '데이터를 불러오는 중...',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
                       color: Colors.grey,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '오른쪽 상단의 + 버튼을 눌러\n루틴을 추가해보세요',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
             )
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(
-                    top: 16,
-                    left: 24,
-                    right: 24,
-                    bottom: 8,
-                  ),
+          : routineVM.errorMessage != null
+              ? Center(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Row(
-                        children: [
-                          Text(
-                            '목표',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ],
+                      Icon(
+                        Icons.error_outline,
+                        size: 80,
+                        color: Colors.red[300],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        '오류가 발생했습니다',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.red[600],
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: goals.map((goal) {
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: _GoalTabButton(
-                                text: goal,
-                                selected: _selectedGoal == goal,
-                                onTap: () {
-                                  setState(() {
-                                    _selectedGoal = goal;
-                                  });
-                                },
-                              ),
-                            );
-                          }).toList(),
+                      Text(
+                        routineVM.errorMessage!,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
                         ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          routineVM.clearError();
+                          routineVM.refresh();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('다시 시도'),
                       ),
                     ],
                   ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 0,
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
+                )
+              : routineVM.routineList.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.assignment_outlined,
+                            size: 80,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            '루틴이 없습니다',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            '오른쪽 상단의 + 버튼을 눌러\n루틴을 추가해보세요',
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 8,
-                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () async {
+                        await routineVM.refresh();
+                      },
+                      color: const Color(0xFF2563EB),
                       child: Column(
                         children: [
-                          Expanded(
-                            child: Consumer<RoutineViewModel>(
-                              builder: (context, routineVM, _) {
-                                final routineList = routineVM.routineList
-                                    .where(
-                                      (routine) =>
-                                          routine.goals.contains(_selectedGoal),
-                                    )
-                                    .toList();
-
-                                if (routineList.isEmpty) {
-                                  return Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.assignment_outlined,
-                                          size: 80,
-                                          color: Colors.grey[400],
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          '루틴이 없습니다',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          '오른쪽 상단의 + 버튼을 눌러\n루틴을 추가해보세요',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey[500],
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }
-                                return Stack(
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              top: 16,
+                              left: 24,
+                              right: 24,
+                              bottom: 8,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
                                   children: [
-                                    Column(
-                                      children: [
-                                        _buildDaysHeader(),
-                                        const SizedBox(height: 8),
-                                        Expanded(
-                                          child: ListView.separated(
-                                            itemCount: routineList.length,
-                                            separatorBuilder: (_, __) =>
-                                                const SizedBox(height: 8),
-                                            itemBuilder: (context, index) {
-                                              final routine =
-                                                  routineList[index];
-                                              final routineMap = {
-                                                'id': routine.id,
-                                                'name': routine.name,
-                                                'goals': routine.goals,
-                                                'days': routine.days,
-                                                'notificationEnabled':
-                                                    routine.notificationEnabled,
-                                                'memo': routine.memo,
-                                                'createdAt': routine.createdAt,
-                                                'updatedAt': routine.updatedAt,
-                                              };
-                                              return RoutineListItem(
-                                                routine: routineMap,
-                                                index: routineVM.routineList
-                                                    .indexOf(routine),
-                                                routineVM: routineVM,
-                                                onDelete: (originalIndex) {
-                                                  routineVM.removeRoutine(
-                                                    originalIndex,
-                                                  );
-                                                },
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ],
+                                    Text(
+                                      '목표',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                        color: Colors.black,
+                                      ),
                                     ),
                                   ],
-                                );
-                              },
+                                ),
+                                const SizedBox(height: 8),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: goals.map((goal) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(right: 8),
+                                        child: _GoalTabButton(
+                                          text: goal,
+                                          selected: _selectedGoal == goal,
+                                          onTap: () {
+                                            setState(() {
+                                              _selectedGoal = goal;
+                                            });
+                                          },
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 0,
+                              ),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 8,
+                                ),
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: Consumer<RoutineViewModel>(
+                                        builder: (context, routineVM, _) {
+                                          final routineList = routineVM.routineList
+                                              .where(
+                                                (routine) =>
+                                                    routine.goals.contains(_selectedGoal),
+                                              )
+                                              .toList();
+
+                                          if (routineList.isEmpty) {
+                                            return Center(
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.assignment_outlined,
+                                                    size: 80,
+                                                    color: Colors.grey[400],
+                                                  ),
+                                                  const SizedBox(height: 16),
+                                                  Text(
+                                                    '루틴이 없습니다',
+                                                    style: TextStyle(
+                                                      fontSize: 18,
+                                                      fontWeight: FontWeight.w500,
+                                                      color: Colors.grey[600],
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    '오른쪽 상단의 + 버튼을 눌러\n루틴을 추가해보세요',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: Colors.grey[500],
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          }
+                                          return Stack(
+                                            children: [
+                                              Column(
+                                                children: [
+                                                  _buildDaysHeader(),
+                                                  const SizedBox(height: 8),
+                                                  Expanded(
+                                                    child: ListView.separated(
+                                                      itemCount: routineList.length,
+                                                      separatorBuilder: (_, __) =>
+                                                          const SizedBox(height: 8),
+                                                      itemBuilder: (context, index) {
+                                                        final routine =
+                                                            routineList[index];
+                                                        final routineMap = {
+                                                          'id': routine.id,
+                                                          'name': routine.name,
+                                                          'goals': routine.goals,
+                                                          'days': routine.days,
+                                                          'notificationEnabled':
+                                                              routine.notificationEnabled,
+                                                          'memo': routine.memo,
+                                                          'createdAt': routine.createdAt,
+                                                          'updatedAt': routine.updatedAt,
+                                                        };
+                                                        return RoutineListItem(
+                                                          routine: routineMap,
+                                                          index: routineVM.routineList
+                                                              .indexOf(routine),
+                                                          routineVM: routineVM,
+                                                          onDelete: (originalIndex) {
+                                                            routineVM.removeRoutine(
+                                                              originalIndex,
+                                                            );
+                                                          },
+                                                        );
+                                                      },
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ),
-              ],
-            ),
     );
   }
 
