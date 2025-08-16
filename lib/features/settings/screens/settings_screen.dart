@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../auth/view_models/auth_view_model.dart';
 
@@ -383,9 +384,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
                             Navigator.of(context).pop();
-                            // 로그아웃 로직 구현
+                            final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
+                            await authViewModel.logout();
+                            if (context.mounted) {
+                              context.go('/login');
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF799EFF),

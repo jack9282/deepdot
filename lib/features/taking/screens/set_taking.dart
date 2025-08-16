@@ -1,8 +1,10 @@
 import 'package:deepdot/common/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/taking_view_model.dart';
+import '../../../utils/alarm.dart';
 
 class SetTakingScreen extends StatelessWidget {
   final int? editIndex;
@@ -135,6 +137,10 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
       setState(() {
         _nameController.text = item.name;
         _takingTimes = List<String>.from(item.times);
+        _alarmOn = item.alarmEnabled;
+        final timeParts = item.alarmTime.split(':');
+        _selectedHour = timeParts[0];
+        _selectedMinute = timeParts[1];
       });
     }
   }
@@ -212,18 +218,42 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
 
     try {
       if (widget.editIndex != null) {
-        // 수정 모드: 기존 항목 업데이트
         await takingVM.updateTaking(
           widget.editIndex!,
           _nameController.text.trim(),
           List<String>.from(_takingTimes),
+          _alarmOn,
+          '${_selectedHour}:${_selectedMinute}',
         );
       } else {
-        // 추가 모드: 새 항목 추가
         await takingVM.addTaking(
           _nameController.text.trim(),
           List<String>.from(_takingTimes),
+          _alarmOn,
+          '${_selectedHour}:${_selectedMinute}',
         );
+      }
+
+      if (_alarmOn) {
+        final alarmId = DateTime.now().millisecondsSinceEpoch;
+        
+        for (final time in _takingTimes) {
+          final timeParts = time.split(':');
+          final scheduledTime = DateTime(
+            DateTime.now().year,
+            DateTime.now().month,
+            DateTime.now().day,
+            int.parse(timeParts[0]),
+            int.parse(timeParts[1]),
+          );
+
+          await AlarmUtility.setAlarm(
+            id: alarmId + _takingTimes.indexOf(time),
+            scheduledTime: scheduledTime,
+            title: '복용 알림',
+            body: '${_nameController.text.trim()} 복용 시간입니다!',
+          );
+        }
       }
       
       context.push('/taking-complete');
@@ -617,15 +647,14 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                   '알림',
                   style: TextStyle(fontSize: 18, color: Colors.black),
                 ),
-                Transform.scale(
-                  scale: 1.2,
-                  child: Switch(
-                    value: _alarmOn,
-                    onChanged: (val) => setState(() => _alarmOn = val),
-                    activeColor: Colors.black,
-                    inactiveThumbColor: Colors.grey,
-                    inactiveTrackColor: Colors.grey[300],
-                  ),
+                Switch(
+                  value: _alarmOn,
+                  onChanged: (val) {
+                    setState(() {
+                      _alarmOn = val;
+                    });
+                  },
+                  activeColor: AppTheme.primaryColor,
                 ),
               ],
             ),

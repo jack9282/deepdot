@@ -41,7 +41,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         
         if (isAutoLoggedIn) {
           // 자동 로그인 성공 시 메인 화면으로 이동
-          context.go('/main');
+          context.go('/home');
         } else {
           // 자동 로그인 실패 시 온보딩 화면으로 이동
           context.go('/onboarding');
