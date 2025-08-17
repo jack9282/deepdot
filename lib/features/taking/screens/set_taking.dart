@@ -233,28 +233,6 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
           '${_selectedHour}:${_selectedMinute}',
         );
       }
-
-      if (_alarmOn) {
-        final alarmId = DateTime.now().millisecondsSinceEpoch;
-        
-        for (final time in _takingTimes) {
-          final timeParts = time.split(':');
-          final scheduledTime = DateTime(
-            DateTime.now().year,
-            DateTime.now().month,
-            DateTime.now().day,
-            int.parse(timeParts[0]),
-            int.parse(timeParts[1]),
-          );
-
-          await AlarmUtility.setAlarm(
-            id: alarmId + _takingTimes.indexOf(time),
-            scheduledTime: scheduledTime,
-            title: '복용 알림',
-            body: '${_nameController.text.trim()} 복용 시간입니다!',
-          );
-        }
-      }
       
       context.push('/taking-complete');
     } catch (e) {

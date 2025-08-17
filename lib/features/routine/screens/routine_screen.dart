@@ -34,7 +34,10 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RoutineViewModel>().initialize();
+      final routineVM = context.read<RoutineViewModel>();
+      if (!routineVM.isInitialized) {
+        routineVM.initialize();
+      }
     });
   }
 
@@ -55,7 +58,10 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
   void didChangeDependencies() {
     super.didChangeDependencies();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RoutineViewModel>().initialize();
+      final routineVM = context.read<RoutineViewModel>();
+      if (!routineVM.isInitialized) {
+        routineVM.initialize();
+      }
     });
   }
 
@@ -330,6 +336,7 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
                                                           'days': routine.days,
                                                           'notificationEnabled':
                                                               routine.notificationEnabled,
+                                                          'notificationTime': routine.notificationTime,
                                                           'memo': routine.memo,
                                                           'createdAt': routine.createdAt,
                                                           'updatedAt': routine.updatedAt,

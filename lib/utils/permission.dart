@@ -43,7 +43,25 @@ class AppPermission {
   }
 
   static Future<bool> requestNotificationPermission() async {
-    final status = await Permission.notification.request();
-    return status.isGranted;
+    try {
+      final status = await Permission.notification.request();
+      print('알림 권한 상태: $status');
+      return status.isGranted;
+    } catch (e) {
+      print('알림 권한 요청 중 오류: $e');
+      return false;
+    }
+  }
+
+  /// 배터리 최적화 예외 권한 요청
+  static Future<bool> requestBatteryOptimizationPermission() async {
+    try {
+      final status = await Permission.ignoreBatteryOptimizations.request();
+      print('배터리 최적화 예외 권한 상태: $status');
+      return status.isGranted;
+    } catch (e) {
+      print('배터리 최적화 예외 권한 요청 중 오류: $e');
+      return false;
+    }
   }
 }

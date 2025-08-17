@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/taking_view_model.dart';
 import '../widgets/taking_list_item.dart';
-import '../../../common/theme/app_theme.dart';
 
 class TakingListScreen extends StatelessWidget {
   const TakingListScreen({super.key});

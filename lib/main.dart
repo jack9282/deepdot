@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import 'common/theme/app_theme.dart';
 import 'common/router/app_router.dart';
@@ -35,14 +34,10 @@ Future<void> main() async {
     ),
   );
 
-  // 💡 알림 권한 요청
+  // 알림 권한 요청
   await AppPermission.requestNotificationPermission();
-
-  // 💡 알람 유틸리티 초기화
+  await AppPermission.requestBatteryOptimizationPermission();
   await AlarmUtility.initialize();
-  
-  // 💡 앱 시작 시 모든 기존 알람 제거
-  await AlarmUtility.cancelAllAlarms();
 
   runApp(const DeepDotApp());
 }

@@ -23,13 +23,18 @@ class TakingViewModel with ChangeNotifier {
     _clearError();
     
     try {
+      // 앱 시작 시 모든 알람 초기화
+      print('앱 시작 - 모든 약물 복용 알람 초기화');
+      await _removeAllTakingAlarms();
+      
       await TakingRepository().loadFromStorage();
       await _syncWithApi();
       _loadTakingList();
       _isInitialized = true;
       
-      // 알람 복원은 하지 않음 - 앱 시작 시 모든 알람이 제거되므로
-      // 사용자가 직접 알람을 다시 설정하도록 함
+      // 약물 복용 알람 복원
+      await _restoreAllTakingAlarms();
+      print('약물 복용 알람 복원 완료');
     } catch (e) {
       _setError('데이터 로드 중 오류가 발생했습니다: $e');
     } finally {
@@ -186,8 +191,8 @@ class TakingViewModel with ChangeNotifier {
 
   Future<void> _setupAlarms(TakingModel taking, List<String> times) async {
     try {
-      // 안전한 알람 ID 생성
-      final baseAlarmId = AlarmIdGenerator.generateId();
+      // 안전한 알람 ID 생성 - 약물 복용 전용 ID 사용
+      final baseAlarmId = AlarmIdGenerator.generateTakingId();
       
       for (int i = 0; i < times.length; i++) {
         final timeParts = times[i].split(':');
@@ -200,10 +205,11 @@ class TakingViewModel with ChangeNotifier {
             int.parse(timeParts[1]),
           );
 
-          final alarmId = AlarmIdGenerator.generateTakingId(baseAlarmId, i);
+          // 더 안전한 ID 생성 - 약물 복용 전용 범위 사용
+          final alarmId = AlarmIdGenerator.generateTakingIdWithIndex(baseAlarmId, i);
           _alarmIds['${taking.id}_$i'] = alarmId;
 
-          await AlarmUtility.setAlarm(
+          await AlarmUtility.setDailyAlarm(
             id: alarmId,
             scheduledTime: scheduledTime,
             title: '복용 알림',
@@ -254,6 +260,33 @@ class TakingViewModel with ChangeNotifier {
       }
     } catch (e) {
       print('알람 복원 중 오류 발생: $e');
+    }
+  }
+
+  /// 모든 약물 복용 알람 제거
+  Future<void> _removeAllTakingAlarms() async {
+    try {
+      print('모든 약물 복용 알람 제거 시작');
+      await AlarmUtility.cancelAllAlarms();
+      _alarmIds.clear();
+      print('모든 약물 복용 알람 제거 완료');
+    } catch (e) {
+      print('모든 약물 복용 알람 제거 실패: $e');
+    }
+  }
+
+  /// 모든 약물 복용 알람 복원
+  Future<void> _restoreAllTakingAlarms() async {
+    try {
+      print('약물 복용 알람 복원 시작');
+      for (final taking in _takingList) {
+        if (taking.alarmEnabled) {
+          await _setupAlarms(taking, taking.times);
+        }
+      }
+      print('약물 복용 알람 복원 완료');
+    } catch (e) {
+      print('약물 복용 알람 복원 실패: $e');
     }
   }
 

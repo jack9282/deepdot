@@ -308,4 +308,33 @@ class RoutineRepository {
       // API 실패 시 로컬 데이터 유지
     }
   }
+
+  /// 루틴의 알람 ID를 업데이트합니다.
+  Future<void> updateRoutineAlarmId(int routineIndex, int alarmId) async {
+    try {
+      if (routineIndex >= 0 && routineIndex < _routineList.length) {
+        final routine = _routineList[routineIndex];
+        final updatedRoutine = routine.copyWith(alarmId: alarmId);
+        _routineList[routineIndex] = updatedRoutine;
+        await saveToStorage();
+      }
+    } catch (e) {
+      print('알람 ID 업데이트 중 오류 발생: $e');
+    }
+  }
+
+  /// 마지막에 추가된 루틴의 알람 ID를 설정합니다.
+  Future<void> setLastAddedRoutineAlarmId(int alarmId) async {
+    try {
+      if (_routineList.isNotEmpty) {
+        final lastIndex = _routineList.length - 1;
+        final lastRoutine = _routineList[lastIndex];
+        final updatedRoutine = lastRoutine.copyWith(alarmId: alarmId);
+        _routineList[lastIndex] = updatedRoutine;
+        await saveToStorage();
+      }
+    } catch (e) {
+      print('마지막 루틴 알람 ID 설정 중 오류 발생: $e');
+    }
+  }
 } 

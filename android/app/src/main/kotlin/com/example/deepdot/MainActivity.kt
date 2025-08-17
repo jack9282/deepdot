@@ -1,7 +1,11 @@
 package com.example.deepdot
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
 import androidx.core.view.WindowCompat
@@ -12,6 +16,19 @@ import io.flutter.embedding.android.FlutterActivity
 class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // 배터리 최적화 예외 요청 (Android 6.0 이상)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+            val packageName = packageName
+            if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+                val intent = Intent().apply {
+                    action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+                    data = Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+            }
+        }
         
         // 갤럭시 S10 등 최신 기종을 위한 전체 화면 설정
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

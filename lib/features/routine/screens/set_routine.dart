@@ -3,9 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/routine_view_model.dart';
-import '../../../data/models/routine_model.dart';
 import '../../../common/theme/app_theme.dart';
-import '../../../utils/alarm.dart';
 
 class SetRoutineScreen extends StatefulWidget {
   final Map<String, dynamic>? existingRoutine;
@@ -29,6 +27,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
   final List<String> _days = ['월', '화', '수', '목', '금', '토', '일'];
 
   bool _showNameError = false;
+  bool _showGoalError = false;
   TimeOfDay _selectedTime = const TimeOfDay(hour: 8, minute: 20);
 
   @override
@@ -41,13 +40,18 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
           widget.existingRoutine!['notificationEnabled'] ?? true;
 
       final existingTime = widget.existingRoutine!['notificationTime'] as String?;
-      if (existingTime != null) {
+      if (existingTime != null && existingTime.isNotEmpty) {
         final parts = existingTime.split(':');
         if (parts.length == 2) {
-          _selectedTime = TimeOfDay(
-            hour: int.parse(parts[0]),
-            minute: int.parse(parts[1]),
-          );
+          try {
+            final hour = int.parse(parts[0]);
+            final minute = int.parse(parts[1]);
+            if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
+              _selectedTime = TimeOfDay(hour: hour, minute: minute);
+            }
+          } catch (e) {
+            _selectedTime = const TimeOfDay(hour: 8, minute: 20);
+          }
         }
       }
 
@@ -186,6 +190,14 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         _buildAddGoalChip(),
                       ],
                     ),
+                    if (_showGoalError)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, left: 4),
+                        child: Text(
+                          '목표를 하나 이상 선택해주세요',
+                          style: TextStyle(fontSize: 12, color: Colors.red[600]),
+                        ),
+                      ),
                     const SizedBox(height: 24),
 
                     // 알림 설정
@@ -216,7 +228,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     ),
 
                     // 시간 설정 표시
-                    if (_notificationEnabled && _selectedTime != null)
+                    if (_notificationEnabled)
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -251,7 +263,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         ),
                       ),
 
-                    if (_notificationEnabled && _selectedTime != null)
+                    if (_notificationEnabled)
                       const SizedBox(height: 16),
 
                     const SizedBox(height: 24),
@@ -376,8 +388,16 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     return;
                   }
                   
+                  if (_selectedGoals.isEmpty) {
+                    setState(() {
+                      _showGoalError = true;
+                    });
+                    return;
+                  }
+                  
                   setState(() {
                     _showNameError = false;
+                    _showGoalError = false;
                   });
                   
                   final routineVM = context.read<RoutineViewModel>();
@@ -385,6 +405,8 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     for (int i = 0; i < _days.length; i++)
                       if (_selectedDays[i]) _days[i],
                   ];
+                  
+                  final notificationTimeString = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
                   
                   if (widget.existingRoutine != null && widget.routineIndex != null) {
                     // 기존 루틴 수정
@@ -394,7 +416,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                       _selectedGoals,
                       selectedDaysList,
                       _notificationEnabled,
-                      '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+                      notificationTimeString,
                       _memoController.text.trim(),
                     );
                   } else {
@@ -404,42 +426,13 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                       _selectedGoals,
                       selectedDaysList,
                       _notificationEnabled,
-                      '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+                      notificationTimeString,
                       _memoController.text.trim(),
                     );
                   }
 
-                  if (_notificationEnabled && selectedDaysList.isNotEmpty) {
-                    final alarmId = DateTime.now().millisecondsSinceEpoch;
-                    final scheduledTime = DateTime(
-                      DateTime.now().year,
-                      DateTime.now().month,
-                      DateTime.now().day,
-                      _selectedTime.hour,
-                      _selectedTime.minute,
-                    );
-                    
-                    final weekdays = selectedDaysList.map((day) {
-                      switch (day) {
-                        case '월': return 1;
-                        case '화': return 2;
-                        case '수': return 3;
-                        case '목': return 4;
-                        case '금': return 5;
-                        case '토': return 6;
-                        case '일': return 7;
-                        default: return 1;
-                      }
-                    }).toList();
-
-                    await AlarmUtility.setWeeklyAlarm(
-                      baseId: alarmId,
-                      scheduledTime: scheduledTime,
-                      title: '루틴 알림',
-                      body: '${_routineNameController.text.trim()} 시간입니다!',
-                      weekdays: weekdays,
-                    );
-                  }
+                  // 알람 설정은 RoutineViewModel에서 자동으로 처리됨
+                  // 별도의 알람 설정 로직이 필요 없음
 
                   if (widget.existingRoutine != null) {
                     Navigator.of(context).pop();
@@ -497,6 +490,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
           } else {
             _selectedGoals.add(goal);
           }
+          _showGoalError = false;
         });
       },
       child: Container(
@@ -527,7 +521,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
   Widget _buildAddGoalChip() {
     return GestureDetector(
       onTap: () {
-        // 목표 추가 기능 (나중에 구현)
+        _showAddGoalDialog();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -552,6 +546,104 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showAddGoalDialog() {
+    final TextEditingController goalController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            '새 목표 추가',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          content: TextField(
+            controller: goalController,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: '목표를 입력해주세요',
+              hintStyle: TextStyle(
+                color: Colors.grey[400],
+                fontWeight: FontWeight.w500,
+              ),
+              filled: true,
+              fillColor: Colors.grey[100],
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppTheme.primaryColor),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+            style: const TextStyle(
+              fontSize: 15,
+              color: Colors.black,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                '취소',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newGoal = goalController.text.trim();
+                if (newGoal.isNotEmpty) {
+                  setState(() {
+                    if (!_availableGoals.contains(newGoal)) {
+                      _availableGoals.add(newGoal);
+                    }
+                    if (!_selectedGoals.contains(newGoal)) {
+                      _selectedGoals.add(newGoal);
+                    }
+                    _showGoalError = false;
+                  });
+                }
+                Navigator.of(context).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                '추가',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

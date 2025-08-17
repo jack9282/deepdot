@@ -9,6 +9,7 @@ class RoutineModel {
   final List<bool> checks; // 단순화: List<List<bool>> -> List<bool>
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final int? alarmId; // 알람 ID 추가
 
   RoutineModel({
     required this.id,
@@ -21,6 +22,7 @@ class RoutineModel {
     required this.checks,
     required this.createdAt,
     this.updatedAt,
+    this.alarmId,
   });
 
   factory RoutineModel.fromJson(Map<String, dynamic> json) {
@@ -60,6 +62,7 @@ class RoutineModel {
       checks: checks,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      alarmId: json['alarmId'] as int?,
     );
   }
 
@@ -75,6 +78,7 @@ class RoutineModel {
       'checks': checks,
       'createdAt': createdAt.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
+      if (alarmId != null) 'alarmId': alarmId,
     };
   }
 
@@ -90,6 +94,7 @@ class RoutineModel {
     List<bool>? checks,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? alarmId,
   }) {
     return RoutineModel(
       id: id ?? this.id,
@@ -102,6 +107,7 @@ class RoutineModel {
       checks: checks ?? this.checks,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      alarmId: alarmId ?? this.alarmId,
     );
   }
 } 
