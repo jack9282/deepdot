@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../view_models/routine_view_model.dart';
+import '../../../common/theme/app_theme.dart';
 
 class RoutineListItem extends StatefulWidget {
   final Map<String, dynamic> routine;
   final int index;
   final RoutineViewModel routineVM;
   final Function(int index)? onDelete;
+  final VoidCallback? onEditPressed;
 
   const RoutineListItem({
     super.key,
@@ -13,6 +16,7 @@ class RoutineListItem extends StatefulWidget {
     required this.index,
     required this.routineVM,
     this.onDelete,
+    this.onEditPressed,
   });
 
   @override
@@ -26,82 +30,184 @@ class _RoutineListItemState extends State<RoutineListItem> {
   Widget build(BuildContext context) {
     final String routineName = widget.routine['name'] ?? '';
     final List<String> days = List<String>.from(widget.routine['days'] ?? []);
-    final List<bool> checks = widget.routineVM.getRoutineChecks(widget.index);
 
-    return Container(
-      height: 44,
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              routineName,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w400,
-                color: Color(0xFF222222),
-                letterSpacing: -0.2,
+    return Consumer<RoutineViewModel>(
+      builder: (context, routineVM, child) {
+        final List<bool> checks = routineVM.getRoutineChecks(widget.index);
+        
+        return Container(
+          height: 44,
+          margin: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  _showActionMenu(context);
+                },
+                child: SizedBox(
+                  width: 100,
+                  child: Text(
+                    routineName,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF222222),
+                      letterSpacing: -0.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          ...List.generate(7, (dayIndex) {
-            final bool isDayActive = days.contains(_dayString(dayIndex));
-            final bool isChecked = checks[dayIndex];
-            
-            return Expanded(
-              child: Center(
-                child: isDayActive
-                    ? GestureDetector(
-                        onTap: () {
-                          widget.routineVM.updateRoutineCheck(
-                            widget.index,
-                            dayIndex,
-                            !isChecked,
-                          );
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeInOut,
-                          width: 28,
-                          height: 28,
-                          margin: const EdgeInsets.symmetric(vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isChecked ? naverBlue : Colors.white,
-                            border: Border.all(
-                              color: isChecked ? naverBlue : Colors.grey[400]!,
-                              width: 2,
+              ...List.generate(7, (dayIndex) {
+                final bool isDayActive = days.contains(_dayString(dayIndex));
+                final bool isChecked = checks[dayIndex];
+                
+                return Expanded(
+                  child: Center(
+                    child: isDayActive
+                        ? GestureDetector(
+                            onTap: () {
+                              routineVM.updateRoutineCheck(
+                                widget.index,
+                                dayIndex,
+                                !isChecked,
+                              );
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeInOut,
+                              width: 28,
+                              height: 28,
+                              margin: const EdgeInsets.symmetric(vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isChecked ? naverBlue : Colors.white,
+                                border: Border.all(
+                                  color: isChecked ? naverBlue : Colors.grey[400]!,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 150),
+                                child: isChecked
+                                    ? const Icon(
+                                        Icons.check,
+                                        key: ValueKey('checked'),
+                                        color: Colors.white,
+                                        size: 20,
+                                      )
+                                    : const SizedBox.shrink(key: ValueKey('unchecked')),
+                              ),
                             ),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 150),
-                            child: isChecked
-                                ? const Icon(
-                                    Icons.check,
-                                    key: ValueKey('checked'),
-                                    color: Colors.white,
-                                    size: 20,
-                                  )
-                                : const SizedBox.shrink(key: ValueKey('unchecked')),
-                          ),
-                        ),
-                      )
-                    : const DayBubble(),
-              ),
-            );
-          }),
-        ],
-      ),
+                          )
+                        : const DayBubble(),
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 
   String _dayString(int index) {
     const days = ['월', '화', '수', '목', '금', '토', '일'];
     return days[index];
+  }
+
+  void _showActionMenu(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Container(
+            width: 280,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 메시지 영역
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    "'${widget.routine['name']}' 루틴",
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                // 구분선
+                Container(
+                  height: 1,
+                  color: const Color(0xFFE0E0E0),
+                ),
+                // 수정 버튼
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    if (widget.onEditPressed != null) {
+                      widget.onEditPressed!();
+                    }
+                  },
+                  child: Container(
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Color(0xFFE0E0E0),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        '수정하기',
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // 삭제 버튼
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    if (widget.onDelete != null) {
+                      widget.onDelete!(widget.index);
+                    }
+                  },
+                  child: Container(
+                    height: 48,
+                    child: const Center(
+                      child: Text(
+                        '삭제하기',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

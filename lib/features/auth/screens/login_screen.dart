@@ -371,9 +371,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               width: double.infinity,
                               height: 56,
                               child: OutlinedButton(
-                                onPressed: () {
-                                  context.push('/home');
-                                },
+                                onPressed: authViewModel.isLoading
+                                    ? null
+                                    : () async {
+                                        await _handleGuestLogin(authViewModel);
+                                      },
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: AppTheme.textPrimaryColor,
                                   side: BorderSide(
@@ -384,13 +386,24 @@ class _LoginScreenState extends State<LoginScreen> {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                child: const Text(
-                                  '비회원 로그인',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                                child: authViewModel.isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            AppTheme.textPrimaryColor,
+                                          ),
+                                        ),
+                                      )
+                                    : const Text(
+                                        '비회원 로그인',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                               ),
                             ),
                           ],
@@ -429,6 +442,23 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _formKey.currentState?.validate();
       });
+    }
+  }
+
+  Future<void> _handleGuestLogin(AuthViewModel authViewModel) async {
+    // 비회원 로그인 시도 전에 에러 메시지 초기화
+    authViewModel.clearError();
+    
+    final success = await authViewModel.guestLogin();
+
+    if (success && mounted) {
+      context.go('/home');
+    } else if (!success && mounted) {
+      // 비회원 로그인 실패 시 스낵바로 경고 메시지 표시
+      CustomSnackBar.showError(
+        context,
+        authViewModel.errorMessage ?? '비회원 로그인에 실패했습니다.',
+      );
     }
   }
 }

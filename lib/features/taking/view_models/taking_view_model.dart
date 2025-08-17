@@ -2,18 +2,23 @@ import 'package:flutter/material.dart';
 import '../../../data/repositories/taking_repository.dart';
 import '../../../data/models/taking_model.dart';
 import '../../../utils/alarm.dart';
+import '../../../utils/alarm_id_generator.dart';
+import '../../../api/token_manager.dart';
 
 class TakingViewModel with ChangeNotifier {
   List<TakingModel> _takingList = [];
   Map<String, int> _alarmIds = {}; // 약 ID와 알람 ID 매핑
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isInitialized = false;
 
   List<TakingModel> get takingList => List.unmodifiable(_takingList);
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
   Future<void> initialize() async {
+    if (_isInitialized) return;
+    
     _setLoading(true);
     _clearError();
     
@@ -21,6 +26,10 @@ class TakingViewModel with ChangeNotifier {
       await TakingRepository().loadFromStorage();
       await _syncWithApi();
       _loadTakingList();
+      _isInitialized = true;
+      
+      // 알람 복원은 하지 않음 - 앱 시작 시 모든 알람이 제거되므로
+      // 사용자가 직접 알람을 다시 설정하도록 함
     } catch (e) {
       _setError('데이터 로드 중 오류가 발생했습니다: $e');
     } finally {
@@ -30,6 +39,12 @@ class TakingViewModel with ChangeNotifier {
 
   Future<void> _syncWithApi() async {
     try {
+      // 비회원 모드일 때는 API 동기화를 하지 않음
+      if (await TokenManager.instance.isGuestMode()) {
+        print('비회원 모드 - API 동기화 건너뛰기');
+        return;
+      }
+      
       await TakingRepository().syncFromApi();
     } catch (e) {
       print('API 동기화 실패, 로컬 데이터 사용: $e');
@@ -141,10 +156,16 @@ class TakingViewModel with ChangeNotifier {
     
     try {
       // 모든 알람 제거
-      for (final alarmId in _alarmIds.values) {
-        await AlarmUtility.cancelAlarm(alarmId);
-      }
+      final alarmIdsToRemove = Map<String, int>.from(_alarmIds);
       _alarmIds.clear();
+      
+      for (final alarmId in alarmIdsToRemove.values) {
+        try {
+          await AlarmUtility.cancelAlarm(alarmId);
+        } catch (e) {
+          print('알람 제거 중 오류 발생: $e');
+        }
+      }
       
       TakingRepository().clearAllData();
       _loadTakingList();
@@ -164,41 +185,75 @@ class TakingViewModel with ChangeNotifier {
   }
 
   Future<void> _setupAlarms(TakingModel taking, List<String> times) async {
-    final baseAlarmId = DateTime.now().millisecondsSinceEpoch;
-    
-    for (int i = 0; i < times.length; i++) {
-      final timeParts = times[i].split(':');
-      if (timeParts.length == 2) {
-        final scheduledTime = DateTime(
-          DateTime.now().year,
-          DateTime.now().month,
-          DateTime.now().day,
-          int.parse(timeParts[0]),
-          int.parse(timeParts[1]),
-        );
+    try {
+      // 안전한 알람 ID 생성
+      final baseAlarmId = AlarmIdGenerator.generateId();
+      
+      for (int i = 0; i < times.length; i++) {
+        final timeParts = times[i].split(':');
+        if (timeParts.length == 2) {
+          final scheduledTime = DateTime(
+            DateTime.now().year,
+            DateTime.now().month,
+            DateTime.now().day,
+            int.parse(timeParts[0]),
+            int.parse(timeParts[1]),
+          );
 
-        final alarmId = baseAlarmId + i;
-        _alarmIds['${taking.id}_$i'] = alarmId;
+          final alarmId = AlarmIdGenerator.generateTakingId(baseAlarmId, i);
+          _alarmIds['${taking.id}_$i'] = alarmId;
 
-        await AlarmUtility.setAlarm(
-          id: alarmId,
-          scheduledTime: scheduledTime,
-          title: '복용 알림',
-          body: '${taking.name} 복용 시간입니다!',
-        );
+          await AlarmUtility.setAlarm(
+            id: alarmId,
+            scheduledTime: scheduledTime,
+            title: '복용 알림',
+            body: '${taking.name} 복용 시간입니다!',
+          );
+        }
       }
+    } catch (e) {
+      print('알람 설정 중 오류 발생: $e');
     }
   }
 
   Future<void> _removeAlarms(TakingModel taking) async {
-    if (taking.alarmEnabled) {
-      for (int i = 0; i < taking.times.length; i++) {
-        final alarmId = _alarmIds['${taking.id}_$i'];
-        if (alarmId != null) {
-          await AlarmUtility.cancelAlarm(alarmId);
-          _alarmIds.remove('${taking.id}_$i');
+    try {
+      if (taking.alarmEnabled) {
+        for (int i = 0; i < taking.times.length; i++) {
+          final alarmId = _alarmIds['${taking.id}_$i'];
+          if (alarmId != null) {
+            await AlarmUtility.cancelAlarm(alarmId);
+            _alarmIds.remove('${taking.id}_$i');
+          }
         }
       }
+    } catch (e) {
+      print('알람 제거 중 오류 발생: $e');
+    }
+  }
+
+  Future<void> _restoreAlarms() async {
+    try {
+      // 기존 알람 ID들을 복사하여 안전하게 제거
+      final alarmIdsToRemove = Map<String, int>.from(_alarmIds);
+      _alarmIds.clear();
+      
+      for (final alarmId in alarmIdsToRemove.values) {
+        try {
+          await AlarmUtility.cancelAlarm(alarmId);
+        } catch (e) {
+          print('기존 알람 제거 중 오류: $e');
+        }
+      }
+      
+      // 새로운 알람 설정
+      for (final taking in _takingList) {
+        if (taking.alarmEnabled) {
+          await _setupAlarms(taking, taking.times);
+        }
+      }
+    } catch (e) {
+      print('알람 복원 중 오류 발생: $e');
     }
   }
 

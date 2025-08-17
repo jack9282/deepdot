@@ -340,8 +340,112 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
                                                               .indexOf(routine),
                                                           routineVM: routineVM,
                                                           onDelete: (originalIndex) {
-                                                            routineVM.removeRoutine(
-                                                              originalIndex,
+                                                            showDialog(
+                                                              context: context,
+                                                              builder: (BuildContext context) {
+                                                                return Dialog(
+                                                                  backgroundColor: Colors.white,
+                                                                  shape: RoundedRectangleBorder(
+                                                                    borderRadius: BorderRadius.circular(12),
+                                                                  ),
+                                                                  child: Container(
+                                                                    width: 280,
+                                                                    child: Column(
+                                                                      mainAxisSize: MainAxisSize.min,
+                                                                      children: [
+                                                                        // 메시지 영역
+                                                                        Padding(
+                                                                          padding: const EdgeInsets.all(24),
+                                                                          child: Text(
+                                                                            "'${routine.name}'를 삭제하시겠습니까?",
+                                                                            style: const TextStyle(
+                                                                              color: Colors.black,
+                                                                              fontSize: 16,
+                                                                              fontWeight: FontWeight.w400,
+                                                                            ),
+                                                                            textAlign: TextAlign.center,
+                                                                          ),
+                                                                        ),
+                                                                        // 구분선
+                                                                        Container(
+                                                                          height: 1,
+                                                                          color: const Color(0xFFE0E0E0),
+                                                                        ),
+                                                                        // 버튼 영역
+                                                                        Row(
+                                                                          children: [
+                                                                            // 취소 버튼
+                                                                            Expanded(
+                                                                              child: GestureDetector(
+                                                                                onTap: () {
+                                                                                  Navigator.of(context).pop();
+                                                                                },
+                                                                                child: Container(
+                                                                                  height: 48,
+                                                                                  decoration: const BoxDecoration(
+                                                                                    border: Border(
+                                                                                      right: BorderSide(
+                                                                                        color: Color(0xFFE0E0E0),
+                                                                                        width: 1,
+                                                                                      ),
+                                                                                    ),
+                                                                                  ),
+                                                                                  child: const Center(
+                                                                                    child: Text(
+                                                                                      '취소',
+                                                                                      style: TextStyle(
+                                                                                        color: Color(0xFF666666),
+                                                                                        fontSize: 16,
+                                                                                        fontWeight:
+                                                                                            FontWeight.w400,
+                                                                                      ),
+                                                                                    ),
+                                                                                  ),
+                                                                                ),
+                                                                              ),
+                                                                            ),
+                                                                            // 삭제 버튼
+                                                                            Expanded(
+                                                                              child: GestureDetector(
+                                                                                onTap: () {
+                                                                                  Navigator.of(context).pop();
+                                                                                  routineVM.removeRoutine(
+                                                                                    originalIndex,
+                                                                                  );
+                                                                                },
+                                                                                child: Container(
+                                                                                  height: 48,
+                                                                                  child: const Center(
+                                                                                    child: Text(
+                                                                                      '삭제하기',
+                                                                                      style: TextStyle(
+                                                                                        color: Colors.red,
+                                                                                        fontSize: 16,
+                                                                                        fontWeight:
+                                                                                            FontWeight.w400,
+                                                                                      ),
+                                                                                    ),
+                                                                                  ),
+                                                                                ),
+                                                                              ),
+                                                                            ),
+                                                                          ],
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                  ),
+                                                                );
+                                                              },
+                                                            );
+                                                          },
+                                                          onEditPressed: () {
+                                                            Navigator.of(context).push(
+                                                              MaterialPageRoute(
+                                                                builder: (context) => SetRoutineScreen(
+                                                                  existingRoutine: routineMap,
+                                                                  routineIndex: routineVM.routineList.indexOf(routine),
+                                                                ),
+                                                              ),
                                                             );
                                                           },
                                                         );
@@ -372,7 +476,7 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          const SizedBox(width: 120),
+          const SizedBox(width: 100),
           ...List.generate(
             days.length,
             (i) => Expanded(

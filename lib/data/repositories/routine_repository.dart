@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/routine_model.dart';
+import '../../api/token_manager.dart';
 
 class RoutineRepository {
   static const String _routineListKey = 'routine_list';
@@ -40,36 +41,136 @@ class RoutineRepository {
   }
 
   Future<void> addRoutine(String name, List<String> goals, List<String> days, bool notificationEnabled, String notificationTime, String memo) async {
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final checks = List.generate(7, (_) => false);
-    
-    final newRoutine = RoutineModel(
-      id: id,
-      name: name,
-      goals: goals,
-      days: days,
-      notificationEnabled: notificationEnabled,
-      notificationTime: notificationTime,
-      memo: memo,
-      checks: checks,
-      createdAt: DateTime.now(),
-    );
-    _routineList.add(newRoutine);
-    await saveToStorage();
-  }
-
-  Future<void> updateRoutine(int index, String name, List<String> goals, List<String> days, bool notificationEnabled, String notificationTime, String memo) async {
-    if (index >= 0 && index < _routineList.length) {
-      final oldRoutine = _routineList[index];
-      _routineList[index] = oldRoutine.copyWith(
+    // 비회원 모드 체크
+    if (await TokenManager.instance.isGuestMode()) {
+      print('비회원 모드 - 로컬에서만 저장');
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
+      final checks = List.generate(7, (_) => false);
+      
+      final newRoutine = RoutineModel(
+        id: id,
         name: name,
         goals: goals,
         days: days,
         notificationEnabled: notificationEnabled,
         notificationTime: notificationTime,
         memo: memo,
-        updatedAt: DateTime.now(),
+        checks: checks,
+        createdAt: DateTime.now(),
       );
+      _routineList.add(newRoutine);
+      await saveToStorage();
+      return;
+    }
+
+    try {
+      // TODO: RoutineApi.createRoutine() 구현 후 실제 API 호출로 교체
+      // final newRoutine = await RoutineApi.createRoutine(
+      //   name: name,
+      //   goals: goals,
+      //   days: days,
+      //   notificationEnabled: notificationEnabled,
+      //   notificationTime: notificationTime,
+      //   memo: memo,
+      // );
+      
+      // 현재는 로컬에서만 저장
+      print('API 호출 건너뛰고 로컬에서만 저장');
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
+      final checks = List.generate(7, (_) => false);
+      
+      final newRoutine = RoutineModel(
+        id: id,
+        name: name,
+        goals: goals,
+        days: days,
+        notificationEnabled: notificationEnabled,
+        notificationTime: notificationTime,
+        memo: memo,
+        checks: checks,
+        createdAt: DateTime.now(),
+      );
+      _routineList.add(newRoutine);
+      await saveToStorage();
+    } catch (e) {
+      print('API 추가 실패, 로컬에서만 저장: $e');
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
+      final checks = List.generate(7, (_) => false);
+      
+      final newRoutine = RoutineModel(
+        id: id,
+        name: name,
+        goals: goals,
+        days: days,
+        notificationEnabled: notificationEnabled,
+        notificationTime: notificationTime,
+        memo: memo,
+        checks: checks,
+        createdAt: DateTime.now(),
+      );
+      _routineList.add(newRoutine);
+      await saveToStorage();
+      throw e;
+    }
+  }
+
+  Future<void> updateRoutine(int index, String name, List<String> goals, List<String> days, bool notificationEnabled, String notificationTime, String memo) async {
+    if (index >= 0 && index < _routineList.length) {
+      final oldRoutine = _routineList[index];
+      
+      // 비회원 모드 체크
+      if (await TokenManager.instance.isGuestMode()) {
+        print('비회원 모드 - 로컬에서만 저장');
+        _routineList[index] = oldRoutine.copyWith(
+          name: name,
+          goals: goals,
+          days: days,
+          notificationEnabled: notificationEnabled,
+          notificationTime: notificationTime,
+          memo: memo,
+          updatedAt: DateTime.now(),
+        );
+        await saveToStorage();
+        return;
+      }
+      
+      try {
+        // TODO: RoutineApi.updateRoutine() 구현 후 실제 API 호출로 교체
+        // final updatedRoutine = await RoutineApi.updateRoutine(
+        //   routineId: int.parse(oldRoutine.id),
+        //   name: name,
+        //   goals: goals,
+        //   days: days,
+        //   notificationEnabled: notificationEnabled,
+        //   notificationTime: notificationTime,
+        //   memo: memo,
+        // );
+        
+        // 현재는 로컬에서만 저장
+        print('API 호출 건너뛰고 로컬에서만 저장');
+        _routineList[index] = oldRoutine.copyWith(
+          name: name,
+          goals: goals,
+          days: days,
+          notificationEnabled: notificationEnabled,
+          notificationTime: notificationTime,
+          memo: memo,
+          updatedAt: DateTime.now(),
+        );
+      } catch (e) {
+        print('API 수정 실패, 로컬에서만 저장: $e');
+        _routineList[index] = oldRoutine.copyWith(
+          name: name,
+          goals: goals,
+          days: days,
+          notificationEnabled: notificationEnabled,
+          notificationTime: notificationTime,
+          memo: memo,
+          updatedAt: DateTime.now(),
+        );
+        throw e;
+      }
+      
       await saveToStorage();
     }
   }
@@ -101,6 +202,24 @@ class RoutineRepository {
 
   Future<void> removeRoutine(int index) async {
     if (index >= 0 && index < _routineList.length) {
+      final id = _routineList[index].id;
+      
+      // 비회원 모드 체크
+      if (await TokenManager.instance.isGuestMode()) {
+        print('비회원 모드 - 로컬에서만 삭제');
+        _routineList.removeAt(index);
+        await saveToStorage();
+        return;
+      }
+      
+      try {
+        // TODO: RoutineApi.deleteRoutine() 구현 후 실제 API 호출로 교체
+        // await RoutineApi.deleteRoutine(int.parse(id));
+        print('API 호출 건너뛰고 로컬에서만 삭제');
+      } catch (e) {
+        print('API 삭제 실패, 로컬에서만 삭제: $e');
+      }
+      
       _routineList.removeAt(index);
       await saveToStorage();
     }
@@ -133,6 +252,21 @@ class RoutineRepository {
     return _routineList.where((routine) => routine.goals.contains(goal)).toList();
   }
 
+  /// 특정 루틴의 체크 상태 조회
+  List<bool> getRoutineChecks(int routineIndex) {
+    if (routineIndex >= 0 && routineIndex < _routineList.length) {
+      final routine = _routineList[routineIndex];
+      
+      // 체크 상태 배열이 올바르지 않은 경우 기본값 반환
+      if (routine.checks.length != 7) {
+        return List.generate(7, (_) => false);
+      }
+      
+      return List<bool>.from(routine.checks);
+    }
+    return List.generate(7, (_) => false);
+  }
+
   /// 체크 상태 통계 조회
   Map<String, dynamic> getRoutineStats() {
     int totalRoutines = _routineList.length;
@@ -152,5 +286,26 @@ class RoutineRepository {
       'completedChecks': completedChecks,
       'completionRate': totalChecks > 0 ? (completedChecks / totalChecks) : 0.0,
     };
+  }
+
+  /// API에서 모든 루틴 데이터 동기화
+  Future<void> syncFromApi() async {
+    // 비회원 모드 체크
+    if (await TokenManager.instance.isGuestMode()) {
+      print('비회원 모드 - API 동기화 건너뛰기');
+      return;
+    }
+    
+    try {
+      // TODO: RoutineApi 구현 후 실제 API 호출로 교체
+      // final apiRoutines = await RoutineApi.getAllRoutines();
+      
+      // 현재는 로컬 데이터만 유지
+      print('루틴 API 동기화 - 현재는 로컬 데이터만 사용');
+      await saveToStorage();
+    } catch (e) {
+      print('루틴 API 동기화 실패: $e');
+      // API 실패 시 로컬 데이터 유지
+    }
   }
 } 

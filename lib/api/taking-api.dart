@@ -91,12 +91,26 @@ class TakingApi {
   /// 약물 삭제
   static Future<void> deleteMedication(int medicationId) async {
     try {
+      print('약물 삭제 시도: ID = $medicationId');
       final response = await HttpClient.delete('$_baseEndpoint/$medicationId');
 
-      if (response.statusCode != 200) {
-        throw Exception('약물 삭제 실패: ${response.statusCode}');
+      print('약물 삭제 응답: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        print('약물 삭제 성공: ID = $medicationId');
+      } else if (response.statusCode == 404) {
+        throw Exception('약물을 찾을 수 없습니다 (ID: $medicationId)');
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다');
+      } else if (response.statusCode == 403) {
+        throw Exception('삭제 권한이 없습니다');
+      } else if (response.statusCode == 500) {
+        throw Exception('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        throw Exception('약물 삭제 실패: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
+      print('약물 삭제 중 상세 오류: $e');
       throw Exception('약물 삭제 중 오류 발생: $e');
     }
   }

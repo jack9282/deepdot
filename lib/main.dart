@@ -13,6 +13,7 @@ import 'features/home/view_models/home_view_model.dart';
 import 'features/schedule/view_models/schedule_view_model.dart';
 import 'features/statistics/view_models/statistics_view_model.dart';
 import './utils/permission.dart'; // 권한 유틸 임포트
+import './utils/alarm.dart'; // 알람 유틸 임포트
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +37,12 @@ Future<void> main() async {
 
   // 💡 알림 권한 요청
   await AppPermission.requestNotificationPermission();
+
+  // 💡 알람 유틸리티 초기화
+  await AlarmUtility.initialize();
+  
+  // 💡 앱 시작 시 모든 기존 알람 제거
+  await AlarmUtility.cancelAllAlarms();
 
   runApp(const DeepDotApp());
 }

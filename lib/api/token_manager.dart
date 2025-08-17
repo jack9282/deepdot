@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'auth_api.dart';
 
 class TokenManager {
   static const String _accessTokenKey = 'access_token';
@@ -143,5 +144,32 @@ class TokenManager {
     }
     
     return userId;
+  }
+
+  /// 토큰 갱신 시도
+  Future<bool> refreshToken() async {
+    try {
+      final authResponse = await AuthAPI.refreshToken();
+      return true;
+    } catch (e) {
+      print('토큰 갱신 실패: $e');
+      return false;
+    }
+  }
+
+  /// 토큰이 만료되었는지 확인하고 갱신 시도
+  Future<bool> ensureValidToken() async {
+    if (await hasValidToken()) {
+      return true;
+    }
+    
+    return await refreshToken();
+  }
+
+  /// 비회원 모드인지 확인 (토큰이 없거나 유효하지 않은 경우)
+  Future<bool> isGuestMode() async {
+    final loggedInStatus = await isLoggedIn();
+    final hasValidToken = await this.hasValidToken();
+    return !loggedInStatus || !hasValidToken;
   }
 } 

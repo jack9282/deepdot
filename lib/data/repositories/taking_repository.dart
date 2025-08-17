@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/taking_model.dart';
 import '../../api/taking-api.dart';
+import '../../api/token_manager.dart';
 
 class TakingRepository {
   static const String _takingListKey = 'taking_list';
@@ -64,6 +65,24 @@ class TakingRepository {
   }
 
   Future<void> addTaking(String name, List<String> times, bool alarmEnabled, String alarmTime) async {
+    // 비회원 모드 체크
+    if (await TokenManager.instance.isGuestMode()) {
+      print('비회원 모드 - 로컬에서만 저장');
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
+      final newTaking = TakingModel(
+        id: id,
+        name: name,
+        times: times,
+        alarmEnabled: alarmEnabled,
+        alarmTime: alarmTime,
+        createdAt: DateTime.now(),
+      );
+      _takingList.add(newTaking);
+      _takingChecks[id] = List.generate(times.length, (_) => false);
+      await saveToStorage();
+      return;
+    }
+
     try {
       final newTaking = await TakingApi.createMedication(
         name: name,
@@ -105,6 +124,32 @@ class TakingRepository {
   Future<void> updateTaking(int index, String name, List<String> times, bool alarmEnabled, String alarmTime) async {
     if (index >= 0 && index < _takingList.length) {
       final oldId = _takingList[index].id;
+      
+      // 비회원 모드 체크
+      if (await TokenManager.instance.isGuestMode()) {
+        print('비회원 모드 - 로컬에서만 저장');
+        _takingList[index] = TakingModel(
+          id: oldId,
+          name: name,
+          times: times,
+          alarmEnabled: alarmEnabled,
+          alarmTime: alarmTime,
+          createdAt: _takingList[index].createdAt,
+          updatedAt: DateTime.now(),
+        );
+        
+        // 체크 상태 업데이트
+        if (_takingChecks.containsKey(oldId)) {
+          final currentChecks = _takingChecks[oldId]!;
+          if (currentChecks.length != times.length) {
+            _takingChecks[oldId] = List.generate(times.length, (i) => i < currentChecks.length ? currentChecks[i] : false);
+          }
+        } else {
+          _takingChecks[oldId] = List.generate(times.length, (_) => false);
+        }
+        await saveToStorage();
+        return;
+      }
       
       try {
         final updatedTaking = await TakingApi.updateMedication(
@@ -155,6 +200,15 @@ class TakingRepository {
   Future<void> removeTaking(int index) async {
     if (index >= 0 && index < _takingList.length) {
       final id = _takingList[index].id;
+      
+      // 비회원 모드 체크
+      if (await TokenManager.instance.isGuestMode()) {
+        print('비회원 모드 - 로컬에서만 삭제');
+        _takingList.removeAt(index);
+        _takingChecks.remove(id);
+        await saveToStorage();
+        return;
+      }
       
       try {
         await TakingApi.deleteMedication(int.parse(id));
@@ -207,6 +261,12 @@ class TakingRepository {
 
   /// API에서 모든 약물 데이터 동기화
   Future<void> syncFromApi() async {
+    // 비회원 모드 체크
+    if (await TokenManager.instance.isGuestMode()) {
+      print('비회원 모드 - API 동기화 건너뛰기');
+      return;
+    }
+    
     try {
       final apiMedications = await TakingApi.getAllMedications();
       

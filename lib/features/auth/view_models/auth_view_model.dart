@@ -12,12 +12,14 @@ class AuthViewModel with ChangeNotifier {
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isGuestMode = false;
 
   // Getters
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  bool get isLoggedIn => _currentUser != null;
+  bool get isLoggedIn => _currentUser != null || _isGuestMode;
+  bool get isGuestMode => _isGuestMode;
 
   // 앱 시작 시 저장된 토큰으로 자동 로그인 확인
   Future<bool> checkAutoLogin() async {
@@ -310,6 +312,24 @@ class AuthViewModel with ChangeNotifier {
     }
   }
 
+  // 비회원 로그인
+  Future<bool> guestLogin() async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      _isGuestMode = true;
+      _setUser(null); // 비회원 모드에서는 사용자 정보 없음
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError('비회원 로그인 중 오류가 발생했습니다');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // 로그아웃
   Future<void> logout() async {
     _setLoading(true);
@@ -318,6 +338,7 @@ class AuthViewModel with ChangeNotifier {
       await _authRepository.logout();
       await TokenManager.instance.clearAuthData();
       _setUser(null);
+      _isGuestMode = false; // 비회원 모드도 해제
     } catch (e) {
       _setError('로그아웃 중 오류가 발생했습니다');
     } finally {

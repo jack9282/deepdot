@@ -10,7 +10,7 @@ import '../../features/taking/screens/taking_list_screen.dart';
 import '../../features/taking/screens/set_taking.dart';
 import '../../features/taking/screens/add_complete.dart';
 
-import '../../features/routine/screens/add_complete.dart';
+import '../../features/routine/screens/routine_add_complete.dart';
 import '../../features/routine/screens/routine_screen.dart';
 import '../../features/routine/screens/set_routine.dart';
 import '../../features/settings/screens/settings_screen.dart';
@@ -111,13 +111,13 @@ class AppRouter {
       ),
 
       GoRoute(
-        path: '/routine-complete',
-        builder: (context, state) => const RoutineCompleteScreen(),
+        path: '/routine-add',
+        builder: (context, state) => const SetRoutineScreen(),
       ),
 
       GoRoute(
-        path: '/routine-add',
-        builder: (context, state) => const SetRoutineScreen(),
+        path: '/routine-add-complete',
+        builder: (context, state) => const RoutineAddCompleteScreen(),
       ),
     ],
   );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/routine_view_model.dart';
 import '../../../data/models/routine_model.dart';
@@ -83,9 +84,9 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         centerTitle: true,
-        title: const Text(
-          '루틴 생성',
-          style: TextStyle(
+        title: Text(
+          widget.existingRoutine != null ? '루틴 수정' : '루틴 생성',
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.w600,
             fontSize: 18,
@@ -385,14 +386,28 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                       if (_selectedDays[i]) _days[i],
                   ];
                   
-                  await routineVM.addRoutine(
-                    _routineNameController.text.trim(),
-                    _selectedGoals,
-                    selectedDaysList,
-                    _notificationEnabled,
-                    '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
-                    _memoController.text.trim(),
-                  );
+                  if (widget.existingRoutine != null && widget.routineIndex != null) {
+                    // 기존 루틴 수정
+                    await routineVM.updateRoutine(
+                      widget.routineIndex!,
+                      _routineNameController.text.trim(),
+                      _selectedGoals,
+                      selectedDaysList,
+                      _notificationEnabled,
+                      '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+                      _memoController.text.trim(),
+                    );
+                  } else {
+                    // 새 루틴 생성
+                    await routineVM.addRoutine(
+                      _routineNameController.text.trim(),
+                      _selectedGoals,
+                      selectedDaysList,
+                      _notificationEnabled,
+                      '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+                      _memoController.text.trim(),
+                    );
+                  }
 
                   if (_notificationEnabled && selectedDaysList.isNotEmpty) {
                     final alarmId = DateTime.now().millisecondsSinceEpoch;
@@ -418,7 +433,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     }).toList();
 
                     await AlarmUtility.setWeeklyAlarm(
-                      id: alarmId,
+                      baseId: alarmId,
                       scheduledTime: scheduledTime,
                       title: '루틴 알림',
                       body: '${_routineNameController.text.trim()} 시간입니다!',
@@ -426,7 +441,11 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     );
                   }
 
-                  Navigator.of(context).pop();
+                  if (widget.existingRoutine != null) {
+                    Navigator.of(context).pop();
+                  } else {
+                    context.go('/routine-add-complete');
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
