@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/schedule_repository.dart';
 import '../../../data/repositories/task_repository.dart';
+import '../../../data/repositories/focus_session_repository.dart';
 import '../../../data/models/task_model.dart';
 import '../../../data/models/schedule_model.dart';
 import '../../../api/mainpage_api.dart';
@@ -504,8 +505,20 @@ class HomeViewModel with ChangeNotifier {
   // 할일 수정 (비회원 지원)
   Future<bool> updateTask(TaskModel updatedTask) async {
     try {
+      // 기존 task를 먼저 가져와서 제목 변경 여부 확인
+      final oldTask = getTaskById(updatedTask.id);
+      final titleChanged = oldTask != null && oldTask.title != updatedTask.title;
+      final oldTitle = oldTask?.title ?? '';
+      
       // 로컬에서 먼저 수정
       await _taskRepository.updateTask(updatedTask);
+      
+      // 제목이 변경되었다면 focus session의 제목도 업데이트
+      if (titleChanged && oldTitle.isNotEmpty) {
+        final focusRepository = FocusSessionRepository();
+        await focusRepository.loadSessionsFromStorage();
+        await focusRepository.updateSessionTaskTitle(oldTitle, updatedTask.title);
+      }
       
       // 백그라운드에서 Schedule API 시도 (회원인 경우)
       final scheduleId = int.tryParse(updatedTask.id);

@@ -599,8 +599,19 @@ class ScheduleViewModel with ChangeNotifier {
   // 할일 수정
   Future<bool> updateTask(TaskModel updatedTask) async {
     try {
+      // 기존 task를 먼저 가져와서 제목 변경 여부 확인
+      final oldTask = getTaskById(updatedTask.id);
+      final titleChanged = oldTask != null && oldTask.title != updatedTask.title;
+      final oldTitle = oldTask?.title ?? '';
+      
       final success = await _taskRepository.updateTask(updatedTask);
       if (success) {
+        // 제목이 변경되었다면 focus session의 제목도 업데이트
+        if (titleChanged && oldTitle.isNotEmpty) {
+          await _focusRepository.loadSessionsFromStorage();
+          await _focusRepository.updateSessionTaskTitle(oldTitle, updatedTask.title);
+        }
+        
         _setTasks(_taskRepository.tasks);
         return true;
       } else {

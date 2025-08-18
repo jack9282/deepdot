@@ -100,6 +100,33 @@ class FocusSessionRepository {
     }
   }
   
+  // 특정 일정의 제목이 변경되었을 때 관련 세션들 업데이트
+  Future<bool> updateSessionTaskTitle(String oldTitle, String newTitle) async {
+    try {
+      bool updated = false;
+      final updatedSessions = <FocusSessionModel>[];
+      
+      for (final session in _sessions) {
+        if (session.taskTitle == oldTitle) {
+          final updatedSession = session.copyWith(taskTitle: newTitle);
+          updatedSessions.add(updatedSession);
+          updated = true;
+        } else {
+          updatedSessions.add(session);
+        }
+      }
+      
+      if (updated) {
+        _sessions = updatedSessions;
+        return await saveSessionsToStorage();
+      }
+      return true;
+    } catch (e) {
+      print('세션 제목 업데이트 실패: $e');
+      return false;
+    }
+  }
+  
 
   // 특정 날짜의 집중 세션들 가져오기
   List<FocusSessionModel> getSessionsByDate(DateTime date) {

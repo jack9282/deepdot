@@ -6,6 +6,8 @@ import '../../../data/models/task_model.dart';
 import '../../../data/models/focus_session_model.dart';
 import '../../../data/repositories/focus_session_repository.dart';
 import '../view_models/schedule_view_model.dart';
+import '../../home/view_models/home_view_model.dart';
+import '../../statistics/view_models/statistics_view_model.dart';
 import 'schedule_add_screen.dart';
 
 class ScheduleTimerScreen extends StatefulWidget {
@@ -258,6 +260,8 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
 
   void _markTaskAsCompleted() async {
     final viewModel = Provider.of<ScheduleViewModel>(context, listen: false);
+    final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+    final statisticsViewModel = Provider.of<StatisticsViewModel>(context, listen: false);
     
     // 집중 모드이고 타이머가 진행 중이었다면 집중시간 저장
     if (_isFocusMode && _focusStartTime != null) {
@@ -270,7 +274,11 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
       completedAt: DateTime.now(),
     );
     
-    viewModel.updateTask(updatedTask);
+    await viewModel.updateTask(updatedTask);
+    
+    // HomeViewModel과 StatisticsViewModel도 업데이트
+    await homeViewModel.refresh();
+    await statisticsViewModel.loadCurrentWeekData();
     
     // 이전 화면으로 돌아가기
     Navigator.pop(context, true); // 완료 상태를 전달

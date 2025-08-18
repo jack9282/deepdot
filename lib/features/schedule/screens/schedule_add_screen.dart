@@ -5,6 +5,8 @@ import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
 import '../../../data/models/schedule_model.dart';
 import '../view_models/schedule_view_model.dart';
+import '../../home/view_models/home_view_model.dart';
+import '../../statistics/view_models/statistics_view_model.dart';
 
 import 'schedule_add_complete_screen.dart';
 import '../../../utils/date_time_formatter.dart';
@@ -796,6 +798,14 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       final success = await viewModel.updateTask(updatedTask);
       if (success) {
         await viewModel.refresh();
+        
+        // HomeViewModel과 StatisticsViewModel도 업데이트
+        final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+        await homeViewModel.refresh();
+        
+        final statisticsViewModel = Provider.of<StatisticsViewModel>(context, listen: false);
+        await statisticsViewModel.loadCurrentWeekData();
+        
         _showSuccessDialog();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -845,6 +855,14 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     
     if (success) {
       await viewModel.refresh();
+      
+      // HomeViewModel과 StatisticsViewModel도 업데이트
+      final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+      await homeViewModel.refresh();
+      
+      final statisticsViewModel = Provider.of<StatisticsViewModel>(context, listen: false);
+      await statisticsViewModel.loadCurrentWeekData();
+      
       _showSuccessDialog();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
