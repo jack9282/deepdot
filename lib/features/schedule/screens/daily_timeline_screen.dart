@@ -264,6 +264,12 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                 }
 
                 final tasks = viewModel.filteredTasks.where((task) {
+                  final selectedDateOnly = DateTime(
+                    _selectedDate.year,
+                    _selectedDate.month,
+                    _selectedDate.day,
+                  );
+                  
                   // 반복 일정인 경우 해당 날짜에 맞는 일정만 표시
                   if (task.isRecurring &&
                       task.startDateRange != null &&
@@ -278,33 +284,33 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                       task.endDateRange!.month,
                       task.endDateRange!.day,
                     );
-                    final selectedDate = DateTime(
-                      _selectedDate.year,
-                      _selectedDate.month,
-                      _selectedDate.day,
-                    );
 
-                    // 선택된 날짜가 범위 내에 있는지 확인
-                    if (!selectedDate.isBefore(startRange) &&
-                        !selectedDate.isAfter(endRange)) {
-                      // 반복 일정의 실제 시작 시간이 선택된 날짜와 일치하는지 확인
-                      if (task.startDate != null) {
-                        final taskDate = DateTime(
-                          task.startDate!.year,
-                          task.startDate!.month,
-                          task.startDate!.day,
-                        );
-                        return _isSameDay(taskDate, _selectedDate);
-                      }
-                      return false;
-                    }
-                    return false;
+                    // 선택된 날짜가 범위 내에 있으면 표시
+                    return !selectedDateOnly.isBefore(startRange) &&
+                        !selectedDateOnly.isAfter(endRange);
                   }
 
-                  // 일반 일정인 경우 시작시간이 있으면 시작시간 기준, 없으면 종료시간 기준으로 필터링
-                  final dateToCheck = task.startDate ?? task.dueDate;
-                  return dateToCheck != null &&
-                      _isSameDay(dateToCheck, _selectedDate);
+                  // 일반 일정인 경우: 여러 날에 걸친 일정도 처리
+                  final startDate = task.startDate;
+                  final endDate = task.dueDate;
+                  
+                  if (startDate != null && endDate != null) {
+                    // 시작일과 종료일이 모두 있는 경우
+                    final startDateOnly = DateTime(startDate.year, startDate.month, startDate.day);
+                    final endDateOnly = DateTime(endDate.year, endDate.month, endDate.day);
+                    
+                    // 선택된 날짜가 일정 기간 내에 있는지 확인
+                    return !selectedDateOnly.isBefore(startDateOnly) && 
+                           !selectedDateOnly.isAfter(endDateOnly);
+                  } else if (startDate != null) {
+                    // 시작일만 있는 경우
+                    return _isSameDay(startDate, _selectedDate);
+                  } else if (endDate != null) {
+                    // 종료일만 있는 경우
+                    return _isSameDay(endDate, _selectedDate);
+                  }
+                  
+                  return false;
                 }).toList();
 
                 // 시작시간 기준으로 정렬 (시작시간이 없으면 종료시간 기준)
@@ -709,8 +715,47 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
     final endTime = task.dueDate;
 
     if (startTime != null && endTime != null) {
-      // 시작시간과 종료시간이 모두 있는 경우
-      final duration = endTime.difference(startTime);
+      // 여러 날에 걸친 일정인지 확인
+      final startDateOnly = DateTime(startTime.year, startTime.month, startTime.day);
+      final endDateOnly = DateTime(endTime.year, endTime.month, endTime.day);
+      final selectedDateOnly = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+      
+      // 각 날짜에 해당하는 시간만 표시
+      DateTime displayStartTime;
+      DateTime displayEndTime;
+      
+      if (_isSameDay(startDateOnly, selectedDateOnly) && _isSameDay(endDateOnly, selectedDateOnly)) {
+        // 같은 날 일정인 경우
+        displayStartTime = startTime;
+        displayEndTime = endTime;
+      } else if (_isSameDay(startDateOnly, selectedDateOnly)) {
+        // 선택된 날짜가 시작일인 경우
+        displayStartTime = startTime;
+        displayEndTime = DateTime(
+          startTime.year, startTime.month, startTime.day,
+          endTime.hour, endTime.minute
+        ); // 종료 시간만 표시
+      } else if (_isSameDay(endDateOnly, selectedDateOnly)) {
+        // 선택된 날짜가 종료일인 경우
+        displayStartTime = DateTime(
+          endTime.year, endTime.month, endTime.day,
+          startTime.hour, startTime.minute
+        ); // 시작 시간만 표시
+        displayEndTime = endTime;
+      } else {
+        // 선택된 날짜가 중간 날짜인 경우 (전일 일정)
+        displayStartTime = DateTime(
+          selectedDateOnly.year, selectedDateOnly.month, selectedDateOnly.day,
+          startTime.hour, startTime.minute
+        );
+        displayEndTime = DateTime(
+          selectedDateOnly.year, selectedDateOnly.month, selectedDateOnly.day,
+          endTime.hour, endTime.minute
+        );
+      }
+      
+      // 해당 날짜의 시간 차이만 계산
+      final duration = displayEndTime.difference(displayStartTime);
       final hours = duration.inHours;
       final minutes = duration.inMinutes % 60;
 
@@ -724,8 +769,8 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
       }
 
       // 오전/오후 형식으로 변경
-      String startTimeStr = _getTimeStringWithAmPm(startTime);
-      String endTimeStr = _getTimeStringWithAmPm(endTime);
+      String startTimeStr = _getTimeStringWithAmPm(displayStartTime);
+      String endTimeStr = _getTimeStringWithAmPm(displayEndTime);
 
       return '$startTimeStr ~ $endTimeStr $durationText';
     } else if (startTime != null) {

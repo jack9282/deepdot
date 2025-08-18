@@ -53,7 +53,7 @@ class DeepDotApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TakingViewModel()),
         ChangeNotifierProvider(create: (_) => RoutineViewModel()),
         ChangeNotifierProvider(create: (_) => HomeViewModel()..loadTasks()),
-        ChangeNotifierProvider(create: (_) => ScheduleViewModel()..loadTasks()),
+        ChangeNotifierProvider(create: (_) => ScheduleViewModel()..loadAllSchedules()),
         ChangeNotifierProvider(create: (_) => StatisticsViewModel()),
       ],
       child: MaterialApp.router(

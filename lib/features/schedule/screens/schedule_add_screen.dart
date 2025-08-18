@@ -3,12 +3,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../../common/theme/app_theme.dart';
 import '../../../data/models/task_model.dart';
+import '../../../data/models/schedule_model.dart';
 import '../view_models/schedule_view_model.dart';
 
 import 'schedule_add_complete_screen.dart';
 import '../../../utils/date_time_formatter.dart';
-import '../../../api/token_manager.dart';
-import '../../../api/schedule_api.dart';
 
 class ScheduleAddScreen extends StatefulWidget {
   final TaskPriority priority;
@@ -278,27 +277,27 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     return emojiToIconMap[emoji] ?? 'NOTE'; // 기본값은 NOTE
   }
 
-  /// API 요청용 데이터 생성
-  Future<Map<String, dynamic>> _createApiRequestData() async {
-    try {
-      final userId = await TokenManager.instance.getCurrentUserId();
-      
-      return {
-        'userId': userId,
-        'title': _titleController.text.trim(),
-        'memo': _memoController.text.trim(),
-        'location': _locationController.text.trim(),
-        'alarm': _isNotificationEnabled,
-        'calendarDate': DateTimeFormatter.toDateString(_startDate),
-        'startTime': DateTimeFormatter.toTimeString(_startDateTime),
-        'endTime': DateTimeFormatter.toTimeString(_endDateTime),
-        'type': _convertPriorityForApi(_selectedPriority),
-        'icon': _convertEmojiToIconCode(_selectedEmoji),
-      };
-    } catch (e) {
-      throw Exception('API 요청 데이터 생성 실패: $e');
-    }
-  }
+  // API 요청용 데이터 생성 함수 (더 이상 사용하지 않음 - ViewModel에서 처리)
+  // Future<Map<String, dynamic>> _createApiRequestData() async {
+  //   try {
+  //     final userId = await TokenManager.instance.getCurrentUserId();
+  //     
+  //     return {
+  //       'userId': userId,
+  //       'title': _titleController.text.trim(),
+  //       'memo': _memoController.text.trim(),
+  //       'location': _locationController.text.trim(),
+  //       'alarm': _isNotificationEnabled,
+  //       'calendarDate': DateTimeFormatter.toDateString(_startDate),
+  //       'startTime': DateTimeFormatter.toTimeString(_startDateTime),
+  //       'endTime': DateTimeFormatter.toTimeString(_endDateTime),
+  //       'type': _convertPriorityForApi(_selectedPriority),
+  //       'icon': _convertEmojiToIconCode(_selectedEmoji),
+  //     };
+  //   } catch (e) {
+  //     throw Exception('API 요청 데이터 생성 실패: $e');
+  //   }
+  // }
 
   String _formatTime(DateTime time) {
     final hour = time.hour;
@@ -806,71 +805,54 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       return;
     }
 
-    // 새로운 일정 추가 - API 요청 데이터 생성 및 API 호출
-    try {
-      final apiData = await _createApiRequestData();
-      print('=== API 요청 데이터 ===');
-      print('userId: ${apiData['userId']}');
-      print('title: ${apiData['title']}');
-      print('memo: ${apiData['memo']}');
-      print('location: ${apiData['location']}');
-      print('alarm: ${apiData['alarm']}');
-      print('calendarDate: ${apiData['calendarDate']}');
-      print('startTime: ${apiData['startTime']}');
-      print('endTime: ${apiData['endTime']}');
-      print('type: ${apiData['type']}');
-      print('icon: ${apiData['icon']}');
-      print('==================');
-
-      // 실제 API 호출
-      final request = ScheduleCreateRequest(
-        userId: apiData['userId'] as int,
-        title: apiData['title'] as String,
-        memo: apiData['memo'] as String,
-        location: apiData['location'] as String,
-        alarm: apiData['alarm'] as bool,
-        calendarDate: apiData['calendarDate'] as String,
-        startTime: apiData['startTime'] as String,
-        endTime: apiData['endTime'] as String,
-        type: apiData['type'] as String,
-        icon: apiData['icon'] as String,
-      );
-
-      final response = await ScheduleApi.createSchedule(request);
-      
-      print('=== API 응답 ===');
-      print('scheduleId: ${response.scheduleId}');
-      print('message: ${response.message}');
-      print('===============');
-
-      // API 성공 시 성공 다이얼로그 표시
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('일정이 성공적으로 등록되었습니다! (ID: ${response.scheduleId})'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      
+    // 새로운 일정 추가 - ViewModel을 통해 처리 (비회원 지원)
+    final viewModel = Provider.of<ScheduleViewModel>(context, listen: false);
+    final isRecurring = !_isSameDay(_startDate, _endDate);
+    
+    // ScheduleType으로 변환
+    ScheduleType scheduleType;
+    switch (_selectedPriority) {
+      case '지금 바로 해야해요':
+        scheduleType = ScheduleType.urgentNow;
+        break;
+      case '미리 계획해서 준비해요':
+        scheduleType = ScheduleType.planAhead;
+        break;
+      case '나중에 처리해요':
+        scheduleType = ScheduleType.laterProcessing;
+        break;
+      case '시간이 남을 때 해요':
+        scheduleType = ScheduleType.whenFree;
+        break;
+      default:
+        scheduleType = ScheduleType.whenFree;
+    }
+    
+    final success = await viewModel.addSchedule(
+      title: _titleController.text.trim(),
+      time: DateTimeFormatter.toTimeString(_startDateTime),
+      startDate: _startDateTime,
+      endDate: _endDateTime,
+      type: scheduleType,
+      location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+      memo: _memoController.text.trim().isEmpty ? null : _memoController.text.trim(),
+      image: _convertEmojiToIconCode(_selectedEmoji),
+      alarm30Before: _isNotificationEnabled && _selectedNotificationTime == '30분 전',
+      alarm60Before: _isNotificationEnabled && _selectedNotificationTime == '1시간 전',
+      alarm120Before: _isNotificationEnabled && _selectedNotificationTime == '2시간 전',
+      isRecurring: isRecurring,
+    );
+    
+    if (success) {
+      await viewModel.refresh();
       _showSuccessDialog();
-      return;
-
-    } catch (e) {
-      print('API 호출 오류: $e');
-      
-      String errorMessage = '일정 등록에 실패했습니다';
-      if (e is ScheduleApiException) {
-        errorMessage = '${e.errorMessage} (${e.errorCode})';
-      } else {
-        errorMessage = '일정 등록 중 오류가 발생했습니다: $e';
-      }
-      
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(errorMessage),
+          content: Text(viewModel.errorMessage ?? '일정 등록에 실패했습니다'),
           backgroundColor: Colors.red,
         ),
       );
-      return;
     }
   }
 

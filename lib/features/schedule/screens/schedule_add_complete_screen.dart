@@ -40,23 +40,13 @@ class _AddCompleteScreenBody extends StatelessWidget {
         child: Column(
           children: [
             const Spacer(),
-            // 성공 아이콘 (중앙 상단)
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE0E0E0),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFFE0E0E0),
-                  width: 1,
-                ),
-              ),
-              child: const Icon(
-                Icons.check,
-                color: Colors.white,
-                size: 60,
-                weight: 900,
+            // 완료 이미지 (중앙 상단)
+            SizedBox(
+              width: 200,
+              height: 150,
+              child: Image.asset(
+                'assets/images/schedule_complete.png',
+                fit: BoxFit.contain,
               ),
             ),
             const SizedBox(height: 45),

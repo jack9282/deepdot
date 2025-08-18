@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../../data/repositories/schedule_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/repositories/focus_session_repository.dart';
+import '../../../data/models/schedule_model.dart';
 
 class StatisticsViewModel with ChangeNotifier {
-  final TaskRepository _taskRepository = TaskRepository();
+  final ScheduleRepository _scheduleRepository = ScheduleRepository();
+  final TaskRepository _taskRepository = TaskRepository(); // 로컬 완료 상태 추적용
   final FocusSessionRepository _focusRepository = FocusSessionRepository();
 
   // 상태 변수들
@@ -20,8 +23,16 @@ class StatisticsViewModel with ChangeNotifier {
 
   // 주간 데이터 (일별 집중 시간)
   List<int> _weeklyData = [0, 0, 0, 0, 0, 0, 0]; // 월~일
-  List<double> _weeklyAchievementRates = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]; // 주간 달성률
-  
+  List<double> _weeklyAchievementRates = [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+  ]; // 주간 달성률
+
   // 🆕 하루 집중시간 관련 데이터
   double _dailyAchievementRate = 0.0; // 하루 집중 달성률
   int _completedTasksCount = 0; // 완료한 일정 개수
@@ -38,7 +49,7 @@ class StatisticsViewModel with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   List<int> get weeklyData => _weeklyData;
   List<double> get weeklyAchievementRates => _weeklyAchievementRates;
-  
+
   // 🆕 하루 집중시간 관련 getters
   double get dailyAchievementRate => _dailyAchievementRate;
   int get completedTasksCount => _completedTasksCount;
@@ -71,7 +82,7 @@ class StatisticsViewModel with ChangeNotifier {
   String getCurrentWeekText() {
     final now = DateTime.now();
     final thisWeekStart = _getWeekStart(now);
-    
+
     // _getWeekStart는 이미 시간 정보가 제거된 날짜를 반환
     if (_currentWeekStart.isAtSameMomentAs(thisWeekStart)) {
       return '이번주';
@@ -99,7 +110,7 @@ class StatisticsViewModel with ChangeNotifier {
     final startDay = _currentWeekStart.day;
     final endMonth = weekEnd.month;
     final endDay = weekEnd.day;
-    
+
     if (startMonth == endMonth) {
       return '${startMonth}월 ${startDay}일 ~ ${endMonth}월 ${endDay}일';
     } else {
@@ -119,19 +130,46 @@ class StatisticsViewModel with ChangeNotifier {
     loadCurrentWeekData();
   }
 
-  // 현재 주 데이터 로드
+  // 현재 주 데이터 로드 (비회원 지원 - 로컬 우선)
   Future<void> loadCurrentWeekData() async {
     _setLoading(true);
     _setError(null);
 
     try {
+      // 먼저 로컬 데이터 로드
       await _taskRepository.loadTasksFromStorage();
       await _focusRepository.loadSessionsFromStorage();
+
+      // 주간 데이터 계산
       _calculateFocusTime();
+
+      // 백그라운드에서 Schedule API 시도 (회원인 경우만 동작)
+      _syncWithScheduleAPI();
     } catch (e) {
       _setError('통계 데이터를 불러오는데 실패했습니다: ${e.toString()}');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // Schedule API와 동기화 (백그라운드)
+  Future<void> _syncWithScheduleAPI() async {
+    try {
+      // API 호출 시도 (인증 실패 시 무시)
+      final weekEnd = _currentWeekStart.add(const Duration(days: 6));
+      final schedules = await _scheduleRepository.getSchedulesByRange(
+        _currentWeekStart,
+        weekEnd,
+      );
+
+      // API 데이터가 있으면 UI 업데이트를 위해 다시 계산
+      if (schedules.isNotEmpty) {
+        // 로컬 데이터와 병합하여 재계산
+        _calculateFocusTime();
+      }
+    } catch (e) {
+      // API 실패는 무시 (비회원이거나 네트워크 오류)
+      print('Statistics Schedule API 동기화 건너뜀: $e');
     }
   }
 
@@ -141,25 +179,36 @@ class StatisticsViewModel with ChangeNotifier {
     final today = DateTime(now.year, now.month, now.day);
 
     // 현재 주 데이터 계산
-    final weeklyFocusMinutes = _focusRepository.getTotalWeeklyFocusTime(_currentWeekStart);
+    final weeklyFocusMinutes = _focusRepository.getTotalWeeklyFocusTime(
+      _currentWeekStart,
+    );
     final dailyFocusMinutes = _focusRepository.getTotalFocusTimeByDate(today);
     final weeklyData = _focusRepository.getWeeklyFocusTime(_currentWeekStart);
-    final weeklyAchievementRates = _focusRepository.getWeeklyFocusAchievementRates(_currentWeekStart);
-    
+    final weeklyAchievementRates = _focusRepository
+        .getWeeklyFocusAchievementRates(_currentWeekStart);
+
     // 데이터 계산 완료
-    
+
     // 이전 주 데이터 계산
-    final previousWeekStart = _currentWeekStart.subtract(const Duration(days: 7));
-    final previousWeekFocusMinutes = _focusRepository.getTotalWeeklyFocusTime(previousWeekStart);
-    
+    final previousWeekStart = _currentWeekStart.subtract(
+      const Duration(days: 7),
+    );
+    final previousWeekFocusMinutes = _focusRepository.getTotalWeeklyFocusTime(
+      previousWeekStart,
+    );
+
     // 최장 집중 루틴 업데이트
     final longestTask = _focusRepository.getLongestFocusTask(today);
-    
+
     // 🆕 하루 집중시간 관련 데이터 계산
-    final dailyAchievementRate = _focusRepository.getFocusAchievementRateByDate(today);
+    final dailyAchievementRate = _focusRepository.getFocusAchievementRateByDate(
+      today,
+    );
     final dailySessions = _focusRepository.getSessionsByDate(today);
     final completedTasksCount = dailySessions.length; // 완료한 일정 개수
-    final totalPlannedMinutes = _focusRepository.getTotalPlannedTimeByDate(today);
+    final totalPlannedMinutes = _focusRepository.getTotalPlannedTimeByDate(
+      today,
+    );
 
     _weeklyFocusMinutes = weeklyFocusMinutes;
     _previousWeekFocusMinutes = previousWeekFocusMinutes;
@@ -167,11 +216,11 @@ class StatisticsViewModel with ChangeNotifier {
     _weeklyData = weeklyData;
     _weeklyAchievementRates = weeklyAchievementRates;
     _longestRoutine = longestTask;
-    
+
     // 🆕 하루 집중시간 관련 데이터 업데이트
     _dailyAchievementRate = dailyAchievementRate;
     _completedTasksCount = completedTasksCount;
-    
+
     notifyListeners();
   }
 
@@ -221,10 +270,10 @@ class StatisticsViewModel with ChangeNotifier {
   int getWeeklyMaxFocusTime() {
     const maxHours = 1; // 최대 8시간 (테스트로 인해 1시간으로 설정)
     const maxMinutes = maxHours * 60; // 480분
-    
+
     if (_weeklyData.isEmpty) return maxMinutes;
     final max = _weeklyData.reduce((a, b) => a > b ? a : b);
-    
+
     // 실제 최대값과 설정된 최대값 중 더 큰 값을 사용하되, 차트 스케일링을 위해 최소 480분 유지
     return max > maxMinutes ? max : maxMinutes;
   }
@@ -256,17 +305,17 @@ class StatisticsViewModel with ChangeNotifier {
   }
 
   // 🆕 하루 집중시간 관련 메서드들
-  
+
   // 하루 집중 달성률을 퍼센트로 포맷팅
   String getFormattedDailyAchievementRate() {
     return '${(_dailyAchievementRate * 100).round()}%';
   }
-  
+
   // 완료한 일정 개수 텍스트
   String getCompletedTasksText() {
     return '$_completedTasksCount개 달성';
   }
-  
+
   // 집중 기록이 있는지 확인
   bool hasDailyFocusRecord() {
     return _dailyFocusMinutes > 0;
@@ -276,4 +325,4 @@ class StatisticsViewModel with ChangeNotifier {
   Future<void> refresh() async {
     await loadCurrentWeekData();
   }
-} 
+}
