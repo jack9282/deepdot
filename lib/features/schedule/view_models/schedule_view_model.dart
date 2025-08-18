@@ -6,6 +6,7 @@ import '../../../data/models/schedule_model.dart';
 import '../../../data/models/task_model.dart';
 import '../../../utils/alarm.dart';
 import '../../../utils/alarm_id_generator.dart';
+import '../../../api/token_manager.dart';
 
 class ScheduleViewModel with ChangeNotifier {
   final ScheduleRepository _scheduleRepository = ScheduleRepository();
@@ -291,6 +292,7 @@ class ScheduleViewModel with ChangeNotifier {
         taskId: task.id,
         title: title,
         startDate: startDate,
+        priority: task.priority,
         alarm30Before: alarm30Before,
         alarm60Before: alarm60Before,
         alarm120Before: alarm120Before,
@@ -670,6 +672,7 @@ class ScheduleViewModel with ChangeNotifier {
             taskId: updatedTask.id,
             title: updatedTask.title,
             startDate: updatedTask.startDate!,
+            priority: updatedTask.priority,
             alarm30Before: alarm30Before,
             alarm60Before: alarm60Before,
             alarm120Before: alarm120Before,
@@ -902,11 +905,48 @@ class ScheduleViewModel with ChangeNotifier {
   
   // ===== 알림 관련 메서드 =====
   
+  // 시간 포맷팅 함수 (오전/오후)
+  String _formatTimeToKorean(DateTime time) {
+    final hour = time.hour;
+    final minute = time.minute;
+    final period = hour < 12 ? '오전' : '오후';
+    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    return '$period ${displayHour.toString()}:${minute.toString().padLeft(2, '0')}';
+  }
+  
+  // 우선순위별 알림 텍스트 가져오기
+  String _getPriorityText(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.urgentImportant:
+        return '지금 바로 해야해요';
+      case TaskPriority.important:
+        return '미리 계획해서 준비해요';
+      case TaskPriority.urgent:
+        return '시간이 남을때 해요';
+      case TaskPriority.neither:
+        return '나중에 처리해요';
+    }
+  }
+  
+  // 사용자 이름 가져오기
+  Future<String> _getUserName() async {
+    try {
+      final username = await TokenManager.instance.getUsername();
+      if (username != null && username.isNotEmpty) {
+        return username;
+      }
+    } catch (e) {
+      print('사용자 이름 가져오기 실패: $e');
+    }
+    return '구름'; // 기본값 (비회원)
+  }
+  
   // 일정 알림 설정
   Future<void> _setScheduleAlarms({
     required String taskId,
     required String title,
     required DateTime startDate,
+    required TaskPriority priority,
     bool alarm30Before = false,
     bool alarm60Before = false,
     bool alarm120Before = false,
@@ -914,6 +954,15 @@ class ScheduleViewModel with ChangeNotifier {
     try {
       // taskId를 숫자로 변환 (알림 ID 생성용)
       final baseId = taskId.hashCode.abs() % 1000000;
+      
+      // 사용자 이름 가져오기
+      final userName = await _getUserName();
+      
+      // 일정 시작 시간 포맷
+      final formattedTime = _formatTimeToKorean(startDate);
+      
+      // 우선순위 텍스트 가져오기
+      final priorityText = _getPriorityText(priority);
       
       // 30분 전 알림
       if (alarm30Before) {
@@ -923,8 +972,8 @@ class ScheduleViewModel with ChangeNotifier {
           await AlarmUtility.setAlarm(
             id: alarmId,
             scheduledTime: alarmTime,
-            title: '일정 알림',
-            body: '30분 후 "$title" 일정이 있습니다.',
+            title: '$userName님 $title 30분전이에요!',
+            body: '$formattedTime $priorityText',
           );
         }
       }
@@ -937,8 +986,8 @@ class ScheduleViewModel with ChangeNotifier {
           await AlarmUtility.setAlarm(
             id: alarmId,
             scheduledTime: alarmTime,
-            title: '일정 알림',
-            body: '1시간 후 "$title" 일정이 있습니다.',
+            title: '$userName님 $title 1시간전이에요!',
+            body: '$formattedTime $priorityText',
           );
         }
       }
@@ -951,8 +1000,8 @@ class ScheduleViewModel with ChangeNotifier {
           await AlarmUtility.setAlarm(
             id: alarmId,
             scheduledTime: alarmTime,
-            title: '일정 알림',
-            body: '2시간 후 "$title" 일정이 있습니다.',
+            title: '$userName님 $title 2시간전이에요!',
+            body: '$formattedTime $priorityText',
           );
         }
       }
