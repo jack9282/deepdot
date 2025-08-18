@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/focus_session_model.dart';
+import '../../api/focus_api.dart';
+import '../../api/token_manager.dart';
 
 class FocusSessionRepository {
   static const String _key = 'focus_sessions';
@@ -41,16 +44,62 @@ class FocusSessionRepository {
     }
   }
 
-  // 새로운 집중 세션 추가
+  // 새로운 집중 세션 추가 (API 연동)
   Future<bool> addFocusSession(FocusSessionModel session) async {
     try {
+      // 로컬에 먼저 저장
       _sessions.add(session);
-      return await saveSessionsToStorage();
+      final localSaved = await saveSessionsToStorage();
+      
+      // 백그라운드에서 API 호출
+      _syncSessionToAPI(session);
+      
+      return localSaved;
     } catch (e) {
       print('집중 세션 추가 실패: $e');
       return false;
     }
   }
+  
+  // API로 세션 동기화 (백그라운드) - 자정에 하루 집중시간 전송
+  Future<void> _syncSessionToAPI(FocusSessionModel session) async {
+    try {
+      // 비회원인 경우 건너뛰기
+      final isGuest = await TokenManager.instance.isGuestMode();
+      if (isGuest) return;
+      
+      // 하루 집중시간은 자정에 한번만 전송하므로 여기서는 로컬 저장만
+      // 실제 전송은 sendDailyFocusTimeToAPI() 메서드에서 처리
+    } catch (e) {
+      print('집중 세션 API 동기화 실패: $e');
+    }
+  }
+  
+  // 하루 집중시간 API로 전송 (자정에 호출)
+  Future<void> sendDailyFocusTimeToAPI(DateTime date) async {
+    try {
+      final isGuest = await TokenManager.instance.isGuestMode();
+      if (isGuest) return;
+      
+      // 해당 날짜의 총 집중시간 계산
+      final totalMinutes = getTotalFocusTimeByDate(date);
+      if (totalMinutes == 0) return;
+      
+      final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      
+      // API로 전송
+      await FocusAPI.sendDailyFocusTime(
+        localDate: dateStr,
+        totalMinutes: totalMinutes,
+        zoneId: 'Asia/Seoul',
+      );
+      
+      print('하루 집중시간 전송 성공: $dateStr - ${totalMinutes}분');
+    } catch (e) {
+      print('하루 집중시간 전송 실패: $e');
+    }
+  }
+  
 
   // 특정 날짜의 집중 세션들 가져오기
   List<FocusSessionModel> getSessionsByDate(DateTime date) {

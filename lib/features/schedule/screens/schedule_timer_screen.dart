@@ -182,6 +182,7 @@ class _ScheduleTimerScreenState extends State<ScheduleTimerScreen> {
     final session = FocusSessionModel(
       id: 'focus_${DateTime.now().millisecondsSinceEpoch}',
       taskTitle: widget.task.title,
+      taskType: widget.task.priority.toString().split('.').last, // TaskPriority enum을 string으로 변환
       focusMinutes: focusMinutes,
       plannedMinutes: _focusTimeMinutes, // 설정된 집중시간
       startTime: _focusStartTime!,

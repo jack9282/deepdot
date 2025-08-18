@@ -1,6 +1,7 @@
 class FocusSessionModel {
   final String id;
   final String taskTitle;
+  final String taskType; // 일정 타입 (urgentImportant, important, urgent, neither)
   final int focusMinutes; // 실제 집중한 시간 (분)
   final int plannedMinutes; // 설정된 집중시간 (분)
   final DateTime startTime;
@@ -11,6 +12,7 @@ class FocusSessionModel {
   const FocusSessionModel({
     required this.id,
     required this.taskTitle,
+    this.taskType = 'neither',
     required this.focusMinutes,
     required this.plannedMinutes,
     required this.startTime,
@@ -22,6 +24,7 @@ class FocusSessionModel {
   FocusSessionModel copyWith({
     String? id,
     String? taskTitle,
+    String? taskType,
     int? focusMinutes,
     int? plannedMinutes,
     DateTime? startTime,
@@ -32,6 +35,7 @@ class FocusSessionModel {
     return FocusSessionModel(
       id: id ?? this.id,
       taskTitle: taskTitle ?? this.taskTitle,
+      taskType: taskType ?? this.taskType,
       focusMinutes: focusMinutes ?? this.focusMinutes,
       plannedMinutes: plannedMinutes ?? this.plannedMinutes,
       startTime: startTime ?? this.startTime,
@@ -45,6 +49,7 @@ class FocusSessionModel {
     return {
       'id': id,
       'taskTitle': taskTitle,
+      'taskType': taskType,
       'focusMinutes': focusMinutes,
       'plannedMinutes': plannedMinutes,
       'startTime': startTime.millisecondsSinceEpoch,
@@ -58,6 +63,7 @@ class FocusSessionModel {
     return FocusSessionModel(
       id: json['id'] as String,
       taskTitle: json['taskTitle'] as String,
+      taskType: json['taskType'] as String? ?? 'neither', // 기본값 (기존 데이터 호환성)
       focusMinutes: json['focusMinutes'] as int,
       plannedMinutes: json['plannedMinutes'] as int? ?? 25, // 기본값 25분 (기존 데이터 호환성)
       startTime: DateTime.fromMillisecondsSinceEpoch(json['startTime'] as int),

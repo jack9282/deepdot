@@ -3,6 +3,8 @@ import '../../../data/repositories/schedule_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/repositories/focus_session_repository.dart';
 import '../../../data/models/schedule_model.dart';
+import '../../../api/focus_api.dart';
+import '../../../api/token_manager.dart';
 
 class StatisticsViewModel with ChangeNotifier {
   final ScheduleRepository _scheduleRepository = ScheduleRepository();
@@ -145,10 +147,49 @@ class StatisticsViewModel with ChangeNotifier {
 
       // 백그라운드에서 Schedule API 시도 (회원인 경우만 동작)
       _syncWithScheduleAPI();
+      
+      // 백그라운드에서 Statistics API 시도
+      _syncWithStatisticsAPI();
     } catch (e) {
       _setError('통계 데이터를 불러오는데 실패했습니다: ${e.toString()}');
     } finally {
       _setLoading(false);
+    }
+  }
+  
+  // Focus API와 동기화 (백그라운드) - 주간 집중시간 조회
+  Future<void> _syncWithStatisticsAPI() async {
+    try {
+      // 비회원인 경우 건너뛰기
+      final isGuest = await TokenManager.instance.isGuestMode();
+      if (isGuest) return;
+      
+      // 현재 주 시작일 기준으로 API 호출
+      final dateStr = '${_currentWeekStart.year}-${_currentWeekStart.month.toString().padLeft(2, '0')}-${_currentWeekStart.day.toString().padLeft(2, '0')}';
+      
+      // 주간 집중시간 조회 (명세서의 /api/focus/weekly)
+      final focusResponse = await FocusAPI.getWeeklyFocusTime(
+        anchorDate: dateStr,
+        zoneId: 'Asia/Seoul',
+      );
+      
+      if (focusResponse['totalMinutes'] != null) {
+        // API 데이터로 업데이트
+        _weeklyFocusMinutes = focusResponse['totalMinutes'] ?? 0;
+        
+        // 일별 데이터 업데이트
+        final days = focusResponse['days'];
+        if (days is List && days.isNotEmpty) {
+          for (int i = 0; i < days.length && i < 7; i++) {
+            _weeklyData[i] = days[i]['minutes'] ?? 0;
+          }
+        }
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      // API 실패는 무시 (로컬 데이터 사용)
+      print('Focus API 동기화 실패: $e');
     }
   }
 

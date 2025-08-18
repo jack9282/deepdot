@@ -3,6 +3,8 @@ import '../../../data/repositories/schedule_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/models/task_model.dart';
 import '../../../data/models/schedule_model.dart';
+import '../../../api/mainpage_api.dart';
+import '../../../api/token_manager.dart';
 
 class HomeViewModel with ChangeNotifier {
   final ScheduleRepository _scheduleRepository = ScheduleRepository();
@@ -23,11 +25,16 @@ class HomeViewModel with ChangeNotifier {
   List<TaskModel> _tasks = [];
   bool _isLoading = false;
   String? _errorMessage;
+  Map<String, dynamic>? _todaySummary;
+  Map<String, dynamic>? _widgets;
+  DateTime? _lastSyncTime;
 
   // Getters
   List<TaskModel> get tasks => List.unmodifiable(_tasks);
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  Map<String, dynamic>? get todaySummary => _todaySummary;
+  Map<String, dynamic>? get widgets => _widgets;
 
   // 우선순위별 할일 목록 가져오기 (현재 날짜 기준 필터링, 시간순 정렬)
   List<TaskModel> getTasksByPriority(TaskPriority priority) {
@@ -254,6 +261,9 @@ class HomeViewModel with ChangeNotifier {
       await _taskRepository.loadTasksFromStorage();
       _setTasks(_taskRepository.tasks);
       
+      // 홈화면 요약 정보 로드
+      await loadTodaySummary();
+      
       // 백그라운드에서 Schedule API 시도 (회원인 경우만 동작)
       _syncWithScheduleAPI();
     } catch (e) {
@@ -261,6 +271,74 @@ class HomeViewModel with ChangeNotifier {
       _setError('데이터를 불러오는데 실패했습니다');
     } finally {
       _setLoading(false);
+    }
+  }
+  
+  // 홈화면 요약 정보 로드 (로컬 데이터만 사용)
+  Future<void> loadTodaySummary() async {
+    try {
+      // 로컬 데이터로 요약 생성
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      
+      // 오늘의 일정들 계산
+      final todayTasks = _tasks.where((task) {
+        if (task.startDate != null && task.dueDate != null) {
+          final startDateOnly = DateTime(task.startDate!.year, task.startDate!.month, task.startDate!.day);
+          final endDateOnly = DateTime(task.dueDate!.year, task.dueDate!.month, task.dueDate!.day);
+          return !today.isBefore(startDateOnly) && !today.isAfter(endDateOnly);
+        }
+        return false;
+      }).toList();
+      
+      final urgentImportantCount = todayTasks.where((t) => t.priority == TaskPriority.urgentImportant).length;
+      final importantCount = todayTasks.where((t) => t.priority == TaskPriority.important).length;
+      final urgentCount = todayTasks.where((t) => t.priority == TaskPriority.urgent).length;
+      final neitherCount = todayTasks.where((t) => t.priority == TaskPriority.neither).length;
+      final completedCount = todayTasks.where((t) => t.isCompleted).length;
+      
+      // 로컬 요약 데이터 생성
+      _todaySummary = {
+        'success': true,
+        'data': {
+          'todayDate': '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}',
+          'totalTasks': todayTasks.length,
+          'completedTasks': completedCount,
+          'urgentImportantCount': urgentImportantCount,
+          'importantCount': importantCount,
+          'urgentCount': urgentCount,
+          'neitherCount': neitherCount,
+          'todayFocusMinutes': 0,
+          'weeklyFocusMinutes': 0,
+        }
+      };
+      
+      // MainPageAPI로 우선순위별 데이터 조회 (백그라운드)
+      _loadSchedulesFromMainPageAPI();
+      
+    } catch (e) {
+      print('홈화면 요약 로드 실패: $e');
+    }
+  }
+  
+  // MainPageAPI로 우선순위별 일정 조회
+  Future<void> _loadSchedulesFromMainPageAPI() async {
+    try {
+      final isGuest = await TokenManager.instance.isGuestMode();
+      if (isGuest) return;
+      
+      // 각 우선순위별로 API 호출
+      final types = ['지금_바로_해야해요', '미리_계획해서_준비해요', '시간이_남을_때_해요', '나중에_처리해요'];
+      
+      for (final type in types) {
+        final schedules = await MainPageAPI.getSchedulesByType(type);
+        // API 데이터가 있으면 처리 (현재는 로깅만)
+        if (schedules.isNotEmpty) {
+          print('$type 일정 ${schedules.length}개 조회됨');
+        }
+      }
+    } catch (e) {
+      print('MainPage API 조회 실패: $e');
     }
   }
   
