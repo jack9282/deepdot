@@ -43,7 +43,7 @@ class _RoutineListItemState extends State<RoutineListItem> {
             children: [
               GestureDetector(
                 onTap: () {
-                  _showActionMenu(context);
+                  _showPopupMenu(context);
                 },
                 child: SizedBox(
                   width: 100,
@@ -118,97 +118,68 @@ class _RoutineListItemState extends State<RoutineListItem> {
     return days[index];
   }
 
-  void _showActionMenu(BuildContext context) {
-    showDialog(
+  void _showPopupMenu(BuildContext context) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final RelativeRect position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset.zero, ancestor: overlay),
+        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<String>(
       context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Container(
-            width: 280,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 메시지 영역
-                Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    "'${widget.routine['name']}' 루틴",
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                // 구분선
-                Container(
-                  height: 1,
-                  color: const Color(0xFFE0E0E0),
-                ),
-                // 수정 버튼
-                GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    if (widget.onEditPressed != null) {
-                      widget.onEditPressed!();
-                    }
-                  },
-                  child: Container(
-                    height: 48,
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Color(0xFFE0E0E0),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        '수정하기',
-                        style: TextStyle(
-                          color: AppTheme.primaryColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                // 삭제 버튼
-                GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    if (widget.onDelete != null) {
-                      widget.onDelete!(widget.index);
-                    }
-                  },
-                  child: Container(
-                    height: 48,
-                    child: const Center(
-                      child: Text(
-                        '삭제하기',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+      position: position,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      elevation: 4,
+      items: [
+        PopupMenuItem<String>(
+          value: 'edit',
+          height: 48,
+          child: const Center(
+            child: Text(
+              '수정하기',
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           ),
-        );
-      },
-    );
+        ),
+        PopupMenuItem<String>(
+          value: 'delete',
+          height: 48,
+          child: const Center(
+            child: Text(
+              '삭제하기',
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'edit') {
+        if (widget.onEditPressed != null) {
+          widget.onEditPressed!();
+        }
+      } else if (value == 'delete') {
+        if (widget.onDelete != null) {
+          widget.onDelete!(widget.index);
+        }
+      }
+    });
   }
+
 }
 
 class DayBubble extends StatefulWidget {

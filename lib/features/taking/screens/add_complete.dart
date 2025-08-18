@@ -29,14 +29,13 @@ class _AddCompleteScreenBody extends StatelessWidget {
         child: Column(
           children: [
             const Spacer(),
-            // Lottie 애니메이션 (중앙 상단)
-            Container(
-              width: 120,
-              height: 120,
-              child: Lottie.asset(
-                'assets/animation/Success.json',
+            // 완료 이미지 (중앙 상단)
+            SizedBox(
+              width: 250,
+              height: 150,
+              child: Image.asset(
+                'assets/images/taking_complete.png',
                 fit: BoxFit.contain,
-                repeat: false,
               ),
             ),
             const SizedBox(height: 45),

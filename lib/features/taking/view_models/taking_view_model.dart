@@ -32,7 +32,7 @@ class TakingViewModel with ChangeNotifier {
       _loadTakingList();
       _isInitialized = true;
       
-      // 약물 복용 알람 복원
+      // 약물 복용 알람 복원 (중복 방지)
       await _restoreAllTakingAlarms();
       print('약물 복용 알람 복원 완료');
     } catch (e) {
@@ -89,8 +89,27 @@ class TakingViewModel with ChangeNotifier {
         await _setupAlarms(taking, times);
       }
     } catch (e) {
-      _setError('약물 추가 중 오류가 발생했습니다: $e');
-      throw e;
+      // 비회원 모드가 아닌 경우 서버 오류 시 실패 처리
+      if (!await TokenManager.instance.isGuestMode()) {
+        _setError('약물 추가 중 오류가 발생했습니다: $e');
+        throw e;
+      }
+      
+      // 비회원 모드인 경우에만 로컬 저장 허용
+      if (e.toString().contains('서버 연결에 실패했습니다') || 
+          e.toString().contains('로컬에 저장되었습니다')) {
+        _loadTakingList();
+        
+        if (alarmEnabled) {
+          final taking = _takingList.last;
+          await _setupAlarms(taking, times);
+        }
+        
+        _setError('서버 연결 문제로 로컬에만 저장되었습니다.');
+      } else {
+        _setError('약물 추가 중 오류가 발생했습니다: $e');
+        throw e;
+      }
     } finally {
       _setLoading(false);
     }
@@ -115,8 +134,27 @@ class TakingViewModel with ChangeNotifier {
           await _setupAlarms(updatedTaking, times);
         }
       } catch (e) {
-        _setError('약물 수정 중 오류가 발생했습니다: $e');
-        throw e;
+        // 비회원 모드가 아닌 경우 서버 오류 시 실패 처리
+        if (!await TokenManager.instance.isGuestMode()) {
+          _setError('약물 수정 중 오류가 발생했습니다: $e');
+          throw e;
+        }
+        
+        // 비회원 모드인 경우에만 로컬 저장 허용
+        if (e.toString().contains('서버 연결에 실패했습니다') || 
+            e.toString().contains('로컬에 저장되었습니다')) {
+          _loadTakingList();
+          
+          if (alarmEnabled) {
+            final updatedTaking = _takingList[index];
+            await _setupAlarms(updatedTaking, times);
+          }
+          
+          _setError('서버 연결 문제로 로컬에만 저장되었습니다.');
+        } else {
+          _setError('약물 수정 중 오류가 발생했습니다: $e');
+          throw e;
+        }
       } finally {
         _setLoading(false);
       }
@@ -147,8 +185,27 @@ class TakingViewModel with ChangeNotifier {
         await TakingRepository().removeTaking(index);
         _loadTakingList();
       } catch (e) {
-        _setError('약물 삭제 중 오류가 발생했습니다: $e');
-        throw e;
+        // 서버 오류(500) 또는 연결 실패인 경우 로컬에서 삭제
+        if (e.toString().contains('서버 내부 오류') || 
+            e.toString().contains('서버 연결에 실패했습니다') || 
+            e.toString().contains('로컬에서 삭제되었습니다')) {
+          _loadTakingList();
+          
+          // 비회원 모드가 아닌 경우에만 정보성 메시지 표시
+          if (!await TokenManager.instance.isGuestMode()) {
+            _setError('서버 연결 문제로 로컬에서만 삭제되었습니다.');
+          }
+        } else {
+          // 다른 오류(인증, 권한 등)는 실패 처리
+          if (!await TokenManager.instance.isGuestMode()) {
+            _setError('약물 삭제 중 오류가 발생했습니다: $e');
+            throw e;
+          }
+          
+          // 비회원 모드인 경우 로컬에서 삭제
+          _loadTakingList();
+          _setError('약물 삭제 중 오류가 발생했습니다: $e');
+        }
       } finally {
         _setLoading(false);
       }
@@ -195,6 +252,14 @@ class TakingViewModel with ChangeNotifier {
       final baseAlarmId = AlarmIdGenerator.generateTakingId();
       
       for (int i = 0; i < times.length; i++) {
+        final alarmKey = '${taking.id}_$i';
+        
+        // 이미 알람이 설정되어 있는지 확인
+        if (_alarmIds.containsKey(alarmKey)) {
+          print('이미 설정된 알람 발견: $alarmKey - 건너뛰기');
+          continue;
+        }
+        
         final timeParts = times[i].split(':');
         if (timeParts.length == 2) {
           final scheduledTime = DateTime(
@@ -207,7 +272,7 @@ class TakingViewModel with ChangeNotifier {
 
           // 더 안전한 ID 생성 - 약물 복용 전용 범위 사용
           final alarmId = AlarmIdGenerator.generateTakingIdWithIndex(baseAlarmId, i);
-          _alarmIds['${taking.id}_$i'] = alarmId;
+          _alarmIds[alarmKey] = alarmId;
 
           await AlarmUtility.setDailyAlarm(
             id: alarmId,
@@ -215,6 +280,8 @@ class TakingViewModel with ChangeNotifier {
             title: '복용 알림',
             body: '${taking.name} 복용 시간입니다!',
           );
+          
+          print('알람 설정 완료: $alarmKey (ID: $alarmId)');
         }
       }
     } catch (e) {
@@ -275,13 +342,29 @@ class TakingViewModel with ChangeNotifier {
     }
   }
 
-  /// 모든 약물 복용 알람 복원
+  /// 모든 약물 복용 알람 복원 (중복 방지)
   Future<void> _restoreAllTakingAlarms() async {
     try {
       print('약물 복용 알람 복원 시작');
+      
+      // 기존 알람 ID들을 모두 제거
+      _alarmIds.clear();
+      
       for (final taking in _takingList) {
         if (taking.alarmEnabled) {
-          await _setupAlarms(taking, taking.times);
+          // 중복 체크: 이미 알람이 설정되어 있는지 확인
+          bool hasExistingAlarm = false;
+          for (int i = 0; i < taking.times.length; i++) {
+            final alarmKey = '${taking.id}_$i';
+            if (_alarmIds.containsKey(alarmKey)) {
+              hasExistingAlarm = true;
+              break;
+            }
+          }
+          
+          if (!hasExistingAlarm) {
+            await _setupAlarms(taking, taking.times);
+          }
         }
       }
       print('약물 복용 알람 복원 완료');
@@ -292,7 +375,21 @@ class TakingViewModel with ChangeNotifier {
 
   /// 강제 새로고침
   Future<void> refresh() async {
-    await initialize();
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      // 로컬 데이터만 다시 로드 (API 동기화는 건너뛰기)
+      await TakingRepository().loadFromStorage();
+      _loadTakingList();
+      
+      // 알람 복원
+      await _restoreAllTakingAlarms();
+    } catch (e) {
+      _setError('데이터 새로고침 중 오류가 발생했습니다: $e');
+    } finally {
+      _setLoading(false);
+    }
   }
 
   /// 오류 메시지 초기화

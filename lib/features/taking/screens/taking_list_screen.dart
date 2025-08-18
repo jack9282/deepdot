@@ -137,19 +137,23 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody>
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            takingVM.errorMessage!,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Text(
+                              takingVM.errorMessage!.length > 50 
+                                  ? '${takingVM.errorMessage!.substring(0, 50)}...'
+                                  : takingVM.errorMessage!,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                            textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton(
-                            onPressed: () {
-                              takingVM.clearError();
-                              takingVM.refresh();
+                            onPressed: () async {
+                              await takingVM.refresh();
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF2563EB),

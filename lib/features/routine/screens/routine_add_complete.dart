@@ -29,14 +29,13 @@ class _RoutineAddCompleteScreenBody extends StatelessWidget {
         child: Column(
           children: [
             const Spacer(),
-            // Lottie 애니메이션 (중앙 상단)
-            Container(
-              width: 120,
-              height: 120,
-              child: Lottie.asset(
-                'assets/animation/Success.json',
+            // 완료 이미지 (중앙 상단)
+            SizedBox(
+              width: 200,
+              height: 150,
+              child: Image.asset(
+                'assets/images/routine_complete.png',
                 fit: BoxFit.contain,
-                repeat: false,
               ),
             ),
             const SizedBox(height: 45),
@@ -53,7 +52,7 @@ class _RoutineAddCompleteScreenBody extends StatelessWidget {
             const SizedBox(height: 12),
             // 서브 메시지
             const Text(
-              '매일 체크해서 꾸준히 실천해요',
+              '잊지말고 실천해서 습관으로 만들어봐요',
               style: TextStyle(
                 color: Color(0xFF999999),
                 fontSize: 14,

@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/routine_view_model.dart';
+import '../widgets/goal_item.dart';
 import '../../../common/theme/app_theme.dart';
 
 class SetRoutineScreen extends StatefulWidget {
@@ -23,7 +24,6 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
   bool _notificationEnabled = true;
   bool _showTimePicker = false;
 
-  final List<String> _availableGoals = ['아침루틴', '개강까지 -5KG', '정돈된 일상'];
   final List<String> _days = ['월', '화', '수', '목', '금', '토', '일'];
 
   bool _showNameError = false;
@@ -33,6 +33,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
   @override
   void initState() {
     super.initState();
+    
     if (widget.existingRoutine != null) {
       _routineNameController.text = widget.existingRoutine!['name'] ?? '';
       _memoController.text = widget.existingRoutine!['memo'] ?? '';
@@ -68,6 +69,8 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
       }
     }
   }
+
+
 
   @override
   void dispose() {
@@ -181,14 +184,42 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         color: Colors.black,
                       ),
                     ),
+                    Text(
+                      '길게눌러 수정 및 삭제 가능',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                    ),
                     const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ..._availableGoals.map((goal) => _buildGoalChip(goal)),
-                        _buildAddGoalChip(),
-                      ],
+                    Consumer<RoutineViewModel>(
+                      builder: (context, routineVM, child) {
+                        final availableGoals = routineVM.availableGoals;
+                        return Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ...availableGoals.map((goal) => GoalItem(
+                              goal: goal,
+                              isSelected: _selectedGoals.contains(goal),
+                              onTap: () {
+                                setState(() {
+                                  if (_selectedGoals.contains(goal)) {
+                                    _selectedGoals.remove(goal);
+                                  } else {
+                                    _selectedGoals.add(goal);
+                                  }
+                                  _showGoalError = false;
+                                });
+                              },
+                              onEditPressed: () {
+                                _showEditGoalNameDialog(goal);
+                              },
+                              onDeletePressed: () {
+                                _deleteGoal(goal);
+                              },
+                            )),
+                            _buildAddGoalChip(),
+                          ],
+                        );
+                      },
                     ),
                     if (_showGoalError)
                       Padding(
@@ -480,42 +511,114 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
     );
   }
 
-  Widget _buildGoalChip(String goal) {
-    final isSelected = _selectedGoals.contains(goal);
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (isSelected) {
-            _selectedGoals.remove(goal);
-          } else {
-            _selectedGoals.add(goal);
-          }
-          _showGoalError = false;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color.fromARGB(255, 210, 225, 255)
-              : const Color(0xFFF5F6FA),
-          borderRadius: BorderRadius.circular(18),
-          border: isSelected
-              ? Border.all(color: AppTheme.primaryColor)
-              : Border.all(color: const Color(0xFF888888)),
-        ),
-        child: Text(
-          goal,
-          style: TextStyle(
-            color: isSelected
-                ? AppTheme.primaryColor
-                : const Color(0xFF888888),
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
+
+
+  void _showEditGoalNameDialog(String oldGoal) async {
+    final TextEditingController goalController = TextEditingController(text: oldGoal);
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-        ),
-      ),
+          title: const Text(
+            '목표 수정',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          content: TextField(
+            controller: goalController,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: '목표를 입력해주세요',
+              hintStyle: TextStyle(
+                color: Colors.grey[400],
+                fontWeight: FontWeight.w500,
+              ),
+              filled: true,
+              fillColor: Colors.grey[100],
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppTheme.primaryColor),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+            style: const TextStyle(
+              fontSize: 15,
+              color: Colors.black,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                '취소',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newGoal = goalController.text.trim();
+                if (newGoal.isNotEmpty && newGoal != oldGoal) {
+                  final routineVM = context.read<RoutineViewModel>();
+                  await routineVM.updateGoal(oldGoal, newGoal);
+                  
+                  setState(() {
+                    final selectedIndex = _selectedGoals.indexOf(oldGoal);
+                    if (selectedIndex != -1) {
+                      _selectedGoals[selectedIndex] = newGoal;
+                    }
+                  });
+                }
+                Navigator.of(context).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                '수정',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
+  }
+
+  void _deleteGoal(String goal) async {
+    final routineVM = context.read<RoutineViewModel>();
+    await routineVM.deleteGoal(goal);
+    
+    setState(() {
+      _selectedGoals.remove(goal);
+    });
   }
 
   Widget _buildAddGoalChip() {
@@ -556,6 +659,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -611,13 +715,13 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
               ),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 final newGoal = goalController.text.trim();
                 if (newGoal.isNotEmpty) {
+                  final routineVM = context.read<RoutineViewModel>();
+                  await routineVM.addGoal(newGoal);
+                  
                   setState(() {
-                    if (!_availableGoals.contains(newGoal)) {
-                      _availableGoals.add(newGoal);
-                    }
                     if (!_selectedGoals.contains(newGoal)) {
                       _selectedGoals.add(newGoal);
                     }

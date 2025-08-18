@@ -12,6 +12,7 @@ class RoutineViewModel extends ChangeNotifier {
   String? _errorMessage;
 
   List<RoutineModel> get routineList => List.unmodifiable(_routineList);
+  List<String> get availableGoals => RoutineRepository().availableGoals;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isInitialized => _isInitialized;
@@ -95,6 +96,11 @@ class RoutineViewModel extends ChangeNotifier {
         await setupRoutineAlarm(routine);
       }
     } catch (e) {
+      // 서버 연결 실패로 로컬에만 저장된 경우는 성공으로 처리
+      if (e.toString().contains('서버 연결 실패로 로컬에만 저장되었습니다')) {
+        print('서버 연결 실패로 로컬에만 저장됨 - 성공으로 처리');
+        return;
+      }
       _setError('루틴 추가 중 오류가 발생했습니다: $e');
       throw e;
     } finally {
@@ -121,6 +127,11 @@ class RoutineViewModel extends ChangeNotifier {
           await setupRoutineAlarm(updatedRoutine);
         }
       } catch (e) {
+        // 서버 연결 실패로 로컬에만 저장된 경우는 성공으로 처리
+        if (e.toString().contains('서버 연결 실패로 로컬에만 저장되었습니다')) {
+          print('서버 연결 실패로 로컬에만 저장됨 - 성공으로 처리');
+          return;
+        }
         _setError('루틴 수정 중 오류가 발생했습니다: $e');
         throw e;
       } finally {
@@ -153,6 +164,11 @@ class RoutineViewModel extends ChangeNotifier {
         await RoutineRepository().removeRoutine(index);
         _loadRoutineList();
       } catch (e) {
+        // 서버 연결 실패로 로컬에만 저장된 경우는 성공으로 처리
+        if (e.toString().contains('서버 연결 실패로 로컬에만 저장되었습니다')) {
+          print('서버 연결 실패로 로컬에만 저장됨 - 성공으로 처리');
+          return;
+        }
         _setError('루틴 삭제 중 오류가 발생했습니다: $e');
         throw e;
       } finally {
@@ -199,6 +215,38 @@ class RoutineViewModel extends ChangeNotifier {
   /// 체크 상태 통계 조회
   Map<String, dynamic> getRoutineStats() {
     return RoutineRepository().getRoutineStats();
+  }
+
+  /// 목표 추가
+  Future<void> addGoal(String goal) async {
+    try {
+      await RoutineRepository().addGoal(goal);
+      notifyListeners();
+    } catch (e) {
+      _setError('목표 추가 중 오류가 발생했습니다: $e');
+    }
+  }
+
+  /// 목표 수정
+  Future<void> updateGoal(String oldGoal, String newGoal) async {
+    try {
+      await RoutineRepository().updateGoal(oldGoal, newGoal);
+      _loadRoutineList(); // 루틴 목록도 다시 로드
+      notifyListeners();
+    } catch (e) {
+      _setError('목표 수정 중 오류가 발생했습니다: $e');
+    }
+  }
+
+  /// 목표 삭제
+  Future<void> deleteGoal(String goal) async {
+    try {
+      await RoutineRepository().deleteGoal(goal);
+      _loadRoutineList(); // 루틴 목록도 다시 로드
+      notifyListeners();
+    } catch (e) {
+      _setError('목표 삭제 중 오류가 발생했습니다: $e');
+    }
   }
 
   /// 요일 문자열을 숫자로 변환

@@ -234,9 +234,40 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
         );
       }
       
+      // 에러 메시지가 있으면 스낵바로 표시
+      if (takingVM.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(takingVM.errorMessage!),
+            backgroundColor: takingVM.errorMessage!.contains('서버 연결') ? Colors.orange : Colors.red,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+      
       context.push('/taking-complete');
     } catch (e) {
       print('Error saving data: $e');
+      // 예상치 못한 오류인 경우에만 에러 스낵바 표시
+      if (!takingVM.errorMessage.toString().contains('서버 연결')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('약물 저장 중 오류가 발생했습니다: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
     }
   }
 

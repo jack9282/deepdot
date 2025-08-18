@@ -19,13 +19,31 @@ class TakingModel {
 
   factory TakingModel.fromJson(Map<String, dynamic> json) {
     return TakingModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      times: List<String>.from(json['times'] as List),
-      alarmEnabled: json['alarmEnabled'] as bool? ?? false,
-      alarmTime: json['alarmTime'] as String? ?? '08:00',
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      id: json['medicationId']?.toString() ?? json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      name: json['name']?.toString() ?? '',
+      // API의 times는 {hour, minute, second, nano} 객체 배열이므로 문자열로 변환
+      times: json['times'] != null 
+          ? (json['times'] as List).map((timeObj) {
+              if (timeObj is Map<String, dynamic>) {
+                final hour = timeObj['hour']?.toString().padLeft(2, '0') ?? '00';
+                final minute = timeObj['minute']?.toString().padLeft(2, '0') ?? '00';
+                return '$hour:$minute';
+              } else if (timeObj is String) {
+                return timeObj;
+              } else {
+                return '08:00';
+              }
+            }).toList()
+          : ['08:00', '12:00', '18:00'],
+      alarmEnabled: json['alarm'] as bool? ?? json['alarmEnabled'] as bool? ?? false,
+      // API는 alarmTime을 반환하지 않으므로 기본값 사용 (로컬에서 설정됨)
+      alarmTime: json['alarmTime']?.toString() ?? '08:00',
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt'].toString())
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null 
+          ? DateTime.parse(json['updatedAt'].toString())
+          : null,
     );
   }
 

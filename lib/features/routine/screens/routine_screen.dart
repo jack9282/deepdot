@@ -68,10 +68,7 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
   @override
   Widget build(BuildContext context) {
     final routineVM = context.watch<RoutineViewModel>();
-    final List<String> goals = routineVM.routineList
-        .expand((routine) => routine.goals)
-        .toSet()
-        .toList();
+    final List<String> goals = routineVM.availableGoals;
 
     if (_selectedGoal.isEmpty && goals.isNotEmpty) {
       _selectedGoal = goals.first;

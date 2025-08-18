@@ -19,14 +19,98 @@ class TakingApi {
         },
       );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = jsonDecode(response.body);
-        return TakingModel.fromJson(responseData);
+      print('약물 생성 응답: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // API 응답이 정수 ID만 반환하는 경우 처리
+        final responseData = jsonDecode(response.body);
+        TakingModel takingModel;
+        
+        if (responseData is int) {
+          // ID만 반환되는 경우 (201 응답)
+          takingModel = TakingModel(
+            id: responseData.toString(),
+            name: name,
+            times: [], // 빈 배열로 시작 (나중에 시간 추가)
+            alarmEnabled: alarm,
+            alarmTime: '08:00', // 기본값
+            createdAt: DateTime.now(),
+          );
+        } else if (responseData is Map<String, dynamic>) {
+          // 전체 객체가 반환되는 경우 (200 응답)
+          takingModel = TakingModel.fromJson(responseData);
+        } else {
+          throw Exception('예상치 못한 응답 형식: $responseData');
+        }
+        
+        return takingModel;
+      } else if (response.statusCode == 400) {
+        throw Exception('잘못된 요청입니다. 입력값을 확인해주세요.');
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다');
+      } else if (response.statusCode == 409) {
+        throw Exception('이미 존재하는 약물명입니다');
+      } else if (response.statusCode == 500) {
+        throw Exception('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
       } else {
         throw Exception('약물 생성 실패: ${response.statusCode}');
       }
     } catch (e) {
+      print('약물 생성 중 상세 오류: $e');
       throw Exception('약물 생성 중 오류 발생: $e');
+    }
+  }
+
+  /// 복용 시간 추가
+  static Future<void> addMedicationTime(int medicationId, String time) async {
+    try {
+      // "08:00" 형식을 hour, minute로 파싱
+      final timeParts = time.split(':');
+      final hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+      
+      final response = await HttpClient.post(
+        '$_baseEndpoint/$medicationId/times',
+        body: {
+          'time': {
+            'hour': hour,
+            'minute': minute,
+            'second': 0,
+            'nano': 0,
+          },
+        },
+      );
+
+      print('복용 시간 추가 응답: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        print('복용 시간 추가 성공: ID = $medicationId, 시간 = $time');
+      } else if (response.statusCode == 400) {
+        throw Exception('잘못된 시간 형식입니다.');
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다');
+      } else if (response.statusCode == 404) {
+        throw Exception('약물을 찾을 수 없습니다 (ID: $medicationId)');
+      } else if (response.statusCode == 500) {
+        throw Exception('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        throw Exception('복용 시간 추가 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('복용 시간 추가 중 상세 오류: $e');
+      throw Exception('복용 시간 추가 중 오류 발생: $e');
+    }
+  }
+
+  /// 복용 시간 삭제 (모든 시간 삭제 후 다시 추가하는 방식)
+  static Future<void> deleteAllMedicationTimes(int medicationId) async {
+    try {
+      // 현재는 모든 시간을 삭제하는 API가 없으므로 약물을 삭제하고 다시 생성하는 방식 사용
+      // 실제로는 서버에서 약물의 모든 복용 시간을 삭제하는 API가 필요함
+      print('복용 시간 삭제: 약물 ID = $medicationId (서버에서 개별 시간 삭제 API 필요)');
+    } catch (e) {
+      print('복용 시간 삭제 중 상세 오류: $e');
+      throw Exception('복용 시간 삭제 중 오류 발생: $e');
     }
   }
 
@@ -53,7 +137,21 @@ class TakingApi {
 
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
-        return responseData.map((item) => TakingModel.fromJson(item)).toList();
+        print('API 응답 데이터: $responseData');
+        
+        final List<TakingModel> medications = [];
+        for (int i = 0; i < responseData.length; i++) {
+          try {
+            final medication = TakingModel.fromJson(responseData[i]);
+            medications.add(medication);
+          } catch (itemError) {
+            print('약물 데이터 파싱 실패 (인덱스 $i): $itemError');
+            print('문제가 된 데이터: ${responseData[i]}');
+            // 개별 항목 실패 시 건너뛰기
+            continue;
+          }
+        }
+        return medications;
       } else {
         throw Exception('약물 목록 조회 실패: ${response.statusCode}');
       }
@@ -77,13 +175,47 @@ class TakingApi {
         },
       );
 
+      print('약물 수정 응답: ${response.statusCode} - ${response.body}');
+
       if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = jsonDecode(response.body);
-        return TakingModel.fromJson(responseData);
+        // API 응답이 정수 ID만 반환하는 경우 처리
+        final responseData = jsonDecode(response.body);
+        TakingModel takingModel;
+        
+        if (responseData is int) {
+          // ID만 반환되는 경우
+          takingModel = TakingModel(
+            id: responseData.toString(),
+            name: name,
+            times: [], // 빈 배열로 시작 (나중에 시간 추가)
+            alarmEnabled: alarm,
+            alarmTime: '08:00', // 기본값
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+        } else if (responseData is Map<String, dynamic>) {
+          // 전체 객체가 반환되는 경우
+          takingModel = TakingModel.fromJson(responseData);
+        } else {
+          throw Exception('예상치 못한 응답 형식: $responseData');
+        }
+        
+        return takingModel;
+      } else if (response.statusCode == 400) {
+        throw Exception('잘못된 요청입니다. 입력값을 확인해주세요.');
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다');
+      } else if (response.statusCode == 404) {
+        throw Exception('약물을 찾을 수 없습니다 (ID: $medicationId)');
+      } else if (response.statusCode == 409) {
+        throw Exception('이미 존재하는 약물명입니다');
+      } else if (response.statusCode == 500) {
+        throw Exception('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
       } else {
         throw Exception('약물 수정 실패: ${response.statusCode}');
       }
     } catch (e) {
+      print('약물 수정 중 상세 오류: $e');
       throw Exception('약물 수정 중 오류 발생: $e');
     }
   }
@@ -96,7 +228,7 @@ class TakingApi {
 
       print('약물 삭제 응답: ${response.statusCode} - ${response.body}');
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         print('약물 삭제 성공: ID = $medicationId');
       } else if (response.statusCode == 404) {
         throw Exception('약물을 찾을 수 없습니다 (ID: $medicationId)');

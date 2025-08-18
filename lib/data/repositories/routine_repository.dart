@@ -6,17 +6,22 @@ import '../../api/token_manager.dart';
 class RoutineRepository {
   static const String _routineListKey = 'routine_list';
   static const String _lastSyncKey = 'routine_last_sync_timestamp';
+  static const String _availableGoalsKey = 'available_goals';
 
   static final RoutineRepository _instance = RoutineRepository._internal();
   factory RoutineRepository() => _instance;
   RoutineRepository._internal();
 
   List<RoutineModel> _routineList = [];
+  List<String> _availableGoals = ['아침루틴', '개강까지 -5KG', '정돈된 일상'];
 
   List<RoutineModel> get routineList => List.unmodifiable(_routineList);
+  List<String> get availableGoals => List.unmodifiable(_availableGoals);
 
   Future<void> loadFromStorage() async {
     final prefs = await SharedPreferences.getInstance();
+    
+    // 루틴 목록 로드
     final routineJson = prefs.getString(_routineListKey);
     if (routineJson != null) {
       final List<dynamic> jsonList = jsonDecode(routineJson);
@@ -32,11 +37,19 @@ class RoutineRepository {
         return routine;
       }).toList();
     }
+    
+    // 사용 가능한 목표 목록 로드
+    final goalsJson = prefs.getString(_availableGoalsKey);
+    if (goalsJson != null) {
+      final List<dynamic> goalsList = jsonDecode(goalsJson);
+      _availableGoals = goalsList.map((item) => item.toString()).toList();
+    }
   }
 
   Future<void> saveToStorage() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_routineListKey, jsonEncode(_routineList.map((e) => e.toJson()).toList()));
+    await prefs.setString(_availableGoalsKey, jsonEncode(_availableGoals));
     await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
   }
 
@@ -74,26 +87,11 @@ class RoutineRepository {
       //   memo: memo,
       // );
       
-      // 현재는 로컬에서만 저장
-      print('API 호출 건너뛰고 로컬에서만 저장');
-      final id = DateTime.now().millisecondsSinceEpoch.toString();
-      final checks = List.generate(7, (_) => false);
-      
-      final newRoutine = RoutineModel(
-        id: id,
-        name: name,
-        goals: goals,
-        days: days,
-        notificationEnabled: notificationEnabled,
-        notificationTime: notificationTime,
-        memo: memo,
-        checks: checks,
-        createdAt: DateTime.now(),
-      );
-      _routineList.add(newRoutine);
-      await saveToStorage();
+      // 현재는 API 호출을 시뮬레이션하고 실패하도록 설정
+      throw Exception('서버 연결에 실패했습니다');
     } catch (e) {
-      print('API 추가 실패, 로컬에서만 저장: $e');
+      // 서버 연결 실패 시 로컬에만 저장
+      print('서버 연결 실패, 로컬에서만 저장: $e');
       final id = DateTime.now().millisecondsSinceEpoch.toString();
       final checks = List.generate(7, (_) => false);
       
@@ -110,7 +108,7 @@ class RoutineRepository {
       );
       _routineList.add(newRoutine);
       await saveToStorage();
-      throw e;
+      print('서버 연결 실패로 로컬에만 저장되었습니다.');
     }
   }
 
@@ -168,7 +166,7 @@ class RoutineRepository {
           memo: memo,
           updatedAt: DateTime.now(),
         );
-        throw e;
+        print('서버 연결 실패로 로컬에만 저장되었습니다.');
       }
       
       await saveToStorage();
@@ -335,6 +333,54 @@ class RoutineRepository {
       }
     } catch (e) {
       print('마지막 루틴 알람 ID 설정 중 오류 발생: $e');
+    }
+  }
+
+  /// 목표 추가
+  Future<void> addGoal(String goal) async {
+    if (!_availableGoals.contains(goal)) {
+      _availableGoals.add(goal);
+      await saveToStorage();
+    }
+  }
+
+  /// 목표 수정
+  Future<void> updateGoal(String oldGoal, String newGoal) async {
+    final index = _availableGoals.indexOf(oldGoal);
+    if (index != -1 && newGoal.isNotEmpty) {
+      _availableGoals[index] = newGoal;
+      
+      // 해당 목표를 사용하는 모든 루틴의 목표도 업데이트
+      for (int i = 0; i < _routineList.length; i++) {
+        final routine = _routineList[i];
+        if (routine.goals.contains(oldGoal)) {
+          final updatedGoals = List<String>.from(routine.goals);
+          final goalIndex = updatedGoals.indexOf(oldGoal);
+          if (goalIndex != -1) {
+            updatedGoals[goalIndex] = newGoal;
+            _routineList[i] = routine.copyWith(goals: updatedGoals);
+          }
+        }
+      }
+      await saveToStorage();
+    }
+  }
+
+  /// 목표 삭제
+  Future<void> deleteGoal(String goal) async {
+    if (_availableGoals.contains(goal)) {
+      _availableGoals.remove(goal);
+      
+      // 해당 목표를 사용하는 모든 루틴에서도 제거
+      for (int i = 0; i < _routineList.length; i++) {
+        final routine = _routineList[i];
+        if (routine.goals.contains(goal)) {
+          final updatedGoals = List<String>.from(routine.goals);
+          updatedGoals.remove(goal);
+          _routineList[i] = routine.copyWith(goals: updatedGoals);
+        }
+      }
+      await saveToStorage();
     }
   }
 } 
