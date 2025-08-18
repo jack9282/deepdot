@@ -795,7 +795,12 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
         emoji: _selectedEmoji,
       );
       
-      final success = await viewModel.updateTask(updatedTask);
+      final success = await viewModel.updateTaskWithAlarms(
+        updatedTask: updatedTask,
+        alarm30Before: _isNotificationEnabled && _selectedNotificationTime == '30분전',
+        alarm60Before: _isNotificationEnabled && _selectedNotificationTime == '1시간전',
+        alarm120Before: _isNotificationEnabled && _selectedNotificationTime == '2시간전',
+      );
       if (success) {
         await viewModel.refresh();
         
@@ -847,9 +852,9 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
       memo: _memoController.text.trim().isEmpty ? null : _memoController.text.trim(),
       image: _convertEmojiToIconCode(_selectedEmoji),
-      alarm30Before: _isNotificationEnabled && _selectedNotificationTime == '30분 전',
-      alarm60Before: _isNotificationEnabled && _selectedNotificationTime == '1시간 전',
-      alarm120Before: _isNotificationEnabled && _selectedNotificationTime == '2시간 전',
+      alarm30Before: _isNotificationEnabled && _selectedNotificationTime == '30분전',
+      alarm60Before: _isNotificationEnabled && _selectedNotificationTime == '1시간전',
+      alarm120Before: _isNotificationEnabled && _selectedNotificationTime == '2시간전',
       isRecurring: isRecurring,
     );
     

@@ -4,6 +4,8 @@ import '../../../data/repositories/task_repository.dart';
 import '../../../data/repositories/focus_session_repository.dart';
 import '../../../data/models/schedule_model.dart';
 import '../../../data/models/task_model.dart';
+import '../../../utils/alarm.dart';
+import '../../../utils/alarm_id_generator.dart';
 
 class ScheduleViewModel with ChangeNotifier {
   final ScheduleRepository _scheduleRepository = ScheduleRepository();
@@ -283,6 +285,16 @@ class ScheduleViewModel with ChangeNotifier {
         _setError('일정 추가에 실패했습니다');
         return false;
       }
+      
+      // 알림 설정
+      await _setScheduleAlarms(
+        taskId: task.id,
+        title: title,
+        startDate: startDate,
+        alarm30Before: alarm30Before,
+        alarm60Before: alarm60Before,
+        alarm120Before: alarm120Before,
+      );
 
       // 백그라운드에서 Schedule API 시도 (회원인 경우)
       final schedule = ScheduleModel(
@@ -406,6 +418,9 @@ class ScheduleViewModel with ChangeNotifier {
       final taskId = scheduleId.toString();
       final taskToDelete = _taskRepository.getTaskById(taskId);
       if (taskToDelete != null) {
+        // 알림 취소
+        await _cancelScheduleAlarms(taskId);
+        
         await _taskRepository.deleteTask(taskId);
         
         // 해당 일정의 집중시간 데이터도 함께 삭제
@@ -580,6 +595,9 @@ class ScheduleViewModel with ChangeNotifier {
         return false;
       }
       
+      // 알림 취소
+      await _cancelScheduleAlarms(taskId);
+      
       final success = await _taskRepository.deleteTask(taskId);
       if (success) {
         await _focusRepository.loadSessionsFromStorage();
@@ -610,6 +628,52 @@ class ScheduleViewModel with ChangeNotifier {
         if (titleChanged && oldTitle.isNotEmpty) {
           await _focusRepository.loadSessionsFromStorage();
           await _focusRepository.updateSessionTaskTitle(oldTitle, updatedTask.title);
+        }
+        
+        _setTasks(_taskRepository.tasks);
+        return true;
+      } else {
+        _setError('할일 수정에 실패했습니다');
+        return false;
+      }
+    } catch (e) {
+      _setError('할일 수정 중 오류가 발생했습니다');
+      return false;
+    }
+  }
+  
+  // 할일 수정 및 알림 업데이트
+  Future<bool> updateTaskWithAlarms({
+    required TaskModel updatedTask,
+    bool alarm30Before = false,
+    bool alarm60Before = false,
+    bool alarm120Before = false,
+  }) async {
+    try {
+      // 기존 task를 먼저 가져와서 제목 변경 여부 확인
+      final oldTask = getTaskById(updatedTask.id);
+      final titleChanged = oldTask != null && oldTask.title != updatedTask.title;
+      final oldTitle = oldTask?.title ?? '';
+      
+      final success = await _taskRepository.updateTask(updatedTask);
+      if (success) {
+        // 제목이 변경되었다면 focus session의 제목도 업데이트
+        if (titleChanged && oldTitle.isNotEmpty) {
+          await _focusRepository.loadSessionsFromStorage();
+          await _focusRepository.updateSessionTaskTitle(oldTitle, updatedTask.title);
+        }
+        
+        // 기존 알림 취소 후 새로 설정
+        await _cancelScheduleAlarms(updatedTask.id);
+        if (updatedTask.alarm && updatedTask.startDate != null) {
+          await _setScheduleAlarms(
+            taskId: updatedTask.id,
+            title: updatedTask.title,
+            startDate: updatedTask.startDate!,
+            alarm30Before: alarm30Before,
+            alarm60Before: alarm60Before,
+            alarm120Before: alarm120Before,
+          );
         }
         
         _setTasks(_taskRepository.tasks);
@@ -833,6 +897,82 @@ class ScheduleViewModel with ChangeNotifier {
     } catch (e) {
       // API 실패는 무시
       print('Schedule API 삭제 건너뜀: $e');
+    }
+  }
+  
+  // ===== 알림 관련 메서드 =====
+  
+  // 일정 알림 설정
+  Future<void> _setScheduleAlarms({
+    required String taskId,
+    required String title,
+    required DateTime startDate,
+    bool alarm30Before = false,
+    bool alarm60Before = false,
+    bool alarm120Before = false,
+  }) async {
+    try {
+      // taskId를 숫자로 변환 (알림 ID 생성용)
+      final baseId = taskId.hashCode.abs() % 1000000;
+      
+      // 30분 전 알림
+      if (alarm30Before) {
+        final alarmTime = startDate.subtract(const Duration(minutes: 30));
+        if (alarmTime.isAfter(DateTime.now())) {
+          final alarmId = baseId * 10 + 0; // 30분전 = 0
+          await AlarmUtility.setAlarm(
+            id: alarmId,
+            scheduledTime: alarmTime,
+            title: '일정 알림',
+            body: '30분 후 "$title" 일정이 있습니다.',
+          );
+        }
+      }
+      
+      // 1시간 전 알림
+      if (alarm60Before) {
+        final alarmTime = startDate.subtract(const Duration(hours: 1));
+        if (alarmTime.isAfter(DateTime.now())) {
+          final alarmId = baseId * 10 + 1; // 1시간전 = 1
+          await AlarmUtility.setAlarm(
+            id: alarmId,
+            scheduledTime: alarmTime,
+            title: '일정 알림',
+            body: '1시간 후 "$title" 일정이 있습니다.',
+          );
+        }
+      }
+      
+      // 2시간 전 알림
+      if (alarm120Before) {
+        final alarmTime = startDate.subtract(const Duration(hours: 2));
+        if (alarmTime.isAfter(DateTime.now())) {
+          final alarmId = baseId * 10 + 2; // 2시간전 = 2
+          await AlarmUtility.setAlarm(
+            id: alarmId,
+            scheduledTime: alarmTime,
+            title: '일정 알림',
+            body: '2시간 후 "$title" 일정이 있습니다.',
+          );
+        }
+      }
+    } catch (e) {
+      print('일정 알림 설정 중 오류: $e');
+    }
+  }
+  
+  // 일정 알림 취소
+  Future<void> _cancelScheduleAlarms(String taskId) async {
+    try {
+      final baseId = taskId.hashCode.abs() % 1000000;
+      
+      // 모든 가능한 알림 취소 (30분전, 1시간전, 2시간전)
+      for (int i = 0; i < 3; i++) {
+        final alarmId = baseId * 10 + i;
+        await AlarmUtility.cancelAlarm(alarmId);
+      }
+    } catch (e) {
+      print('일정 알림 취소 중 오류: $e');
     }
   }
 }
