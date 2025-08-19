@@ -65,7 +65,14 @@ class AppRouter {
       // 비밀번호 재설정 화면
       GoRoute(
         path: '/reset-password',
-        builder: (context, state) => const ResetPasswordScreen(),
+        builder: (context, state) {
+          final username = state.uri.queryParameters['username'] ?? '';
+          final email = state.uri.queryParameters['email'] ?? '';
+          return ResetPasswordScreen(
+            username: username,
+            email: email,
+          );
+        },
       ),
       
       // 메인 화면 (탭 네비게이션 포함)

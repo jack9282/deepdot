@@ -64,26 +64,16 @@ class TakingApi {
   /// 복용 시간 추가
   static Future<void> addMedicationTime(int medicationId, String time) async {
     try {
-      // "08:00" 형식을 hour, minute로 파싱
-      final timeParts = time.split(':');
-      final hour = int.parse(timeParts[0]);
-      final minute = int.parse(timeParts[1]);
-      
       final response = await HttpClient.post(
         '$_baseEndpoint/$medicationId/times',
         body: {
-          'time': {
-            'hour': hour,
-            'minute': minute,
-            'second': 0,
-            'nano': 0,
-          },
+          'time': time,
         },
       );
 
       print('복용 시간 추가 응답: ${response.statusCode} - ${response.body}');
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         print('복용 시간 추가 성공: ID = $medicationId, 시간 = $time');
       } else if (response.statusCode == 400) {
         throw Exception('잘못된 시간 형식입니다.');
@@ -99,6 +89,76 @@ class TakingApi {
     } catch (e) {
       print('복용 시간 추가 중 상세 오류: $e');
       throw Exception('복용 시간 추가 중 오류 발생: $e');
+    }
+  }
+
+  /// 복용 시간 수정
+  /// URL: /api/medication/{medicationId}/times (기본), 성공 시 204
+  /// 설명: timeId로 특정 복용 시간을 수정합니다. 서버 구현에 따라 /times/{timeId} 또는 /times + body.timeId 형태를 모두 시도합니다.
+  static Future<void> updateMedicationTime({
+    required int medicationId,
+    required int timeId,
+    required String time,
+  }) async {
+    try {
+      // 서버 스펙: "09:00:00" 형식 요구 → HH:mm이면 초를 보강
+      final String normalizedTime = time.length == 5 ? '$time:00' : time;
+
+      // 1차 시도: /times/{timeId}
+      final primaryResponse = await HttpClient.patch(
+        '$_baseEndpoint/$medicationId/times/$timeId',
+        body: {
+          'time': normalizedTime,
+        },
+      );
+
+      print('복용 시간 수정 응답: ${primaryResponse.statusCode} - ${primaryResponse.body}');
+
+      if (primaryResponse.statusCode == 200 || primaryResponse.statusCode == 204) {
+        return;
+      }
+
+      // 404/405 등 경로 미지원 시 대체 경로 시도: /times + body에 timeId 포함
+      if (primaryResponse.statusCode == 404 || primaryResponse.statusCode == 405) {
+        final fallbackResponse = await HttpClient.patch(
+          '$_baseEndpoint/$medicationId/times',
+          body: {
+            'timeId': timeId,
+            'time': normalizedTime,
+          },
+        );
+
+        print('복용 시간 수정(대체 경로) 응답: ${fallbackResponse.statusCode} - ${fallbackResponse.body}');
+
+        if (fallbackResponse.statusCode == 200 || fallbackResponse.statusCode == 204) {
+          return;
+        } else if (fallbackResponse.statusCode == 400) {
+          throw Exception('잘못된 시간 형식입니다. 예: 09:00:00');
+        } else if (fallbackResponse.statusCode == 401) {
+          throw Exception('인증이 필요합니다');
+        } else if (fallbackResponse.statusCode == 403) {
+          throw Exception('수정 권한이 없습니다');
+        } else if (fallbackResponse.statusCode == 404) {
+          throw Exception('약물 또는 시간 항목을 찾을 수 없습니다 (ID: $medicationId, timeId: $timeId)');
+        } else if (fallbackResponse.statusCode == 500) {
+          throw Exception('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        } else {
+          throw Exception('복용 시간 수정 실패: ${fallbackResponse.statusCode}');
+        }
+      } else if (primaryResponse.statusCode == 400) {
+        throw Exception('잘못된 시간 형식입니다. 예: 09:00:00');
+      } else if (primaryResponse.statusCode == 401) {
+        throw Exception('인증이 필요합니다');
+      } else if (primaryResponse.statusCode == 403) {
+        throw Exception('수정 권한이 없습니다');
+      } else if (primaryResponse.statusCode == 500) {
+        throw Exception('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        throw Exception('복용 시간 수정 실패: ${primaryResponse.statusCode}');
+      }
+    } catch (e) {
+      print('복용 시간 수정 중 상세 오류: $e');
+      throw Exception('복용 시간 수정 중 오류 발생: $e');
     }
   }
 
@@ -167,7 +227,7 @@ class TakingApi {
     required bool alarm,
   }) async {
     try {
-      final response = await HttpClient.put(
+      final response = await HttpClient.patch(
         '$_baseEndpoint/$medicationId',
         body: {
           'name': name,
@@ -177,30 +237,56 @@ class TakingApi {
 
       print('약물 수정 응답: ${response.statusCode} - ${response.body}');
 
-      if (response.statusCode == 200) {
-        // API 응답이 정수 ID만 반환하는 경우 처리
-        final responseData = jsonDecode(response.body);
-        TakingModel takingModel;
-        
-        if (responseData is int) {
-          // ID만 반환되는 경우
-          takingModel = TakingModel(
-            id: responseData.toString(),
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // 204 응답 시 body가 비어있으므로 로컬 데이터로 모델 생성
+        if (response.statusCode == 204) {
+          return TakingModel(
+            id: medicationId.toString(),
             name: name,
-            times: [], // 빈 배열로 시작 (나중에 시간 추가)
+            times: [], // API에서 times를 반환하지 않으므로 빈 배열
             alarmEnabled: alarm,
             alarmTime: '08:00', // 기본값
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           );
-        } else if (responseData is Map<String, dynamic>) {
-          // 전체 객체가 반환되는 경우
-          takingModel = TakingModel.fromJson(responseData);
-        } else {
-          throw Exception('예상치 못한 응답 형식: $responseData');
         }
         
-        return takingModel;
+        // 200 응답 시 body 파싱 시도
+        if (response.body.isNotEmpty) {
+          final responseData = jsonDecode(response.body);
+          TakingModel takingModel;
+          
+          if (responseData is int) {
+            // ID만 반환되는 경우
+            takingModel = TakingModel(
+              id: responseData.toString(),
+              name: name,
+              times: [], // 빈 배열로 시작 (나중에 시간 추가)
+              alarmEnabled: alarm,
+              alarmTime: '08:00', // 기본값
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            );
+          } else if (responseData is Map<String, dynamic>) {
+            // 전체 객체가 반환되는 경우
+            takingModel = TakingModel.fromJson(responseData);
+          } else {
+            throw Exception('예상치 못한 응답 형식: $responseData');
+          }
+          
+          return takingModel;
+        } else {
+          // 200이지만 body가 비어있는 경우
+          return TakingModel(
+            id: medicationId.toString(),
+            name: name,
+            times: [], // API에서 times를 반환하지 않으므로 빈 배열
+            alarmEnabled: alarm,
+            alarmTime: '08:00', // 기본값
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+        }
       } else if (response.statusCode == 400) {
         throw Exception('잘못된 요청입니다. 입력값을 확인해주세요.');
       } else if (response.statusCode == 401) {

@@ -170,6 +170,21 @@ class TokenManager {
   Future<bool> isGuestMode() async {
     final loggedInStatus = await isLoggedIn();
     final hasValidToken = await this.hasValidToken();
+    
+    // 로그인 상태이지만 토큰이 유효하지 않은 경우 토큰 갱신 시도
+    if (loggedInStatus && !hasValidToken) {
+      print('토큰이 만료됨 - 토큰 갱신 시도');
+      final refreshSuccess = await refreshToken();
+      if (refreshSuccess) {
+        print('토큰 갱신 성공');
+        return false; // 갱신 성공 시 비회원 모드 아님
+      } else {
+        print('토큰 갱신 실패 - 로그아웃 처리');
+        await clearAuthData(); // 갱신 실패 시 로그아웃
+        return true; // 비회원 모드
+      }
+    }
+    
     return !loggedInStatus || !hasValidToken;
   }
 } 

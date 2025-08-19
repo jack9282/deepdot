@@ -1,114 +1,207 @@
 class RoutineModel {
-  final String id;
+  final int? routineId;
   final String name;
-  final List<String> goals;
-  final List<String> days;
-  final bool notificationEnabled;
-  final String notificationTime;
+  final int goalId;
+  final String goalName;
+  final bool mon;
+  final bool tue;
+  final bool wed;
+  final bool thu;
+  final bool fri;
+  final bool sat;
+  final bool sun;
+  final bool active;
   final String memo;
-  final List<bool> checks; // 단순화: List<List<bool>> -> List<bool>
+  final Map<String, int> startTime;
   final DateTime createdAt;
   final DateTime? updatedAt;
-  final int? alarmId; // 알람 ID 추가
-
+  final int? alarmId;
 
   RoutineModel({
-    required this.id,
+    this.routineId,
     required this.name,
-    required this.goals,
-    required this.days,
-    required this.notificationEnabled,
-    required this.notificationTime,
+    required this.goalId,
+    required this.goalName,
+    required this.mon,
+    required this.tue,
+    required this.wed,
+    required this.thu,
+    required this.fri,
+    required this.sat,
+    required this.sun,
+    required this.active,
     required this.memo,
-    required this.checks,
+    required this.startTime,
     required this.createdAt,
     this.updatedAt,
     this.alarmId,
   });
 
   factory RoutineModel.fromJson(Map<String, dynamic> json) {
-    // 기존 List<List<bool>> 구조를 List<bool>로 변환
-    List<bool> checks = [];
-    final checksData = json['checks'] as List? ?? [];
-    
-    if (checksData.isNotEmpty && checksData.first is List) {
-      // 기존 구조: List<List<bool>>
-      checks = checksData.map((item) {
-        if (item is List && item.isNotEmpty) {
-          return item.first as bool? ?? false;
-        }
-        return false;
-      }).toList();
-    } else {
-      // 새로운 구조: List<bool>
-      checks = checksData.map((item) => item as bool? ?? false).toList();
+    int parseGoalId(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
     }
     
-    // 7일치 체크 상태 보장
-    while (checks.length < 7) {
-      checks.add(false);
-    }
-    if (checks.length > 7) {
-      checks = checks.take(7).toList();
-    }
-
     return RoutineModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      goals: List<String>.from(json['goals'] as List? ?? []),
-      days: List<String>.from(json['days'] as List? ?? []),
-      notificationEnabled: json['notificationEnabled'] as bool? ?? true,
-      notificationTime: json['notificationTime'] as String? ?? '08:20',
+      routineId: json['routineId'] != null ? int.tryParse(json['routineId'].toString()) : null,
+      name: json['name'] as String? ?? '',
+      goalId: parseGoalId(json['goalId']),
+      goalName: json['goalName'] as String? ?? '새 목표',
+      mon: json['mon'] as bool? ?? false,
+      tue: json['tue'] as bool? ?? false,
+      wed: json['wed'] as bool? ?? false,
+      thu: json['thu'] as bool? ?? false,
+      fri: json['fri'] as bool? ?? false,
+      sat: json['sat'] as bool? ?? false,
+      sun: json['sun'] as bool? ?? false,
+      active: json['active'] as bool? ?? true,
       memo: json['memo'] as String? ?? '',
-      checks: checks,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
-      alarmId: json['alarmId'] as int?,
+      startTime: _parseStartTime(json['start_time'] ?? json['startTime']),
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null 
+          ? DateTime.parse(json['updatedAt'] as String)
+          : null,
+      alarmId: json['alarmId'] != null ? int.tryParse(json['alarmId'].toString()) : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      if (routineId != null) 'routineId': routineId,
       'name': name,
-      'goals': goals,
-      'days': days,
-      'notificationEnabled': notificationEnabled,
-      'notificationTime': notificationTime,
+      'goalId': goalId,
+      'goalName': goalName,
+      'mon': mon,
+      'tue': tue,
+      'wed': wed,
+      'thu': thu,
+      'fri': fri,
+      'sat': sat,
+      'sun': sun,
+      'active': active,
       'memo': memo,
-      'checks': checks,
+      'start_time': startTime,
       'createdAt': createdAt.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
       if (alarmId != null) 'alarmId': alarmId,
     };
   }
 
-  // 체크 상태 업데이트를 위한 복사 메서드
+  Map<String, dynamic> toApiJson() {
+    return {
+      'name': name,
+      'goalId': goalId,
+      'mon': mon,
+      'tue': tue,
+      'wed': wed,
+      'thu': thu,
+      'fri': fri,
+      'sat': sat,
+      'sun': sun,
+      'active': active,
+      'memo': memo,
+      'start_time': startTime,
+    };
+  }
+
   RoutineModel copyWith({
-    String? id,
+    int? routineId,
     String? name,
-    List<String>? goals,
-    List<String>? days,
-    bool? notificationEnabled,
-    String? notificationTime,
+    int? goalId,
+    String? goalName,
+    bool? mon,
+    bool? tue,
+    bool? wed,
+    bool? thu,
+    bool? fri,
+    bool? sat,
+    bool? sun,
+    bool? active,
     String? memo,
-    List<bool>? checks,
+    Map<String, int>? startTime,
     DateTime? createdAt,
     DateTime? updatedAt,
     int? alarmId,
   }) {
     return RoutineModel(
-      id: id ?? this.id,
+      routineId: routineId ?? this.routineId,
       name: name ?? this.name,
-      goals: goals ?? this.goals,
-      days: days ?? this.days,
-      notificationEnabled: notificationEnabled ?? this.notificationEnabled,
-      notificationTime: notificationTime ?? this.notificationTime,
+      goalId: goalId ?? this.goalId,
+      goalName: goalName ?? this.goalName,
+      mon: mon ?? this.mon,
+      tue: tue ?? this.tue,
+      wed: wed ?? this.wed,
+      thu: thu ?? this.thu,
+      fri: fri ?? this.fri,
+      sat: sat ?? this.sat,
+      sun: sun ?? this.sun,
+      active: active ?? this.active,
       memo: memo ?? this.memo,
-      checks: checks ?? this.checks,
+      startTime: startTime ?? this.startTime,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       alarmId: alarmId ?? this.alarmId,
     );
+  }
+
+  List<String> get days {
+    final days = <String>[];
+    if (mon) days.add('월');
+    if (tue) days.add('화');
+    if (wed) days.add('수');
+    if (thu) days.add('목');
+    if (fri) days.add('금');
+    if (sat) days.add('토');
+    if (sun) days.add('일');
+    return days;
+  }
+
+  String get startTimeString {
+    final hour = startTime['hour'] ?? 8;
+    final minute = startTime['minute'] ?? 0;
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  }
+
+  bool get notificationEnabled => active;
+
+  static Map<String, int> _defaultStartTime() => {
+    'hour': 8,
+    'minute': 0,
+    'second': 0,
+    'nano': 0,
+  };
+
+  static Map<String, int> _parseStartTime(dynamic startTime) {
+    if (startTime == null) {
+      return _defaultStartTime();
+    }
+    
+    if (startTime is Map<String, dynamic>) {
+      return {
+        'hour': startTime['hour'] as int? ?? 8,
+        'minute': startTime['minute'] as int? ?? 0,
+        'second': startTime['second'] as int? ?? 0,
+        'nano': startTime['nano'] as int? ?? 0,
+      };
+    }
+    
+    if (startTime is String) {
+      final parts = startTime.split(':');
+      if (parts.length >= 2) {
+        return {
+          'hour': int.tryParse(parts[0]) ?? 8,
+          'minute': int.tryParse(parts[1]) ?? 0,
+          'second': parts.length >= 3 ? (int.tryParse(parts[2]) ?? 0) : 0,
+          'nano': 0,
+        };
+      }
+    }
+    
+    return _defaultStartTime();
   }
 } 

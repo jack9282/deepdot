@@ -156,22 +156,29 @@ class _TakingListItemState extends State<TakingListItem> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Transform.scale(
-                    scale: 1.5,
-                    child: Checkbox(
-                      value: _checks[timeIdx],
-                      onChanged: (val) {
-                        _onCheckChanged(timeIdx, val ?? false);
-                      },
-                      activeColor: Color(0xFF2563EB), // 파란 체크박스
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+                  const SizedBox(width: 7),
+                  GestureDetector(
+                    onTap: () {
+                      _onCheckChanged(timeIdx, !_checks[timeIdx]);
+                    },
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: _checks[timeIdx] ? const Color(0xFF2563EB) : Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: _checks[timeIdx] ? const Color(0xFF2563EB) : const Color(0xFFE8E8E8),
+                          width: 1,
+                        ),
                       ),
-                      side: const BorderSide(
-                        color: Color(0xFFD1D5DB),
-                        width: 1.5,
-                      ),
+                      child: _checks[timeIdx]
+                          ? const Icon(
+                              Icons.check,
+                              size: 16,
+                              color: Colors.white,
+                            )
+                          : null,
                     ),
                   ),
                 ],

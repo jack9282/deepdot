@@ -4,6 +4,7 @@ import '../../../data/models/user_model.dart';
 import '../../../api/token_manager.dart';
 import '../../../api/password-reset-api.dart';
 import '../../../api/find-id-api.dart';
+import '../../../api/email_api.dart';
 
 class AuthViewModel with ChangeNotifier {
   final AuthRepository _authRepository = AuthRepository();
@@ -98,23 +99,18 @@ class AuthViewModel with ChangeNotifier {
         return false;
       }
       
-      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
         _setError('올바른 이메일 형식을 입력해주세요');
         return false;
       }
       
-      final success = await FindIdApi.sendEmailCode(email);
-      if (success) {
-        _isEmailCodeSent = true;
-        _isEmailVerified = false; // 재전송 시 인증 상태 초기화
-        notifyListeners();
-        return true;
-      } else {
-        _setError('인증 코드 전송에 실패했습니다');
-        return false;
-      }
+      await EmailAPI.sendCode(EmailSendCodeRequest(email: email));
+      _isEmailCodeSent = true;
+      _isEmailVerified = false;
+      notifyListeners();
+      return true;
     } catch (e) {
-      _setError('이메일 코드 요청 중 오류가 발생했습니다');
+      _setError('인증 코드 전송에 실패했습니다');
       return false;
     } finally {
       _setLoading(false);
@@ -124,32 +120,39 @@ class AuthViewModel with ChangeNotifier {
   // 이메일 인증 코드 확인
   bool _isEmailVerified = false;
   bool get isEmailVerified => _isEmailVerified;
-  Future<bool> verifyEmailCode(String code) async {
+  Future<bool> verifyEmailCode(String username, String email, String code) async {
     _setLoading(true);
     _setError(null);
     try {
+      if (username.isEmpty) {
+        _setError('아이디를 입력해주세요');
+        return false;
+      }
+      if (email.isEmpty) {
+        _setError('이메일을 입력해주세요');
+        return false;
+      }
       if (code.isEmpty) {
         _setError('인증 코드를 입력해주세요');
         return false;
       }
-      
-      // TODO: 실제 이메일 인증 API 구현 시 여기에 API 호출 추가
-      // 현재는 6자리 코드를 입력하면 자동으로 인증 완료
-      if (code.length == 6) {
-        await Future.delayed(const Duration(seconds: 1));
-        _isEmailVerified = true;
-        _setError(null);
-        notifyListeners();
-        return true;
-      } else if (code.length > 6) {
+      if (code.length != 6) {
         _setError('인증 코드는 6자리입니다');
         return false;
-      } else {
-        // 6자리 미만일 때는 에러 메시지를 표시하지 않음
-        return false;
       }
+
+      await EmailAPI.verifySignup(EmailVerifyRequest(
+        username: username,
+        email: email,
+        code: code,
+      ));
+
+      _isEmailVerified = true;
+      _setError(null);
+      notifyListeners();
+      return true;
     } catch (e) {
-      _setError('이메일 인증 중 오류가 발생했습니다');
+      _setError('이메일 인증에 실패했습니다');
       return false;
     } finally {
       _setLoading(false);
@@ -157,7 +160,7 @@ class AuthViewModel with ChangeNotifier {
   }
 
   // 비밀번호 재설정
-  Future<bool> resetPassword(String newPassword, String confirmPassword) async {
+  Future<bool> resetPassword(String username, String email, String newPassword, String confirmPassword) async {
     _setLoading(true);
     _setError(null);
 
@@ -177,14 +180,7 @@ class AuthViewModel with ChangeNotifier {
         return false;
       }
 
-      // 현재 로그인된 사용자의 username 가져오기
-      final username = await TokenManager.instance.getUsername();
-      if (username == null) {
-        _setError('사용자 정보를 찾을 수 없습니다');
-        return false;
-      }
-
-      final success = await PasswordResetApi.resetPassword(username, newPassword);
+      final success = await PasswordResetApi.resetPassword(username, email, newPassword);
       if (success) {
         return true;
       } else {
@@ -279,7 +275,7 @@ class AuthViewModel with ChangeNotifier {
       // }
 
       // 이메일 형식 검증
-      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
         _setError('올바른 이메일 형식을 입력해주세요');
         return false;
       }
@@ -357,7 +353,7 @@ class AuthViewModel with ChangeNotifier {
         return false;
       }
 
-      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
         _setError('올바른 이메일 형식을 입력해주세요');
         return false;
       }
@@ -393,11 +389,11 @@ class AuthViewModel with ChangeNotifier {
         return false;
       }
 
-      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+            if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
         _setError('올바른 이메일 형식을 입력해주세요');
         return false;
       }
-
+ 
       final success = await PasswordResetApi.sendResetCode(username, email);
       if (success) {
         return true;

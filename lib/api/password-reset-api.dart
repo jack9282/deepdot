@@ -55,7 +55,7 @@ class PasswordResetApi {
   }
 
   // 비밀번호 재설정
-  static Future<bool> resetPassword(String username, String newPassword) async {
+  static Future<bool> resetPassword(String username, String email, String newPassword) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/password/reset'),
@@ -64,6 +64,7 @@ class PasswordResetApi {
         },
         body: jsonEncode({
           'username': username,
+          'email': email,
           'newPassword': newPassword,
         }),
       );

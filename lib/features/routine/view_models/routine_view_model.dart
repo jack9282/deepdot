@@ -4,34 +4,37 @@ import '../../../data/models/routine_model.dart';
 import '../../../utils/alarm.dart';
 import '../../../utils/alarm_id_generator.dart';
 import '../../../api/token_manager.dart';
+import '../../../api/routine_api.dart';
 
 class RoutineViewModel extends ChangeNotifier {
   List<RoutineModel> _routineList = [];
-  Map<String, int> _routineAlarmIds = {}; // 루틴 ID와 알람 ID 매핑
+  Map<int, int> _routineAlarmIds = {};
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isInitialized = false;
 
   List<RoutineModel> get routineList => List.unmodifiable(_routineList);
-  List<String> get availableGoals => RoutineRepository().availableGoals;
+  List<Map<String, dynamic>> get availableGoals {
+    return RoutineRepository().availableGoals;
+  }
+  List<String> get availableGoalNames {
+    return RoutineRepository().availableGoals
+        .map((goal) => goal['name'] as String)
+        .toList();
+  }
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isInitialized => _isInitialized;
 
-  bool _isInitialized = false;
-
   Future<void> initialize() async {
     if (_isInitialized) {
-      print('이미 초기화됨 - 건너뛰기');
       return;
     }
     
-    print('앱 초기화 시작');
     _setLoading(true);
     _clearError();
     
     try {
-      // 앱 시작 시 모든 알람 초기화
-      print('앱 시작 - 모든 알람 초기화');
       await removeAllRoutineAlarms();
       
       await RoutineRepository().loadFromStorage();
@@ -39,9 +42,7 @@ class RoutineViewModel extends ChangeNotifier {
       _loadRoutineList();
       _isInitialized = true;
       
-      // 루틴 알람 복원
       await restoreAllRoutineAlarms();
-      print('앱 초기화 완료');
     } catch (e) {
       _setError('데이터 로드 중 오류가 발생했습니다: $e');
     } finally {
@@ -51,22 +52,24 @@ class RoutineViewModel extends ChangeNotifier {
 
   Future<void> _syncWithApi() async {
     try {
-      // 비회원 모드일 때는 API 동기화를 하지 않음
       if (await TokenManager.instance.isGuestMode()) {
-        print('비회원 모드 - API 동기화 건너뛰기');
         return;
       }
       
-      await RoutineRepository().syncFromApi();
+      await RoutineRepository().syncWithServer();
     } catch (e) {
-      print('API 동기화 실패, 로컬 데이터 사용: $e');
       // API 실패 시에도 로컬 데이터는 계속 사용
     }
   }
 
   void _loadRoutineList() {
-    _routineList = RoutineRepository().routineList;
-    notifyListeners();
+    try {
+      _routineList = RoutineRepository().routineList;
+      notifyListeners();
+    } catch (e) {
+      _routineList = [];
+      notifyListeners();
+    }
   }
 
   void _setLoading(bool loading) {
@@ -83,102 +86,138 @@ class RoutineViewModel extends ChangeNotifier {
     _errorMessage = null;
   }
 
-  Future<void> addRoutine(String name, List<String> goals, List<String> days, bool notificationEnabled, String notificationTime, String memo) async {
+  Future<bool> addRoutine({
+    required String name,
+    required int goalId,
+    required bool mon,
+    required bool tue,
+    required bool wed,
+    required bool thu,
+    required bool fri,
+    required bool sat,
+    required bool sun,
+    required bool active,
+    required String memo,
+    required Map<String, int> startTime,
+  }) async {
     _setLoading(true);
     _clearError();
     
     try {
-      await RoutineRepository().addRoutine(name, goals, days, notificationEnabled, notificationTime, memo);
-      _loadRoutineList();
-      
-      if (notificationEnabled && days.isNotEmpty) {
-        final routine = _routineList.last;
-        await setupRoutineAlarm(routine);
+      final success = await RoutineRepository().addRoutine(
+        name: name,
+        goalId: goalId,
+        mon: mon,
+        tue: tue,
+        wed: wed,
+        thu: thu,
+        fri: fri,
+        sat: sat,
+        sun: sun,
+        active: active,
+        memo: memo,
+        startTime: startTime,
+      );
+
+      if (success) {
+        _loadRoutineList();
+        
+        if (active && _hasSelectedDays(mon, tue, wed, thu, fri, sat, sun)) {
+          final routine = _routineList.last;
+          await setupRoutineAlarm(routine);
+        }
+        return true;
+      } else {
+        _setError('루틴 추가에 실패했습니다.');
+        return false;
       }
     } catch (e) {
-      // 서버 연결 실패로 로컬에만 저장된 경우는 성공으로 처리
-      if (e.toString().contains('서버 연결 실패로 로컬에만 저장되었습니다')) {
-        print('서버 연결 실패로 로컬에만 저장됨 - 성공으로 처리');
-        return;
-      }
       _setError('루틴 추가 중 오류가 발생했습니다: $e');
-      throw e;
+      return false;
     } finally {
       _setLoading(false);
     }
   }
 
-  Future<void> updateRoutine(int index, String name, List<String> goals, List<String> days, bool notificationEnabled, String notificationTime, String memo) async {
-    if (index >= 0 && index < _routineList.length) {
-      _setLoading(true);
-      _clearError();
+  Future<bool> updateRoutine({
+    required int routineId,
+    required String name,
+    required int goalId,
+    required bool mon,
+    required bool tue,
+    required bool wed,
+    required bool thu,
+    required bool fri,
+    required bool sat,
+    required bool sun,
+    required bool active,
+    required String memo,
+    required Map<String, int> startTime,
+  }) async {
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      await removeRoutineAlarm(routineId);
       
-      try {
-        final oldRoutine = _routineList[index];
-        
-        // 기존 알람 제거
-        await removeRoutineAlarm(oldRoutine.id);
-        
-        await RoutineRepository().updateRoutine(index, name, goals, days, notificationEnabled, notificationTime, memo);
+      final success = await RoutineRepository().updateRoutine(
+        routineId: routineId,
+        name: name,
+        goalId: goalId,
+        mon: mon,
+        tue: tue,
+        wed: wed,
+        thu: thu,
+        fri: fri,
+        sat: sat,
+        sun: sun,
+        active: active,
+        memo: memo,
+        startTime: startTime,
+      );
+
+      if (success) {
         _loadRoutineList();
         
-        if (notificationEnabled && days.isNotEmpty) {
-          final updatedRoutine = _routineList[index];
+        if (active && _hasSelectedDays(mon, tue, wed, thu, fri, sat, sun)) {
+          final updatedRoutine = _routineList.firstWhere((r) => r.routineId == routineId);
           await setupRoutineAlarm(updatedRoutine);
         }
-      } catch (e) {
-        // 서버 연결 실패로 로컬에만 저장된 경우는 성공으로 처리
-        if (e.toString().contains('서버 연결 실패로 로컬에만 저장되었습니다')) {
-          print('서버 연결 실패로 로컬에만 저장됨 - 성공으로 처리');
-          return;
-        }
-        _setError('루틴 수정 중 오류가 발생했습니다: $e');
-        throw e;
-      } finally {
-        _setLoading(false);
+        return true;
+      } else {
+        _setError('루틴 수정에 실패했습니다.');
+        return false;
       }
-    }
-  }
-
-  Future<void> updateRoutineCheck(int routineIndex, int dayIndex, bool isChecked) async {
-    try {
-      await RoutineRepository().updateRoutineCheck(routineIndex, dayIndex, isChecked);
-      // 체크 상태 변경 시에는 전체 리스트를 다시 로드하지 않고 즉시 반영
-      notifyListeners();
     } catch (e) {
-      _setError('체크 상태 업데이트 중 오류가 발생했습니다: $e');
+      _setError('루틴 수정 중 오류가 발생했습니다: $e');
+      return false;
+    } finally {
+      _setLoading(false);
     }
   }
 
-  Future<void> removeRoutine(int index) async {
-    if (index >= 0 && index < _routineList.length) {
-      _setLoading(true);
-      _clearError();
+  Future<bool> removeRoutine(int routineId) async {
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      await removeRoutineAlarm(routineId);
       
-      try {
-        final routine = _routineList[index];
-        
-        // 알람 제거
-        await removeRoutineAlarm(routine.id);
-        
-        await RoutineRepository().removeRoutine(index);
+      final success = await RoutineRepository().removeRoutine(routineId);
+      
+      if (success) {
         _loadRoutineList();
-      } catch (e) {
-        // 서버 연결 실패로 로컬에만 저장된 경우는 성공으로 처리
-        if (e.toString().contains('서버 연결 실패로 로컬에만 저장되었습니다')) {
-          print('서버 연결 실패로 로컬에만 저장됨 - 성공으로 처리');
-          return;
-        }
-        _setError('루틴 삭제 중 오류가 발생했습니다: $e');
-        throw e;
-      } finally {
-        _setLoading(false);
+        return true;
+      } else {
+        _setError('루틴 삭제에 실패했습니다.');
+        return false;
       }
+    } catch (e) {
+      _setError('루틴 삭제 중 오류가 발생했습니다: $e');
+      return false;
+    } finally {
+      _setLoading(false);
     }
-  }
-
-  List<bool> getRoutineChecks(int routineIndex) {
-    return RoutineRepository().getRoutineChecks(routineIndex);
   }
 
   Future<void> clearAll() async {
@@ -186,7 +225,6 @@ class RoutineViewModel extends ChangeNotifier {
     _clearError();
     
     try {
-      // 모든 알람 제거
       await removeAllRoutineAlarms();
       
       RoutineRepository().clearAllData();
@@ -199,57 +237,93 @@ class RoutineViewModel extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    await initialize();
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      await RoutineRepository().loadFromStorage();
+      await _syncWithApi();
+      _loadRoutineList();
+    } catch (e) {
+      _setError('데이터 새로고침 중 오류가 발생했습니다: $e');
+    } finally {
+      _setLoading(false);
+    }
   }
 
-  /// 오류 메시지 초기화
   void clearError() {
     _clearError();
+    notifyListeners();
   }
 
-  /// 특정 목표의 루틴 목록 조회
-  List<RoutineModel> getRoutinesByGoal(String goal) {
-    return RoutineRepository().getRoutinesByGoal(goal);
+  List<RoutineModel> getRoutinesByGoal(String goalName) {
+    return _routineList.where((routine) => routine.goalName == goalName).toList();
   }
 
-  /// 체크 상태 통계 조회
-  Map<String, dynamic> getRoutineStats() {
-    return RoutineRepository().getRoutineStats();
+  Future<bool> addGoal(String name) async {
+    return await RoutineRepository().addGoal(name);
   }
 
-  /// 목표 추가
-  Future<void> addGoal(String goal) async {
+  Future<bool> updateGoal(String goalId, String name) async {
+    return await RoutineRepository().updateGoal(goalId, name);
+  }
+
+  Future<bool> deleteGoal(String goalId) async {
     try {
-      await RoutineRepository().addGoal(goal);
-      notifyListeners();
+      final success = await RoutineRepository().deleteGoal(goalId);
+      
+      if (success) {
+        final goalIdInt = int.tryParse(goalId) ?? 0;
+        final routinesToRemove = _routineList.where((routine) => routine.goalId == goalIdInt).toList();
+        
+        for (final routine in routinesToRemove) {
+          if (routine.routineId != null) {
+            await removeRoutine(routine.routineId!);
+          }
+        }
+        
+        return true;
+      } else {
+        return false;
+      }
     } catch (e) {
-      _setError('목표 추가 중 오류가 발생했습니다: $e');
+      return false;
     }
   }
 
-  /// 목표 수정
-  Future<void> updateGoal(String oldGoal, String newGoal) async {
+  Future<void> loadRoutinesForGoal(String goalName) async {
     try {
-      await RoutineRepository().updateGoal(oldGoal, newGoal);
-      _loadRoutineList(); // 루틴 목록도 다시 로드
-      notifyListeners();
-    } catch (e) {
-      _setError('목표 수정 중 오류가 발생했습니다: $e');
-    }
+      final goalIndex = availableGoalNames.indexOf(goalName);
+      if (goalIndex == -1) {
+        return;
+      }
+      
+      final goalData = availableGoals[goalIndex];
+      final goalId = int.tryParse(goalData['goalId'].toString()) ?? 0;
+      
+      if (goalId <= 0) {
+        return;
+      }
+      
+      final response = await RoutineApi.getRoutinesByGoal(goalId: goalId);
+      
+      if (response['data'] != null) {
+        final routinesData = List<Map<String, dynamic>>.from(response['data']);
+        
+        final newRoutines = routinesData.map((data) => RoutineModel.fromJson(data)).toList();
+        
+        _routineList.removeWhere((routine) => routine.goalName == goalName);
+        _routineList.addAll(newRoutines);
+        
+        notifyListeners();
+      }
+    } catch (e) {}
   }
 
-  /// 목표 삭제
-  Future<void> deleteGoal(String goal) async {
-    try {
-      await RoutineRepository().deleteGoal(goal);
-      _loadRoutineList(); // 루틴 목록도 다시 로드
-      notifyListeners();
-    } catch (e) {
-      _setError('목표 삭제 중 오류가 발생했습니다: $e');
-    }
+  bool _hasSelectedDays(bool mon, bool tue, bool wed, bool thu, bool fri, bool sat, bool sun) {
+    return mon || tue || wed || thu || fri || sat || sun;
   }
 
-  /// 요일 문자열을 숫자로 변환
   List<int> _convertDaysToNumbers(List<String> days) {
     return days.map((day) {
       switch (day) {
@@ -265,7 +339,6 @@ class RoutineViewModel extends ChangeNotifier {
     }).toList();
   }
 
-  /// 시간 문자열을 DateTime으로 변환
   DateTime _parseTimeString(String timeString) {
     final parts = timeString.split(':');
     return DateTime(
@@ -277,110 +350,133 @@ class RoutineViewModel extends ChangeNotifier {
     );
   }
 
-  /// 루틴 알람 설정
   Future<void> setupRoutineAlarm(RoutineModel routine) async {
-    if (!routine.notificationEnabled || routine.days.isEmpty) {
+    if (!routine.active || routine.days.isEmpty) {
       return;
     }
 
     try {
-      // 기존 알람 제거
-      await removeRoutineAlarm(routine.id);
-      
-      // 새 알람 설정
-      final alarmId = AlarmIdGenerator.generateRoutineId();
-      final time = _parseTimeString(routine.notificationTime);
+      // 안정적인 baseId 결정: 저장된 alarmId > routineId 기반 > 신규 생성 순
+      int baseId;
+      if (routine.alarmId != null) {
+        baseId = routine.alarmId!;
+      } else if (routine.routineId != null) {
+        baseId = 2000 + (routine.routineId! % 1000);
+      } else {
+        baseId = AlarmIdGenerator.generateRoutineId();
+      }
+
+      // 기존 동일 baseId의 주간 알람 정리 후 설정
+      await AlarmUtility.cancelAllWeeklyAlarmsForBaseId(baseId);
+
+      final time = _parseTimeString(routine.startTimeString);
       final weekdays = _convertDaysToNumbers(routine.days);
-      
-      print('루틴 알람 설정 시작: ${routine.name}, 시간=${routine.notificationTime}, 요일=${routine.days}');
-      
+
       await AlarmUtility.setWeeklyAlarm(
-        baseId: alarmId,
+        baseId: baseId,
         scheduledTime: time,
         title: '루틴 알림 (${routine.days.join(', ')})',
         body: '${routine.name} 시간입니다!',
         weekdays: weekdays,
       );
       
-      _routineAlarmIds[routine.id] = alarmId;
-      
-      print('루틴 알람 설정 완료: ${routine.name}, 알람ID=$alarmId');
-    } catch (e) {
-      print('루틴 알람 설정 실패: ${routine.name} - $e');
-    }
+      if (routine.routineId != null) {
+        _routineAlarmIds[routine.routineId!] = baseId;
+        // 모델에도 영구 저장
+        await RoutineRepository().updateRoutineAlarmId(routine.routineId!, baseId);
+      }
+    } catch (e) {}
   }
 
-  /// 루틴 알람 제거
-  Future<void> removeRoutineAlarm(String routineId) async {
-    final alarmId = _routineAlarmIds[routineId];
-    if (alarmId != null) {
-      try {
+  Future<void> removeRoutineAlarm(int routineId) async {
+    try {
+      int? alarmId = _routineAlarmIds[routineId];
+      if (alarmId == null) {
+        // 모델의 alarmId로 보조 취소
+        final routine = _routineList.firstWhere(
+          (r) => r.routineId == routineId,
+          orElse: () => RoutineModel(
+            routineId: routineId,
+            name: '',
+            goalId: 0,
+            goalName: '',
+            mon: false,
+            tue: false,
+            wed: false,
+            thu: false,
+            fri: false,
+            sat: false,
+            sun: false,
+            active: false,
+            memo: '',
+            startTime: const {'hour': 8, 'minute': 0, 'second': 0, 'nano': 0},
+            createdAt: DateTime.now(),
+          ),
+        );
+        alarmId = routine.alarmId;
+      }
+
+      if (alarmId != null) {
         await AlarmUtility.cancelAllWeeklyAlarmsForBaseId(alarmId);
         _routineAlarmIds.remove(routineId);
-      } catch (e) {
-        print('루틴 알람 제거 실패: $routineId - $e');
       }
-    }
+    } catch (e) {}
   }
 
-  /// 모든 루틴 알람 제거
   Future<void> removeAllRoutineAlarms() async {
     try {
-      print('모든 루틴 알람 제거 시작');
       await AlarmUtility.cancelAllAlarms();
       _routineAlarmIds.clear();
-      print('모든 루틴 알람 제거 완료');
-    } catch (e) {
-      print('모든 루틴 알람 제거 실패: $e');
-    }
+    } catch (e) {}
   }
 
-  /// 루틴 알람 ID 가져오기
-  int? getRoutineAlarmId(String routineId) {
+  int? getRoutineAlarmId(int routineId) {
     return _routineAlarmIds[routineId];
   }
 
-  /// 루틴 알람 ID 설정
-  void setRoutineAlarmId(String routineId, int alarmId) {
+  void setRoutineAlarmId(int routineId, int alarmId) {
     _routineAlarmIds[routineId] = alarmId;
   }
 
-  /// 모든 루틴의 알람 복원
   Future<void> restoreAllRoutineAlarms() async {
     try {
       for (final routine in _routineList) {
-        if (routine.notificationEnabled && routine.days.isNotEmpty) {
+        if (routine.active && routine.days.isNotEmpty) {
           await setupRoutineAlarm(routine);
         }
       }
-    } catch (e) {
-      print('모든 루틴 알람 복원 실패: $e');
-    }
+    } catch (e) {}
   }
 
-  /// 테스트용 즉시 알람 설정 (5초 후)
   Future<void> setTestAlarm() async {
     try {
       await AlarmUtility.setImmediateAlarm();
-      print('테스트 알람 설정 완료');
-    } catch (e) {
-      print('테스트 알람 설정 실패: $e');
-    }
+    } catch (e) {}
   }
 
-  /// 현재 예약된 모든 알람 조회
   Future<void> checkPendingAlarms() async {
     try {
       final pendingAlarms = await AlarmUtility.getPendingAlarms();
-      print('=== 현재 예약된 알람 목록 ===');
-      print('총 알람 개수: ${pendingAlarms.length}');
-      for (var alarm in pendingAlarms) {
-        print('ID: ${alarm.id}, 제목: ${alarm.title}, 본문: ${alarm.body}');
+      pendingAlarms.length;
+    } catch (e) {}
+  }
+
+  void updateGoalNameInRoutines({
+    required int oldGoalId,
+    required String newGoalName,
+  }) {
+    bool updated = false;
+    for (int i = 0; i < _routineList.length; i++) {
+      if (_routineList[i].goalId == oldGoalId) {
+        _routineList[i] = _routineList[i].copyWith(goalName: newGoalName);
+        updated = true;
       }
-      print('============================');
-    } catch (e) {
-      print('알람 목록 조회 실패: $e');
+    }
+    
+    if (updated) {
+      notifyListeners();
     }
   }
 }
+
 

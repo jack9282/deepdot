@@ -6,7 +6,14 @@ import '../../../utils/snak_bar.dart';
 import '../view_models/auth_view_model.dart';
 
 class ResetPasswordWidget extends StatefulWidget {
-  const ResetPasswordWidget({super.key});
+  final String username;
+  final String email;
+  
+  const ResetPasswordWidget({
+    super.key,
+    required this.username,
+    required this.email,
+  });
 
   @override
   State<ResetPasswordWidget> createState() => _ResetPasswordWidgetState();
@@ -14,7 +21,6 @@ class ResetPasswordWidget extends StatefulWidget {
 
 class _ResetPasswordWidgetState extends State<ResetPasswordWidget> {
   final _formKey = GlobalKey<FormState>();
-  final _idController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   
@@ -28,7 +34,6 @@ class _ResetPasswordWidgetState extends State<ResetPasswordWidget> {
 
   @override
   void dispose() {
-    _idController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -47,8 +52,8 @@ class _ResetPasswordWidgetState extends State<ResetPasswordWidget> {
             children: [
               const SizedBox(height: 40),
               // 안내 텍스트
-              const Text(
-                '비밀번호를 다시 설정해주세요.',
+              Text(
+                '${widget.username}님의 비밀번호를 다시 설정해주세요.',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
@@ -56,43 +61,6 @@ class _ResetPasswordWidgetState extends State<ResetPasswordWidget> {
                 ),
               ),
               const SizedBox(height: 32),
-              // ID 입력 필드
-              const Text(
-                'ID',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w400,
-                  color: AppTheme.textPrimaryColor,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _idController,
-                decoration: InputDecoration(
-                  hintText: '아이디를 입력하세요',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '아이디를 입력해주세요';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
               // 새 비밀번호 입력 필드
               const Text(
                 '새 비밀번호',
@@ -209,6 +177,8 @@ class _ResetPasswordWidgetState extends State<ResetPasswordWidget> {
                             return;
                           }
                           final result = await authViewModel.resetPassword(
+                            widget.username,
+                            widget.email,
                             _newPasswordController.text.trim(),
                             _confirmPasswordController.text.trim(),
                           );
