@@ -12,6 +12,7 @@ class RoutineViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   bool _isInitialized = false;
+  bool _isAlarmRestoring = false;
 
   List<RoutineModel> get routineList => List.unmodifiable(_routineList);
   List<Map<String, dynamic>> get availableGoals {
@@ -35,14 +36,17 @@ class RoutineViewModel extends ChangeNotifier {
     _clearError();
     
     try {
-      await removeAllRoutineAlarms();
-      
       await RoutineRepository().loadFromStorage();
       await _syncWithApi();
       _loadRoutineList();
       _isInitialized = true;
       
-      await restoreAllRoutineAlarms();
+      // 알람 복원은 한 번만 실행
+      if (!_isAlarmRestoring) {
+        _isAlarmRestoring = true;
+        await restoreAllRoutineAlarms();
+        _isAlarmRestoring = false;
+      }
     } catch (e) {
       _setError('데이터 로드 중 오류가 발생했습니다: $e');
     } finally {
@@ -237,6 +241,8 @@ class RoutineViewModel extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
+    if (_isLoading) return;
+    
     _setLoading(true);
     _clearError();
     
@@ -244,6 +250,13 @@ class RoutineViewModel extends ChangeNotifier {
       await RoutineRepository().loadFromStorage();
       await _syncWithApi();
       _loadRoutineList();
+      
+      // 알람 복원은 한 번만 실행
+      if (!_isAlarmRestoring) {
+        _isAlarmRestoring = true;
+        await restoreAllRoutineAlarms();
+        _isAlarmRestoring = false;
+      }
     } catch (e) {
       _setError('데이터 새로고침 중 오류가 발생했습니다: $e');
     } finally {
@@ -312,8 +325,23 @@ class RoutineViewModel extends ChangeNotifier {
         
         final newRoutines = routinesData.map((data) => RoutineModel.fromJson(data)).toList();
         
+        // 기존 루틴 제거 (알람도 함께 제거)
+        final routinesToRemove = _routineList.where((routine) => routine.goalName == goalName).toList();
+        for (final routine in routinesToRemove) {
+          if (routine.routineId != null) {
+            await removeRoutineAlarm(routine.routineId!);
+          }
+        }
+        
         _routineList.removeWhere((routine) => routine.goalName == goalName);
         _routineList.addAll(newRoutines);
+        
+        // 새로운 루틴들의 알람 설정
+        for (final routine in newRoutines) {
+          if (routine.active && routine.days.isNotEmpty) {
+            await setupRoutineAlarm(routine);
+          }
+        }
         
         notifyListeners();
       }
@@ -356,6 +384,11 @@ class RoutineViewModel extends ChangeNotifier {
     }
 
     try {
+      // 이미 설정된 알람이 있는지 확인
+      if (routine.routineId != null && _routineAlarmIds.containsKey(routine.routineId!)) {
+        return;
+      }
+
       // 안정적인 baseId 결정: 저장된 alarmId > routineId 기반 > 신규 생성 순
       int baseId;
       if (routine.alarmId != null) {
@@ -439,13 +472,23 @@ class RoutineViewModel extends ChangeNotifier {
   }
 
   Future<void> restoreAllRoutineAlarms() async {
+    if (_isAlarmRestoring) return;
+    
     try {
+      _isAlarmRestoring = true;
+      
+      // 기존 알람 모두 제거
+      await removeAllRoutineAlarms();
+      
+      // 활성화된 루틴들의 알람만 설정
       for (final routine in _routineList) {
         if (routine.active && routine.days.isNotEmpty) {
           await setupRoutineAlarm(routine);
         }
       }
-    } catch (e) {}
+    } catch (e) {} finally {
+      _isAlarmRestoring = false;
+    }
   }
 
   Future<void> setTestAlarm() async {

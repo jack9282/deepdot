@@ -92,9 +92,13 @@ class TakingRepository {
       );
       
       // 복용 시간들을 개별적으로 추가
+      final List<int> newTimeIds = [];
       for (final time in times) {
         try {
-          await TakingApi.addMedicationTime(int.parse(newTaking.id), time);
+          final timeId = await TakingApi.addMedicationTime(int.parse(newTaking.id), time);
+          if (timeId != null) {
+            newTimeIds.add(timeId);
+          }
         } catch (timeError) {
           print('복용 시간 추가 실패 (시간: $time): $timeError');
           // 개별 시간 추가 실패는 무시하고 계속 진행
@@ -103,11 +107,14 @@ class TakingRepository {
       
               // API 응답의 times가 있으면 사용, 없으면 로컬에서 설정한 times 사용
         final finalTimes = newTaking.times.isNotEmpty ? newTaking.times : times;
+        final finalTimeIds = newTimeIds.isNotEmpty 
+            ? newTimeIds 
+            : (newTaking.timeIds.isNotEmpty ? newTaking.timeIds : List.generate(finalTimes.length, (index) => index + 1));
         final takingWithTimes = TakingModel(
           id: newTaking.id,
           name: newTaking.name,
           times: finalTimes,
-          timeIds: newTaking.timeIds.isNotEmpty ? newTaking.timeIds : List.generate(finalTimes.length, (index) => index + 1),
+          timeIds: finalTimeIds,
           alarmEnabled: newTaking.alarmEnabled,
           alarmTime: alarmTime, // 로컬에서 설정한 알람 시간 사용
           createdAt: newTaking.createdAt,
@@ -190,47 +197,52 @@ class TakingRepository {
         // 현재 서버에 개별 시간 삭제 API가 없으므로 로컬에서만 처리
         // TODO: 서버에서 개별 시간 삭제 API가 추가되면 여기서 호출
         
-        // 기존 복용 시간들과 새로운 시간들을 비교하여 수정/추가
-        final existingTimes = _takingList[index].times;
-        
-        // 기존 시간 개수와 새로운 시간 개수 중 더 작은 값만큼 수정
-        final minLength = existingTimes.length < times.length ? existingTimes.length : times.length;
-        
-        // 기존 시간들을 새로운 시간으로 수정 (실제 timeId 사용)
+        // 서버의 기존 모든 복용 시간을 삭제하고, 새 시간들을 다시 추가
         final existingTimeIds = _takingList[index].timeIds;
-        for (int i = 0; i < minLength; i++) {
-          if (existingTimes[i] != times[i]) {
-            try {
-              final timeId = i < existingTimeIds.length ? existingTimeIds[i] : i + 1;
-              await TakingApi.updateMedicationTime(
-                medicationId: int.parse(updatedTaking.id),
-                timeId: timeId,
-                time: times[i],
-              );
-            } catch (timeError) {
-              print('복용 시간 수정 실패 (timeId: ${i < existingTimeIds.length ? existingTimeIds[i] : i + 1}, 시간: ${times[i]}): $timeError');
-              // 개별 시간 수정 실패는 무시하고 계속 진행
-            }
-          }
-        }
-        
-        // 새로운 시간이 더 많은 경우 추가
-        for (int i = minLength; i < times.length; i++) {
+        // 1) 기존 시간 전부 삭제
+        for (final timeId in existingTimeIds) {
           try {
-            await TakingApi.addMedicationTime(int.parse(updatedTaking.id), times[i]);
+            await TakingApi.deleteMedicationTime(timeId);
           } catch (timeError) {
-            print('복용 시간 추가 실패 (시간: ${times[i]}): $timeError');
-            // 개별 시간 추가 실패는 무시하고 계속 진행
+            // 없는 timeId일 수 있으므로 무시하고 진행
+            print('복용 시간 삭제 실패 (timeId: $timeId): $timeError');
           }
         }
+        // 2) 새 시간 전부 추가
+        final List<int> newTimeIds = [];
+        for (final newTime in times) {
+          try {
+            final timeId = await TakingApi.addMedicationTime(int.parse(updatedTaking.id), newTime);
+            if (timeId != null) {
+              newTimeIds.add(timeId);
+            }
+          } catch (timeError) {
+            print('복용 시간 추가 실패 (시간: $newTime): $timeError');
+          }
+        }
+        // 3) 서버에서 최신 데이터 재조회 (timeIds 동기화)
+        TakingModel? refreshed;
+        try {
+          refreshed = await TakingApi.getMedication(int.parse(updatedTaking.id));
+        } catch (_) {}
+
         
         // API 응답의 times가 있으면 사용, 없으면 로컬에서 설정한 times 사용
-        final finalTimes = updatedTaking.times.isNotEmpty ? updatedTaking.times : times;
+        final finalTimes = (refreshed != null && refreshed.times.isNotEmpty)
+            ? refreshed.times
+            : (updatedTaking.times.isNotEmpty ? updatedTaking.times : times);
+        final finalTimeIds = newTimeIds.isNotEmpty
+            ? newTimeIds
+            : ((refreshed != null && refreshed.timeIds.isNotEmpty)
+                ? refreshed.timeIds
+                : (updatedTaking.timeIds.isNotEmpty
+                    ? updatedTaking.timeIds
+                    : List.generate(finalTimes.length, (index) => index + 1)));
         final takingWithTimes = TakingModel(
           id: updatedTaking.id,
           name: updatedTaking.name,
           times: finalTimes,
-          timeIds: updatedTaking.timeIds.isNotEmpty ? updatedTaking.timeIds : List.generate(finalTimes.length, (index) => index + 1),
+          timeIds: finalTimeIds,
           alarmEnabled: updatedTaking.alarmEnabled,
           alarmTime: alarmTime, // 로컬에서 설정한 알람 시간 사용
           createdAt: updatedTaking.createdAt,

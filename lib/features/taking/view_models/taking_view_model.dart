@@ -272,25 +272,6 @@ class TakingViewModel with ChangeNotifier {
     } catch (e) {}
   }
 
-  Future<void> _restoreAlarms() async {
-    try {
-      final alarmIdsToRemove = Map<String, int>.from(_alarmIds);
-      _alarmIds.clear();
-
-      for (final alarmId in alarmIdsToRemove.values) {
-        try {
-          await AlarmUtility.cancelAlarm(alarmId);
-        } catch (_) {}
-      }
-
-      for (final taking in _takingList) {
-        if (taking.alarmEnabled) {
-          await _setupAlarms(taking, taking.times);
-        }
-      }
-    } catch (e) {}
-  }
-
   /// 모든 약물 복용 알람 제거
   Future<void> _removeAllTakingAlarms() async {
     try {

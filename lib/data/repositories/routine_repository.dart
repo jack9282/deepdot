@@ -466,7 +466,7 @@ class RoutineRepository extends ChangeNotifier {
   Future<void> updateRoutineAlarmId(int routineId, int alarmId) async {
     try {
       final index = _routineList.indexWhere((routine) => routine.routineId == routineId);
-      if (index != -1) {
+      if (index != -1 && _routineList[index].alarmId != alarmId) {
         _routineList[index] = _routineList[index].copyWith(alarmId: alarmId);
         await saveToStorage();
         notifyListeners();

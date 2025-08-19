@@ -35,18 +35,29 @@ class _TakingListItemState extends State<TakingListItem> {
   @override
   void didUpdateWidget(TakingListItem oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.checks != widget.checks) {
-      _checks = List<bool>.from(widget.checks);
+    if (oldWidget.checks != widget.checks || oldWidget.times.length != widget.times.length) {
+      // times 길이가 변경되었거나 checks가 변경된 경우
+      if (widget.checks.length != widget.times.length) {
+        // checks 길이를 times 길이에 맞춰 조정
+        _checks = List.generate(widget.times.length, (index) {
+          return index < widget.checks.length ? widget.checks[index] : false;
+        });
+      } else {
+        _checks = List<bool>.from(widget.checks);
+      }
     }
   }
 
   void _onCheckChanged(int index, bool value) {
-    setState(() {
-      _checks[index] = value;
-    });
-    
-    if (widget.onCheckChanged != null) {
-      widget.onCheckChanged!(index, value);
+    // 인덱스 범위 체크
+    if (index >= 0 && index < _checks.length) {
+      setState(() {
+        _checks[index] = value;
+      });
+      
+      if (widget.onCheckChanged != null) {
+        widget.onCheckChanged!(index, value);
+      }
     }
   }
 
@@ -159,20 +170,22 @@ class _TakingListItemState extends State<TakingListItem> {
                   const SizedBox(width: 7),
                   GestureDetector(
                     onTap: () {
-                      _onCheckChanged(timeIdx, !_checks[timeIdx]);
+                      if (timeIdx < _checks.length) {
+                        _onCheckChanged(timeIdx, !_checks[timeIdx]);
+                      }
                     },
                     child: Container(
                       width: 24,
                       height: 24,
                       decoration: BoxDecoration(
-                        color: _checks[timeIdx] ? const Color(0xFF2563EB) : Colors.white,
+                        color: (timeIdx < _checks.length && _checks[timeIdx]) ? const Color(0xFF2563EB) : Colors.white,
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: _checks[timeIdx] ? const Color(0xFF2563EB) : const Color(0xFFE8E8E8),
+                          color: (timeIdx < _checks.length && _checks[timeIdx]) ? const Color(0xFF2563EB) : const Color(0xFFE8E8E8),
                           width: 1,
                         ),
                       ),
-                      child: _checks[timeIdx]
+                      child: (timeIdx < _checks.length && _checks[timeIdx])
                           ? const Icon(
                               Icons.check,
                               size: 16,
@@ -190,15 +203,15 @@ class _TakingListItemState extends State<TakingListItem> {
     );
   }
 
-  // 시간 형식을 "HH:MM"에서 "HH:MM" (24시간 형식)으로 변환
+  // 시간 형식을 "HH:MM" 또는 "HH:MM:SS"에서 "HH:MM" (24시간 형식)으로 변환
   String _formatTime(String time) {
     try {
       final parts = time.split(':');
-      if (parts.length == 2) {
+      if (parts.length >= 2) {
         final hour = int.parse(parts[0]);
         final minute = parts[1];
         
-        // 24시간 형식으로 표시 (예: 08:00, 13:30, 23:45)
+        // 24시간 형식으로 표시 (예: 08:00, 13:30, 23:45) - 초는 제거
         return '${hour.toString().padLeft(2, '0')}:$minute';
       }
     } catch (e) {

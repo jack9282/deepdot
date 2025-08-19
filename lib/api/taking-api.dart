@@ -32,6 +32,7 @@ class TakingApi {
             id: responseData.toString(),
             name: name,
             times: [], // 빈 배열로 시작 (나중에 시간 추가)
+            timeIds: [], // 빈 배열
             alarmEnabled: alarm,
             alarmTime: '08:00', // 기본값
             createdAt: DateTime.now(),
@@ -62,12 +63,47 @@ class TakingApi {
   }
 
   /// 복용 시간 추가
-  static Future<void> addMedicationTime(int medicationId, String time) async {
+  /// URL: /api/medication/{medicationId}/times
+  /// 설명: 복용약 시간 등록. 최대 3개까지 가능. 성공 시 timeId 반환.
+  static Future<int?> addMedicationTime(int medicationId, String time) async {
     try {
+      // 먼저 현재 약물의 시간 개수 확인
+      try {
+        final medicationResponse = await HttpClient.get('$_baseEndpoint/$medicationId');
+        if (medicationResponse.statusCode == 200) {
+          final medicationData = jsonDecode(medicationResponse.body);
+          final times = medicationData['times'] as List<dynamic>?;
+          if (times != null && times.length >= 3) {
+            print('복용 시간 추가 실패: 이미 최대 3개의 시간이 존재합니다 (현재: ${times.length}개)');
+            throw Exception('최대 3개까지 등록 가능합니다.');
+          }
+        }
+      } catch (e) {
+        print('약물 상태 확인 실패, 계속 진행: $e');
+      }
+
+      // 시간 형식 정규화: 다양한 형식 지원
+      String normalizedTime;
+      if (time.contains(':')) {
+        final parts = time.split(':');
+        if (parts.length >= 2) {
+          final hour = parts[0].padLeft(2, '0');
+          final minute = parts[1].padLeft(2, '0');
+          // 서버에서 HH:mm 형식을 선호하는지 확인
+          normalizedTime = '$hour:$minute';
+        } else {
+          normalizedTime = time;
+        }
+      } else {
+        normalizedTime = time;
+      }
+      
+      print('복용 시간 추가 시도: medicationId=$medicationId, 원본시간=$time, 정규화시간=$normalizedTime');
+      
       final response = await HttpClient.post(
         '$_baseEndpoint/$medicationId/times',
         body: {
-          'time': time,
+          'time': normalizedTime,
         },
       );
 
@@ -75,13 +111,90 @@ class TakingApi {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('복용 시간 추가 성공: ID = $medicationId, 시간 = $time');
+        
+        // 응답 본문에서 timeId 추출 시도
+        if (response.body.isNotEmpty) {
+          try {
+            final responseData = jsonDecode(response.body);
+            if (responseData is Map<String, dynamic> && responseData.containsKey('timeId')) {
+              return responseData['timeId'] as int?;
+            } else if (responseData is int) {
+              return responseData;
+            }
+          } catch (e) {
+            print('응답 본문 파싱 실패: $e');
+          }
+        }
+        return null; // timeId를 추출할 수 없는 경우
       } else if (response.statusCode == 400) {
         throw Exception('잘못된 시간 형식입니다.');
       } else if (response.statusCode == 401) {
         throw Exception('인증이 필요합니다');
       } else if (response.statusCode == 404) {
         throw Exception('약물을 찾을 수 없습니다 (ID: $medicationId)');
+      } else if (response.statusCode == 409) {
+        throw Exception('최대 3개까지 등록 가능합니다.');
       } else if (response.statusCode == 500) {
+        // 서버 오류 시 더 자세한 정보 출력
+        print('서버 오류 발생 - 상세 정보:');
+        print('  - medicationId: $medicationId');
+        print('  - 요청 시간: $normalizedTime');
+        print('  - 응답 본문: ${response.body}');
+        
+        // 500 에러가 최대 개수 초과로 인한 것인지 확인
+        try {
+          final medicationResponse = await HttpClient.get('$_baseEndpoint/$medicationId');
+          if (medicationResponse.statusCode == 200) {
+            final medicationData = jsonDecode(medicationResponse.body);
+            final times = medicationData['times'] as List<dynamic>?;
+            if (times != null && times.length >= 3) {
+              print('500 에러 원인: 이미 최대 3개의 시간이 존재합니다 (현재: ${times.length}개)');
+              throw Exception('최대 3개까지 등록 가능합니다.');
+            }
+          }
+        } catch (e) {
+          if (e.toString().contains('최대 3개까지')) {
+            rethrow; // 409 에러로 재던지기
+          }
+        }
+        
+        // 서버 오류 시 다른 시간 형식으로 재시도
+        print('서버 오류 발생, 다른 시간 형식으로 재시도...');
+        
+        // HH:mm:ss 형식으로 재시도
+        if (!normalizedTime.contains(':')) {
+          throw Exception('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        }
+        
+        final parts = normalizedTime.split(':');
+        if (parts.length == 2) {
+          final retryTime = '${parts[0]}:${parts[1]}:00';
+          print('재시도: $retryTime 형식으로 시도');
+          
+          final retryResponse = await HttpClient.post(
+            '$_baseEndpoint/$medicationId/times',
+            body: {
+              'time': retryTime,
+            },
+          );
+          
+          print('복용 시간 추가 재시도 응답: ${retryResponse.statusCode} - ${retryResponse.body}');
+          
+          if (retryResponse.statusCode == 200 || retryResponse.statusCode == 201) {
+            print('복용 시간 추가 재시도 성공: ID = $medicationId, 시간 = $retryTime');
+            return null; // 성공했지만 timeId는 추출하지 못함
+          }
+        }
+        
+        // 약물 상태 확인 시도
+        try {
+          print('약물 상태 확인 시도...');
+          final medicationResponse = await HttpClient.get('$_baseEndpoint/$medicationId');
+          print('약물 상태 확인 응답: ${medicationResponse.statusCode} - ${medicationResponse.body}');
+        } catch (e) {
+          print('약물 상태 확인 실패: $e');
+        }
+        
         throw Exception('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
       } else {
         throw Exception('복용 시간 추가 실패: ${response.statusCode}');
@@ -174,6 +287,55 @@ class TakingApi {
     }
   }
 
+  /// 복용 시간 삭제
+  /// URL: /api/medication/times/{timeId}
+  /// 설명: timeId로 특정 복용 시간을 삭제합니다. 성공 시 204 반환.
+  static Future<void> deleteMedicationTime(int timeId) async {
+    try {
+      print('복용 시간 삭제 시도: timeId=$timeId');
+      
+      final response = await HttpClient.delete('$_baseEndpoint/times/$timeId');
+
+      print('복용 시간 삭제 응답: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        print('복용 시간 삭제 성공: timeId=$timeId');
+        
+        // 삭제 후 약물 상태 확인 (선택적)
+        try {
+          // 약물 ID를 알 수 없으므로 모든 약물 조회하여 확인
+          final allMedicationsResponse = await HttpClient.get('$_baseEndpoint/all');
+          if (allMedicationsResponse.statusCode == 200) {
+            final medications = jsonDecode(allMedicationsResponse.body) as List<dynamic>;
+            for (final medication in medications) {
+              final times = medication['times'] as List<dynamic>?;
+              if (times != null) {
+                print('약물 ${medication['medicationId']}의 시간 개수: ${times.length}');
+              }
+            }
+          }
+        } catch (e) {
+          print('삭제 후 상태 확인 실패: $e');
+        }
+        
+        return;
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다');
+      } else if (response.statusCode == 403) {
+        throw Exception('삭제 권한이 없습니다');
+      } else if (response.statusCode == 404) {
+        throw Exception('시간 항목을 찾을 수 없습니다 (timeId: $timeId)');
+      } else if (response.statusCode == 500) {
+        throw Exception('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        throw Exception('복용 시간 삭제 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('복용 시간 삭제 중 상세 오류: $e');
+      throw Exception('복용 시간 삭제 중 오류 발생: $e');
+    }
+  }
+
   /// 특정 약물 조회
   static Future<TakingModel> getMedication(int medicationId) async {
     try {
@@ -244,6 +406,7 @@ class TakingApi {
             id: medicationId.toString(),
             name: name,
             times: [], // API에서 times를 반환하지 않으므로 빈 배열
+            timeIds: [], // 빈 배열
             alarmEnabled: alarm,
             alarmTime: '08:00', // 기본값
             createdAt: DateTime.now(),
@@ -262,6 +425,7 @@ class TakingApi {
               id: responseData.toString(),
               name: name,
               times: [], // 빈 배열로 시작 (나중에 시간 추가)
+              timeIds: [], // 빈 배열
               alarmEnabled: alarm,
               alarmTime: '08:00', // 기본값
               createdAt: DateTime.now(),
@@ -281,6 +445,7 @@ class TakingApi {
             id: medicationId.toString(),
             name: name,
             times: [], // API에서 times를 반환하지 않으므로 빈 배열
+            timeIds: [], // 빈 배열
             alarmEnabled: alarm,
             alarmTime: '08:00', // 기본값
             createdAt: DateTime.now(),

@@ -28,12 +28,12 @@ class _RoutineScreenBody extends StatefulWidget {
 class _RoutineScreenBodyState extends State<_RoutineScreenBody>
     with WidgetsBindingObserver {
   String _selectedGoal = '';
+  bool _isInitializing = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // 초기화는 didChangeDependencies에서 한 번만 실행
   }
 
   @override
@@ -45,10 +45,13 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // 앱이 재개될 때만 초기화
+      // 앱이 재개될 때만 초기화 (중복 방지)
       final routineVM = context.read<RoutineViewModel>();
-      if (routineVM.isInitialized) {
-        routineVM.refresh();
+      if (routineVM.isInitialized && !_isInitializing) {
+        _isInitializing = true;
+        routineVM.refresh().then((_) {
+          _isInitializing = false;
+        });
       }
     }
   }
@@ -59,8 +62,11 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
     // 한 번만 초기화 실행
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final routineVM = context.read<RoutineViewModel>();
-      if (!routineVM.isInitialized) {
-        routineVM.initialize();
+      if (!routineVM.isInitialized && !_isInitializing) {
+        _isInitializing = true;
+        routineVM.initialize().then((_) {
+          _isInitializing = false;
+        });
       }
     });
   }
@@ -299,6 +305,8 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
                                             text: goal,
                                             selected: _selectedGoal == goal,
                                             onTap: () async {
+                                              if (_selectedGoal == goal) return; // 같은 목표 선택 시 무시
+                                              
                                               setState(() {
                                                 _selectedGoal = goal;
                                               });

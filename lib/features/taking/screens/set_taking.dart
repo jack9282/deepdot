@@ -4,7 +4,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/taking_view_model.dart';
-import '../../../utils/alarm.dart';
 
 class SetTakingScreen extends StatelessWidget {
   final int? editIndex;
