@@ -220,175 +220,227 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenHeight < 700; // 작은 화면 감지
+    final scaleFactor = screenHeight / 800; // 기준 높이 800px 대비 비율
+    
+    // 반응형 간격 계산
+    double getSpacing(double baseSize) {
+      if (isSmallScreen) {
+        return baseSize * 0.5; // 작은 화면에서는 50%로 줄임
+      }
+      return baseSize * scaleFactor.clamp(0.7, 1.2); // 0.7 ~ 1.2배 사이로 제한
+    }
+    
+    // 반응형 폰트 크기 계산
+    double getFontSize(double baseSize) {
+      if (isSmallScreen) {
+        return baseSize * 0.85; // 작은 화면에서는 85%로 줄임
+      }
+      return baseSize * scaleFactor.clamp(0.85, 1.1); // 0.85 ~ 1.1배 사이로 제한
+    }
+    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
+        toolbarHeight: isSmallScreen ? 48 : 56,
+        title: Text(
           '설정',
           style: TextStyle(
-            fontSize: 22,
+            fontSize: getFontSize(22),
             fontWeight: FontWeight.w600,
             color: Colors.black,
           ),
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 계정 정보 섹션
-            _buildSectionHeader('계정 정보'),
-            const SizedBox(height: 24),
-
-            // 아이디
-            _buildInfoItem('아이디', _getUserId()),
-            const SizedBox(height: 12),
-
-            // 이메일
-            _buildInfoItem('이메일', _getUserEmail()),
-
-            const SizedBox(height: 32),
-
-            // 알림 섹션
-            _buildSectionHeader('알림'),
-            const SizedBox(height: 16),
-
-            // 일정 알림 받기
-            _buildSettingItem(
-              title: '일정 알림 받기',
-              value: _scheduleNotification,
-              onChanged: _toggleScheduleNotification,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: getSpacing(10),
             ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 스크롤 가능한 메인 컨텐츠
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 계정 정보 섹션
+                      _buildSectionHeader('계정 정보', getFontSize(22)),
+                      SizedBox(height: getSpacing(12)),
 
-            const SizedBox(height: 16),
+                      // 아이디
+                      _buildInfoItem('아이디', _getUserId(), getFontSize(18)),
+                      SizedBox(height: getSpacing(8)),
 
-            // 복약 알림 받기
-            _buildSettingItem(
-              title: '복약 알림 받기',
-              value: _medicationNotification,
-              onChanged: _toggleMedicationNotification,
-            ),
+                      // 이메일
+                      _buildInfoItem('이메일', _getUserEmail(), getFontSize(18)),
 
-            const SizedBox(height: 16),
+                      SizedBox(height: getSpacing(20)),
 
-            // 루틴 알림 받기
-            _buildSettingItem(
-              title: '루틴 알림 받기',
-              value: _routineNotification,
-              onChanged: _toggleRoutineNotification,
-            ),
+                      // 알림 섹션
+                      _buildSectionHeader('알림', getFontSize(22)),
+                      SizedBox(height: getSpacing(10)),
 
-            const SizedBox(height: 32),
+                      // 알림 항목들을 유연하게 배치
+                      Flexible(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // 일정 알림 받기
+                            _buildCompactSettingItem(
+                              title: '일정 알림 받기',
+                              value: _scheduleNotification,
+                              onChanged: _toggleScheduleNotification,
+                              fontSize: getFontSize(18),
+                            ),
 
-            // 동기화 섹션
-            _buildSectionHeader('동기화'),
-            const SizedBox(height: 16),
+                            SizedBox(height: getSpacing(8)),
 
-            // 기기간 동기화
-            _buildSettingItem(
-              title: '기기간 동기화',
-              subtitle: _isLoggedIn ? null : '로그인 후 사용 가능',
-              value: _deviceSync,
-              enabled: _isLoggedIn, // 로그인 상태에서만 활성화
-              onChanged: _isLoggedIn ? (value) async {
-                setState(() {
-                  _deviceSync = value;
-                });
-                await _saveNotificationSetting(_deviceSyncKey, value);
-                
-                // 동기화 OFF일 때 로컬 모드로 전환
-                if (!value) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('로컬 모드로 전환되었습니다. 서버와 동기화되지 않습니다.'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                } else {
-                  // 동기화 ON일 때 서버와 동기화
-                  final scheduleRepo = ScheduleRepository();
-                  await scheduleRepo.syncWithServer();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('서버와 동기화를 시작합니다.'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                }
-              } : null,
-            ),
+                            // 복약 알림 받기
+                            _buildCompactSettingItem(
+                              title: '복약 알림 받기',
+                              value: _medicationNotification,
+                              onChanged: _toggleMedicationNotification,
+                              fontSize: getFontSize(18),
+                            ),
 
-            const SizedBox(height: 40),
+                            SizedBox(height: getSpacing(8)),
 
-            // 루틴 추천 섹션
-            _buildSectionHeader('루틴 추천'),
-            const SizedBox(height: 8),
+                            // 루틴 알림 받기
+                            _buildCompactSettingItem(
+                              title: '루틴 알림 받기',
+                              value: _routineNotification,
+                              onChanged: _toggleRoutineNotification,
+                              fontSize: getFontSize(18),
+                            ),
+                          ],
+                        ),
+                      ),
 
-            // 설명 텍스트
-            Padding(
-              padding: const EdgeInsets.only(left: 16, bottom: 16),
-              child: Text(
-                '반복되는 일정을 감지해 루틴으로 만들어줘요',
-                style: TextStyle(
-                  color: const Color(0xFFB4B5B6),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+                      SizedBox(height: getSpacing(20)),
+
+                      // 동기화 섹션
+                      _buildSectionHeader('동기화', getFontSize(22)),
+                      SizedBox(height: getSpacing(10)),
+
+                      // 기기간 동기화
+                      _buildCompactSettingItem(
+                        title: '기기간 동기화',
+                        subtitle: _isLoggedIn ? null : '로그인 후 사용 가능',
+                        value: _deviceSync,
+                        enabled: _isLoggedIn,
+                        fontSize: getFontSize(18),
+                        onChanged: _isLoggedIn ? (value) async {
+                          setState(() {
+                            _deviceSync = value;
+                          });
+                          await _saveNotificationSetting(_deviceSyncKey, value);
+                          
+                          if (!value) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('로컬 모드로 전환되었습니다.'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          } else {
+                            final scheduleRepo = ScheduleRepository();
+                            await scheduleRepo.syncWithServer();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('서버와 동기화를 시작합니다.'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        } : null,
+                      ),
+
+                      SizedBox(height: getSpacing(20)),
+
+                      // 루틴 추천 섹션
+                      _buildSectionHeader('루틴 추천', getFontSize(22)),
+                      SizedBox(height: getSpacing(6)),
+
+                      // 설명 텍스트
+                      if (!isSmallScreen) // 작은 화면에서는 설명 텍스트 숨김
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16, bottom: 8),
+                          child: Text(
+                            '반복되는 일정을 감지해 루틴으로 만들어줘요',
+                            style: TextStyle(
+                              color: const Color(0xFFB4B5B6),
+                              fontSize: getFontSize(14),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+
+                      // 루틴 추천 기능 켜기
+                      _buildCompactSettingItem(
+                        title: '루틴 추천 기능 켜기',
+                        value: _aiRoutineRecommendation,
+                        fontSize: getFontSize(18),
+                        onChanged: (value) async {
+                          setState(() {
+                            _aiRoutineRecommendation = value;
+                          });
+                          await _saveNotificationSetting(_aiRoutineKey, value);
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+
+                // 하단 액션 버튼들 (항상 표시)
+                SizedBox(height: getSpacing(20)),
+                
+                // 로그아웃
+                _buildCompactActionItem(
+                  title: '로그아웃',
+                  fontSize: getFontSize(18),
+                  onTap: () {
+                    _showLogoutDialog();
+                  },
+                ),
+
+                SizedBox(height: getSpacing(12)),
+
+                // 회원 탈퇴
+                _buildCompactActionItem(
+                  title: '회원탈퇴',
+                  fontSize: getFontSize(18),
+                  onTap: () {
+                    _showDeleteAccountDialog();
+                  },
+                ),
+
+                SizedBox(height: getSpacing(10)),
+              ],
             ),
-
-            // 루틴 추천 기능 켜기
-            _buildSettingItem(
-              title: '루틴 추천 기능 켜기',
-              value: _aiRoutineRecommendation,
-              onChanged: (value) async {
-                setState(() {
-                  _aiRoutineRecommendation = value;
-                });
-                await _saveNotificationSetting(_aiRoutineKey, value);
-              },
-            ),
-
-            const SizedBox(height: 80),
-
-            // 로그아웃
-            _buildActionItem(
-              title: '로그아웃',
-              onTap: () {
-                _showLogoutDialog();
-              },
-            ),
-
-            const SizedBox(height: 24),
-
-            // 회원 탈퇴
-            _buildActionItem(
-              title: '회원탈퇴',
-              onTap: () {
-                _showDeleteAccountDialog();
-              },
-            ),
-
-            const SizedBox(height: 40),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
   // 섹션 헤더 위젯
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, [double fontSize = 22]) {
     return Padding(
       padding: const EdgeInsets.only(left: 16),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           color: Color(0xFFD6D8D9),
-          fontSize: 22,
+          fontSize: fontSize,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -396,7 +448,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // 정보 아이템 위젯 (아이디, 이메일)
-  Widget _buildInfoItem(String label, String value) {
+  Widget _buildInfoItem(String label, String value, [double fontSize = 18]) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -405,25 +457,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
+              Flexible(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Container(height: 1, color: const Color(0xFFEFEFEF)),
         ],
       ),
@@ -500,6 +557,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // 컴팩트 설정 아이템 위젯 (반응형 크기)
+  Widget _buildCompactSettingItem({
+    required String title,
+    String? subtitle,
+    required bool value,
+    required ValueChanged<bool>? onChanged,
+    bool enabled = true,
+    double fontSize = 18,
+  }) {
+    final isSmallScreen = MediaQuery.of(context).size.height < 700;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: enabled ? Colors.black : Colors.grey,
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: fontSize * 0.75,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: enabled && onChanged != null ? () => onChanged(!value) : null,
+            child: Container(
+              width: isSmallScreen ? 55 : 65,
+              height: isSmallScreen ? 26 : 31,
+              decoration: BoxDecoration(
+                color: enabled 
+                  ? (value ? const Color(0xFF3A71FF) : Colors.grey[300])
+                  : Colors.grey[200],
+                borderRadius: BorderRadius.circular(15.5),
+              ),
+              child: AnimatedAlign(
+                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  width: isSmallScreen ? 22 : 27,
+                  height: isSmallScreen ? 22 : 27,
+                  margin: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: enabled ? Colors.white : Colors.grey[100],
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 액션 아이템 위젯 (로그아웃, 회원탈퇴)
   Widget _buildActionItem({
     required String title,
@@ -514,6 +644,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: const TextStyle(
             color: Colors.black,
             fontSize: 18,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 컴팩트 액션 아이템 위젯 (반응형 크기)
+  Widget _buildCompactActionItem({
+    required String title,
+    required VoidCallback onTap,
+    double fontSize = 18,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: fontSize,
             fontWeight: FontWeight.w500,
           ),
         ),
