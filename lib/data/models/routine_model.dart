@@ -16,6 +16,7 @@ class RoutineModel {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final int? alarmId;
+  final List<bool> checkStates;
 
   RoutineModel({
     this.routineId,
@@ -35,7 +36,8 @@ class RoutineModel {
     required this.createdAt,
     this.updatedAt,
     this.alarmId,
-  });
+    List<bool>? checkStates,
+  }) : checkStates = checkStates ?? List.generate(7, (_) => false);
 
   factory RoutineModel.fromJson(Map<String, dynamic> json) {
     int parseGoalId(dynamic value) {
@@ -67,6 +69,7 @@ class RoutineModel {
           ? DateTime.parse(json['updatedAt'] as String)
           : null,
       alarmId: json['alarmId'] != null ? int.tryParse(json['alarmId'].toString()) : null,
+      checkStates: _parseCheckStates(json['checkStates']),
     );
   }
 
@@ -89,6 +92,7 @@ class RoutineModel {
       'createdAt': createdAt.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
       if (alarmId != null) 'alarmId': alarmId,
+      'checkStates': checkStates,
     };
   }
 
@@ -127,6 +131,7 @@ class RoutineModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     int? alarmId,
+    List<bool>? checkStates,
   }) {
     return RoutineModel(
       routineId: routineId ?? this.routineId,
@@ -146,6 +151,7 @@ class RoutineModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       alarmId: alarmId ?? this.alarmId,
+      checkStates: checkStates ?? this.checkStates,
     );
   }
 
@@ -203,5 +209,17 @@ class RoutineModel {
     }
     
     return _defaultStartTime();
+  }
+
+  static List<bool> _parseCheckStates(dynamic checkStates) {
+    if (checkStates == null) {
+      return List.generate(7, (_) => false);
+    }
+    
+    if (checkStates is List) {
+      return checkStates.map((item) => item == true).toList();
+    }
+    
+    return List.generate(7, (_) => false);
   }
 } 

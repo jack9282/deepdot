@@ -57,6 +57,9 @@ dependencies:
   http: ^1.2.1
   dio: ^5.4.0
   
+  # JWT Decoder
+  jwt_decoder: ^2.0.1
+  
   # Animation
   lottie: ^3.1.2
   

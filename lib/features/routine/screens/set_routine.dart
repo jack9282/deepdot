@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../view_models/routine_view_model.dart';
 import '../widgets/goal_item.dart';
 import '../../../common/theme/app_theme.dart';
@@ -85,7 +86,11 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+          icon: SvgPicture.asset(
+            'assets/svg/back.svg',
+            width: 7,
+            height: 12,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         centerTitle: true,
@@ -113,7 +118,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     const Text(
                       '루틴이름',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: Colors.black,
                       ),
@@ -126,26 +131,20 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         FocusScope.of(context).nextFocus();
                       },
                       decoration: InputDecoration(
-                        hintText: '아침 물 마시기',
+                        hintText: '루틴을 작성해주세요',
                         hintStyle: TextStyle(
-                          color: Colors.grey[400],
+                          color: AppTheme.textGreyColor,
                           fontWeight: FontWeight.w500,
                         ),
                         filled: true,
                         fillColor: Colors.grey[100],
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            color: _showNameError ? Colors.red : Colors.grey[300]!,
-                            width: _showNameError ? 2 : 1,
-                          ),
+                          borderSide: BorderSide.none,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            color: _showNameError ? Colors.red : Colors.grey[300]!,
-                            width: _showNameError ? 2 : 2,
-                          ),
+                          borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -169,7 +168,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     const SizedBox(height: 8),
                     Text(
                       '예시 : 자기 전 스트레칭, 공복유산소, 이거 보면 목 스트레칭 등',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 12, color: AppTheme.textGreyColor),
                     ),
                     const SizedBox(height: 24),
 
@@ -180,21 +179,21 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         const Text(
                           '목표설정',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Colors.black,
                           ),
                         ),
                         IconButton(
                           onPressed: _refreshGoals,
-                          icon: const Icon(Icons.refresh, size: 20),
+                          icon: const Icon(Icons.refresh, size: 15),
                           tooltip: '목표 목록 새로고침',
                         ),
                       ],
                     ),
                     Text(
                       '길게눌러 수정 및 삭제 가능',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 12, color: AppTheme.textGreyColor),
                     ),
                     const SizedBox(height: 12),
                     Consumer<RoutineViewModel>(
@@ -209,30 +208,35 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            ...availableGoalNames.map((goal) => GoalItem(
-                              goal: goal,
-                              isSelected: _selectedGoalName == goal,
-                              onTap: () {
-                                setState(() {
-                                  _selectedGoalName = goal;
-                                  // 실제 goalId 찾기
-                                  final goalIndex = availableGoalNames.indexOf(goal);
-                                  if (goalIndex != -1) {
-                                    final goalData = routineVM.availableGoals[goalIndex];
-                                    final goalId = goalData['goalId'];
-                                    _selectedGoalId = goalId?.toString();
-                                    print('선택된 목표: $goal, goalId: $_selectedGoalId');
-                                  }
-                                  _showGoalError = false;
-                                });
-                              },
-                              onEditPressed: () {
-                                _showEditGoalNameDialog(goal);
-                              },
-                              onDeletePressed: () {
-                                _deleteGoal(goal);
-                              },
-                            )),
+                            ...availableGoalNames.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final goal = entry.value;
+                              return GoalItem(
+                                goal: goal,
+                                isSelected: _selectedGoalName == goal,
+                                colorIndex: index,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedGoalName = goal;
+                                    // 실제 goalId 찾기
+                                    final goalIndex = availableGoalNames.indexOf(goal);
+                                    if (goalIndex != -1) {
+                                      final goalData = routineVM.availableGoals[goalIndex];
+                                      final goalId = goalData['goalId'];
+                                      _selectedGoalId = goalId?.toString();
+                                      print('선택된 목표: $goal, goalId: $_selectedGoalId');
+                                    }
+                                    _showGoalError = false;
+                                  });
+                                },
+                                onEditPressed: () {
+                                  _showEditGoalNameDialog(goal);
+                                },
+                                onDeletePressed: () {
+                                  _deleteGoal(goal);
+                                },
+                              );
+                            }),
                             _buildAddGoalChip(),
                           ],
                         );
@@ -255,7 +259,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         const Text(
                           '루틴 알림을 받을까요?',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Colors.black,
                           ),
@@ -282,7 +286,6 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFF5F6FA),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFE0E0E0)),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -320,7 +323,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     const Text(
                       '얼마나 자주할 건가요?',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: Colors.black,
                       ),
@@ -348,7 +351,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                                 border: Border.all(
                                   color: _selectedDays[i]
                                       ? AppTheme.primaryColor
-                                      : const Color(0xFFE0E0E0),
+                                      : AppTheme.textGreyColor,
                                 ),
                                 borderRadius: BorderRadius.circular(18),
                               ),
@@ -358,7 +361,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                                   style: TextStyle(
                                     color: _selectedDays[i]
                                         ? Colors.white
-                                        : const Color(0xFFB0B0B0),
+                                        : AppTheme.textGreyColor,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 15,
                                   ),
@@ -369,24 +372,12 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-
-                    // 메모
-                    const Text(
-                      '메모',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
+                    const SizedBox(height: 40),
+                                          Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       child: TextField(
                         controller: _memoController,
                         maxLines: 4,
@@ -574,23 +565,23 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: isMaxGoalsReached ? Colors.grey[300] : const Color(0xFFF5F6FA),
+          color: isMaxGoalsReached ? AppTheme.textGreyColor : Colors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: isMaxGoalsReached ? Colors.grey[400]! : const Color(0xFF888888)),
+          border: Border.all(color: isMaxGoalsReached ? AppTheme.textGreyColor : AppTheme.textGreyColor),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.add, 
-              color: isMaxGoalsReached ? Colors.grey[500] : const Color(0xFF888888), 
+              color: isMaxGoalsReached ? AppTheme.textGreyColor : AppTheme.textGreyColor, 
               size: 16
             ),
             const SizedBox(width: 4),
             Text(
               isMaxGoalsReached ? '목표 5개 제한' : '목표 추가하기',
               style: TextStyle(
-                color: isMaxGoalsReached ? Colors.grey[500] : const Color(0xFF888888),
+                color: isMaxGoalsReached ? AppTheme.textGreyColor : AppTheme.textGreyColor,
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
               ),

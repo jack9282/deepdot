@@ -25,10 +25,9 @@ class AuthViewModel with ChangeNotifier {
   // 앱 시작 시 저장된 토큰으로 자동 로그인 확인
   Future<bool> checkAutoLogin() async {
     try {
-      final isLoggedIn = await TokenManager.instance.isLoggedIn();
       final hasValidToken = await TokenManager.instance.hasValidToken();
       
-      if (isLoggedIn && hasValidToken) {
+      if (hasValidToken) {
         final username = await TokenManager.instance.getUsername();
         if (username != null) {
           // 저장된 사용자 정보로 UserModel 생성
@@ -219,9 +218,11 @@ class AuthViewModel with ChangeNotifier {
     _setError(null);
 
     try {
-      final success = await _authRepository.loadUserFromStorage();
-      if (success) {
-        _setUser(_authRepository.currentUser);
+      // 자동 로그인 시도
+      final autoLoginSuccess = await checkAutoLogin();
+      if (autoLoginSuccess) {
+        // 자동 로그인 성공 시 토큰 자동 갱신 시작
+        await TokenManager.instance.startAutoRefresh();
       }
     } catch (e) {
       _setError('사용자 정보를 불러오는데 실패했습니다');
@@ -244,6 +245,8 @@ class AuthViewModel with ChangeNotifier {
       final success = await _authRepository.login(username, password);
       if (success) {
         _setUser(_authRepository.currentUser);
+        // 로그인 성공 시 토큰 자동 갱신 시작
+        await TokenManager.instance.startAutoRefresh();
         return true;
       } else {
         _setError('로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요');
@@ -295,6 +298,8 @@ class AuthViewModel with ChangeNotifier {
       final success = await _authRepository.signUp(username, email, password, confirmPassword);
       if (success) {
         _setUser(_authRepository.currentUser);
+        // 회원가입 성공 시 토큰 자동 갱신 시작
+        await TokenManager.instance.startAutoRefresh();
         return true;
       } else {
         _setError('회원가입에 실패했습니다');

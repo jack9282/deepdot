@@ -198,28 +198,34 @@ class TakingRepository {
         // TODO: 서버에서 개별 시간 삭제 API가 추가되면 여기서 호출
         
         // 서버의 기존 모든 복용 시간을 삭제하고, 새 시간들을 다시 추가
-        final existingTimeIds = _takingList[index].timeIds;
         // 1) 기존 시간 전부 삭제
-        for (final timeId in existingTimeIds) {
-          try {
-            await TakingApi.deleteMedicationTime(timeId);
-          } catch (timeError) {
-            // 없는 timeId일 수 있으므로 무시하고 진행
-            print('복용 시간 삭제 실패 (timeId: $timeId): $timeError');
-          }
+        bool deleteSuccess = false;
+        try {
+          await TakingApi.deleteAllMedicationTimes(int.parse(updatedTaking.id));
+          deleteSuccess = true;
+          print('기존 시간 삭제 성공');
+        } catch (deleteError) {
+          print('기존 시간 삭제 실패: $deleteError');
+          // 삭제 실패 시 예외를 다시 던져서 로컬 저장으로 처리
+          throw Exception('기존 시간 삭제에 실패했습니다: $deleteError');
         }
-        // 2) 새 시간 전부 추가
+        
+        // 2) 삭제가 성공한 경우에만 새 시간 추가
         final List<int> newTimeIds = [];
-        for (final newTime in times) {
-          try {
-            final timeId = await TakingApi.addMedicationTime(int.parse(updatedTaking.id), newTime);
-            if (timeId != null) {
-              newTimeIds.add(timeId);
+        if (deleteSuccess) {
+          for (final newTime in times) {
+            try {
+              final timeId = await TakingApi.addMedicationTime(int.parse(updatedTaking.id), newTime);
+              if (timeId != null) {
+                newTimeIds.add(timeId);
+              }
+            } catch (timeError) {
+              print('복용 시간 추가 실패 (시간: $newTime): $timeError');
+              // 개별 시간 추가 실패는 무시하고 계속 진행
             }
-          } catch (timeError) {
-            print('복용 시간 추가 실패 (시간: $newTime): $timeError');
           }
         }
+        
         // 3) 서버에서 최신 데이터 재조회 (timeIds 동기화)
         TakingModel? refreshed;
         try {

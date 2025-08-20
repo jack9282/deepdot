@@ -474,6 +474,21 @@ class RoutineRepository extends ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<void> updateRoutineCheckState(int routineId, int dayIndex, bool isChecked) async {
+    try {
+      final index = _routineList.indexWhere((routine) => routine.routineId == routineId);
+      if (index != -1) {
+        final currentCheckStates = List<bool>.from(_routineList[index].checkStates);
+        if (dayIndex >= 0 && dayIndex < currentCheckStates.length) {
+          currentCheckStates[dayIndex] = isChecked;
+          _routineList[index] = _routineList[index].copyWith(checkStates: currentCheckStates);
+          await saveToStorage();
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
+  }
+
   String? _getGoalNameById(int goalId) {
     try {
       final goal = _availableGoals.firstWhere((goal) =>

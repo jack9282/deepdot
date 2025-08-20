@@ -4,6 +4,7 @@ import '../../../common/theme/app_theme.dart';
 class GoalItem extends StatelessWidget {
   final String goal;
   final bool isSelected;
+  final int colorIndex;
   final VoidCallback onTap;
   final VoidCallback? onEditPressed;
   final VoidCallback? onDeletePressed;
@@ -12,6 +13,7 @@ class GoalItem extends StatelessWidget {
     super.key,
     required this.goal,
     required this.isSelected,
+    required this.colorIndex,
     required this.onTap,
     this.onEditPressed,
     this.onDeletePressed,
@@ -19,6 +21,8 @@ class GoalItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = AppTheme.checkListColor[colorIndex % AppTheme.checkListColor.length];
+    
     return GestureDetector(
       onTap: onTap,
       onLongPress: () {
@@ -28,19 +32,19 @@ class GoalItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color.fromARGB(255, 210, 225, 255)
-              : const Color(0xFFF5F6FA),
+              ? color.withOpacity(0.2)
+              : Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: isSelected
-              ? Border.all(color: AppTheme.primaryColor)
-              : Border.all(color: const Color(0xFF888888)),
+              ? Border.all(color: color, width: 2)
+              : Border.all(color: AppTheme.textGreyColor),
         ),
         child: Text(
           goal,
           style: TextStyle(
             color: isSelected
-                ? AppTheme.primaryColor
-                : const Color(0xFF888888),
+                ? color
+                : AppTheme.textGreyColor,
             fontWeight: FontWeight.w600,
             fontSize: 14,
           ),

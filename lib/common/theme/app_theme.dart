@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // 메인 색상들
-  static const Color primaryColor = Color(0xFF5672FF); // 보라색 계열
+  static const Color primaryColor = Color(0xFF799EFF); // 보라색 계열
+  static const Color primaryColorBright = Color(0xFF1F5DFF); // 보라색 계열
   static const Color secondaryColor = Color(0xFF4CAF50); // 초록색 계열
   static const Color backgroundColor = Color(0xFFF8F9FB);
   static const Color cardColor = Color(0xFFFFFFFF);
@@ -10,15 +10,24 @@ class AppTheme {
   static const Color textSecondaryColor = Color(0xFF718096);
   static const Color borderColor = Color(0xFFE2E8F0);
   
-  // 민재님 코드에서 사용하는 색상들 추가
+  static const Color greyPrimaryColor = Color(0xFF979797);
+  static const Color textGreyColor = Color(0xFFB4B5B6);
+  static const Color iconGreyColor = Color(0xFFD6D8D9);
   static const Color darkColor = Color(0xFF2D3748);
   static const Color buttonColor = Color(0xFF6C63FF);
   
-  // 아이젠하워 매트릭스 색상
   static const Color urgentImportantColor = Color(0xFFE53E3E); // 빨간색
   static const Color importantColor = Color(0xFFD69E2E); // 노란색
   static const Color urgentColor = Color(0xFF3182CE); // 파란색
   static const Color neitherColor = Color(0xFF38A169); // 초록색
+
+  static const List<Color> checkListColor = [
+    Color(0xFF3A71FF), // 파란색
+    Color(0xFFFFBC4C), // 주황색
+    Color(0xFFFF4C4C), // 빨간색
+    Color(0xFF4CAF50), // 초록색
+    Color(0xFF9C27B0), // 보라색
+  ];
 
   static ThemeData get lightTheme {
     return ThemeData(

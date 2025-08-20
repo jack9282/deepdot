@@ -59,8 +59,8 @@ class RoutineApi {
         final errorBody = response.body.isNotEmpty ? response.body : '응답 본문 없음';
         
         if (response.statusCode == 401) {
-          final refreshSuccess = await TokenManager.instance.refreshToken();
-          if (refreshSuccess) {
+          try {
+            await TokenManager.instance.manualRefresh();
             final newToken = await TokenManager.instance.getAccessToken();
             final retryResponse = await http.post(
               Uri.parse('$baseUrl/api/routine'),
@@ -75,7 +75,7 @@ class RoutineApi {
             if (retryResponse.statusCode == 200) {
               return jsonDecode(retryResponse.body);
             }
-          } else {
+          } catch (refreshError) {
             throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
           }
         }
@@ -271,8 +271,8 @@ class RoutineApi {
         final errorBody = response.body.isNotEmpty ? response.body : '응답 본문 없음';
         
         if (response.statusCode == 401) {
-          final refreshSuccess = await TokenManager.instance.refreshToken();
-          if (refreshSuccess) {
+          try {
+            await TokenManager.instance.manualRefresh();
             final newToken = await TokenManager.instance.getAccessToken();
             final retryResponse = await http.delete(
               Uri.parse('$baseUrl/api/routine/goals/$goalId'),
@@ -285,7 +285,7 @@ class RoutineApi {
             if (retryResponse.statusCode == 200) {
               return;
             }
-          } else {
+          } catch (refreshError) {
             throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
           }
         }
@@ -342,8 +342,8 @@ class RoutineApi {
         final errorBody = response.body.isNotEmpty ? response.body : '응답 본문 없음';
         
         if (response.statusCode == 401) {
-          final refreshSuccess = await TokenManager.instance.refreshToken();
-          if (refreshSuccess) {
+          try {
+            await TokenManager.instance.manualRefresh();
             final newToken = await TokenManager.instance.getAccessToken();
             final retryResponse = await http.patch(
               Uri.parse('$baseUrl/api/routine/goals/$goalId'),
@@ -358,7 +358,7 @@ class RoutineApi {
             if (retryResponse.statusCode == 200) {
               return jsonDecode(retryResponse.body);
             }
-          } else {
+          } catch (refreshError) {
             throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
           }
         }
@@ -403,8 +403,8 @@ class RoutineApi {
         final errorBody = response.body.isNotEmpty ? response.body : '응답 본문 없음';
         
         if (response.statusCode == 401) {
-          final refreshSuccess = await TokenManager.instance.refreshToken();
-          if (refreshSuccess) {
+          try {
+            await TokenManager.instance.manualRefresh();
             final newToken = await TokenManager.instance.getAccessToken();
             final retryResponse = await http.get(
               Uri.parse('$baseUrl/api/routine/goals/$goalId/routines'),
@@ -416,7 +416,7 @@ class RoutineApi {
             if (retryResponse.statusCode == 200) {
               return jsonDecode(retryResponse.body);
             }
-          } else {
+          } catch (refreshError) {
             throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
           }
         }

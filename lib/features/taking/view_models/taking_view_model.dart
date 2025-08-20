@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/taking_repository.dart';
+import '../../../data/repositories/auth_repository.dart';
 import '../../../data/models/taking_model.dart';
 import '../../../utils/alarm.dart';
 import '../../../utils/alarm_id_generator.dart';
@@ -11,6 +12,7 @@ class TakingViewModel with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   bool _isInitialized = false;
+  final AuthRepository _authRepository = AuthRepository();
 
   List<TakingModel> get takingList => List.unmodifiable(_takingList);
   bool get isLoading => _isLoading;
@@ -247,11 +249,12 @@ class TakingViewModel with ChangeNotifier {
           final alarmId = AlarmIdGenerator.generateTakingIdWithIndex(baseAlarmId, i);
           _alarmIds[alarmKey] = alarmId;
 
+          final userName = _authRepository.currentUser?.name ?? _authRepository.currentUser?.username ?? '사용자';
           await AlarmUtility.setDailyAlarm(
             id: alarmId,
             scheduledTime: scheduledTime,
             title: '복용 알림',
-            body: '${taking.name} 복용 시간입니다!',
+            body: AlarmUtility.generateTakingMessage(userName, scheduledTime),
           );
         }
       }

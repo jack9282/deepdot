@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/taking_view_model.dart';
 import '../widgets/taking_list_item.dart';
+import '../../../common/theme/app_theme.dart';
 
 class TakingListScreen extends StatelessWidget {
   const TakingListScreen({super.key});
@@ -63,7 +64,7 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody>
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 250, 250, 255),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(90),
+        preferredSize: const Size.fromHeight(70),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -77,9 +78,7 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody>
             ],
           ),
           child: AppBar(
-            title: Padding(
-              padding: const EdgeInsets.only(top: 40),
-              child: const Text(
+            title: Text(
                 '복용 체크리스트',
                 style: TextStyle(
                   fontSize: 20,
@@ -87,16 +86,17 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody>
                   color: Colors.black,
                 ),
               ),
-            ),
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: const SizedBox.shrink(),
             centerTitle: true,
             actions: [
               Padding(
-                padding: const EdgeInsets.only(top: 25, right: 8),
+                padding: const EdgeInsets.only(right: 15),
                 child: IconButton(
-                  icon: const Icon(Icons.add, color: Colors.black, size: 30),
+                  icon: const Icon(Icons.add, color: AppTheme.greyPrimaryColor),
+                  iconSize: 25,
+                  alignment: Alignment.center,
                   onPressed: () {
                     context.push('/taking-add');
                   },

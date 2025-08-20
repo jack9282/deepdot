@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/routine_repository.dart';
+import '../../../data/repositories/auth_repository.dart';
 import '../../../data/models/routine_model.dart';
 import '../../../utils/alarm.dart';
 import '../../../utils/alarm_id_generator.dart';
@@ -13,6 +14,7 @@ class RoutineViewModel extends ChangeNotifier {
   String? _errorMessage;
   bool _isInitialized = false;
   bool _isAlarmRestoring = false;
+  final AuthRepository _authRepository = AuthRepository();
 
   List<RoutineModel> get routineList => List.unmodifiable(_routineList);
   List<Map<String, dynamic>> get availableGoals {
@@ -405,11 +407,12 @@ class RoutineViewModel extends ChangeNotifier {
       final time = _parseTimeString(routine.startTimeString);
       final weekdays = _convertDaysToNumbers(routine.days);
 
+      final userName = _authRepository.currentUser?.name ?? _authRepository.currentUser?.username ?? '사용자';
       await AlarmUtility.setWeeklyAlarm(
         baseId: baseId,
         scheduledTime: time,
         title: '루틴 알림 (${routine.days.join(', ')})',
-        body: '${routine.name} 시간입니다!',
+        body: AlarmUtility.generateRoutineMessage(userName, routine.name),
         weekdays: weekdays,
       );
       
@@ -519,6 +522,19 @@ class RoutineViewModel extends ChangeNotifier {
     if (updated) {
       notifyListeners();
     }
+  }
+
+  RoutineModel? getRoutineById(int routineId) {
+    try {
+      return _routineList.firstWhere((routine) => routine.routineId == routineId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> updateRoutineCheckState(int routineId, int dayIndex, bool isChecked) async {
+    await RoutineRepository().updateRoutineCheckState(routineId, dayIndex, isChecked);
+    _loadRoutineList();
   }
 }
 

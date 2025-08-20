@@ -382,4 +382,29 @@ class AlarmUtility {
       print('즉시 테스트 알람 설정 중 오류: $e');
     }
   }
+
+  /// 시간대별 복용 알림 메시지 생성
+  static String generateTakingMessage(String userName, DateTime time) {
+    final hour = time.hour;
+    String timeOfDay;
+    String message;
+    
+    if (hour >= 5 && hour < 11) {
+      timeOfDay = '아침';
+      message = '물과 함께 섭취하세요!';
+    } else if (hour >= 11 && hour < 17) {
+      timeOfDay = '점심';
+      message = '식후 30분 이내에 복용해주세요!';
+    } else {
+      timeOfDay = '저녁';
+      message = '오늘 하루 마무리 잊지 말고 복약하세요!';
+    }
+    
+    return '${userName}님 ${timeOfDay} 복약시간이에요~\n$message';
+  }
+
+  /// 루틴 알림 메시지 생성
+  static String generateRoutineMessage(String userName, String routineName) {
+    return '앗 ${userName}님 혹시..\n${routineName}을(를) 미달성했어요! 달성을 완료해주세요 :)';
+  }
 }

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../view_models/routine_view_model.dart';
 import '../../../common/theme/app_theme.dart';
-import '../../../api/routine_api.dart';
-import '../../../utils/snak_bar.dart';
 
 class RoutineListItem extends StatefulWidget {
   final Map<String, dynamic> routine;
@@ -11,6 +9,7 @@ class RoutineListItem extends StatefulWidget {
   final RoutineViewModel routineVM;
   final Function(int routineIdOrIndex)? onDelete;
   final VoidCallback? onEditPressed;
+  final int goalIndex;
 
   const RoutineListItem({
     super.key,
@@ -19,6 +18,7 @@ class RoutineListItem extends StatefulWidget {
     required this.routineVM,
     this.onDelete,
     this.onEditPressed,
+    required this.goalIndex,
   });
 
   @override
@@ -26,7 +26,10 @@ class RoutineListItem extends StatefulWidget {
 }
 
 class _RoutineListItemState extends State<RoutineListItem> {
-  static const Color naverBlue = Color(0xFF3973F4);
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,9 +44,6 @@ class _RoutineListItemState extends State<RoutineListItem> {
 
     return Consumer<RoutineViewModel>(
       builder: (context, routineVM, child) {
-        // 체크 상태는 현재 구현되지 않으므로 기본값 사용
-        final List<bool> checks = List.generate(7, (_) => false);
-        
         return Container(
           height: 44,
           margin: const EdgeInsets.symmetric(vertical: 2),
@@ -71,19 +71,20 @@ class _RoutineListItemState extends State<RoutineListItem> {
               ),
               ...List.generate(7, (dayIndex) {
                 final bool isDayActive = _isDayActive(dayIndex, mon, tue, wed, thu, fri, sat, sun);
-                final bool isChecked = checks[dayIndex];
+                final routineId = widget.routine['routineId'] as int?;
+                final checkStates = routineId != null 
+                    ? widget.routineVM.getRoutineById(routineId)?.checkStates ?? List.generate(7, (_) => false)
+                    : List.generate(7, (_) => false);
+                final bool isChecked = dayIndex < checkStates.length ? checkStates[dayIndex] : false;
                 
                 return Expanded(
                   child: Center(
                     child: isDayActive
                         ? GestureDetector(
                             onTap: () {
-                              // 체크 기능은 현재 구현되지 않음
-                              // routineVM.updateRoutineCheck(
-                              //   widget.index,
-                              //   dayIndex,
-                              //   !isChecked,
-                              // );
+                              if (routineId != null) {
+                                widget.routineVM.updateRoutineCheckState(routineId, dayIndex, !isChecked);
+                              }
                             },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
@@ -92,9 +93,9 @@ class _RoutineListItemState extends State<RoutineListItem> {
                               height: 28,
                               margin: const EdgeInsets.symmetric(vertical: 2),
                               decoration: BoxDecoration(
-                                color: isChecked ? naverBlue : Colors.white,
+                                color: isChecked ? AppTheme.checkListColor[widget.goalIndex % AppTheme.checkListColor.length] : Colors.white,
                                 border: Border.all(
-                                  color: isChecked ? naverBlue : Colors.grey[400]!,
+                                  color: isChecked ? AppTheme.checkListColor[widget.goalIndex % AppTheme.checkListColor.length] : AppTheme.textGreyColor,
                                   width: 2,
                                 ),
                                 borderRadius: BorderRadius.circular(5),
@@ -235,7 +236,7 @@ class _DayBubbleState extends State<DayBubble> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF3973F4),
+              color: AppTheme.primaryColorBright,
               borderRadius: BorderRadius.circular(24),
             ),
             child: const Text(

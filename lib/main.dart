@@ -13,6 +13,7 @@ import 'features/schedule/view_models/schedule_view_model.dart';
 import 'features/statistics/view_models/statistics_view_model.dart';
 import './utils/permission.dart'; // 권한 유틸 임포트
 import './utils/alarm.dart'; // 알람 유틸 임포트
+import './api/token_manager.dart'; // 토큰 매니저 임포트
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +39,9 @@ Future<void> main() async {
   await AppPermission.requestNotificationPermission();
   await AppPermission.requestBatteryOptimizationPermission();
   await AlarmUtility.initialize();
+
+  // 토큰 자동 갱신 시작
+  await TokenManager.instance.startAutoRefresh();
 
   runApp(const DeepDotApp());
 }
