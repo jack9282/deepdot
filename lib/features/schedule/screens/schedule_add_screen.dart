@@ -7,6 +7,9 @@ import '../../../data/models/schedule_model.dart';
 import '../view_models/schedule_view_model.dart';
 import '../../home/view_models/home_view_model.dart';
 import '../../statistics/view_models/statistics_view_model.dart';
+import '../../../data/repositories/routine_pattern_repository.dart';
+import '../../../data/models/routine_pattern_model.dart';
+import '../widgets/routine_recommendation_dialog.dart';
 
 import 'schedule_add_complete_screen.dart';
 import '../../../utils/date_time_formatter.dart';
@@ -30,6 +33,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   final _locationController = TextEditingController();
   final _memoController = TextEditingController();
   final _focusNode = FocusNode(); // 포커스 관리를 위한 FocusNode 추가
+  final _patternRepository = RoutinePatternRepository();
   
   // 주어진 시간을 분 단위로 반올림하는 static 함수
   static DateTime _roundToNearestInterval(DateTime dateTime, int minuteInterval) {
@@ -873,6 +877,35 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       
       final statisticsViewModel = Provider.of<StatisticsViewModel>(context, listen: false);
       await statisticsViewModel.loadCurrentWeekData();
+      
+      // 루틴 패턴 기록 및 추천 체크
+      if (!isRecurring) { // 반복 일정이 아닌 단일 일정일 경우에만 패턴 기록
+        final scheduleModel = ScheduleModel(
+          scheduleId: null,
+          title: _titleController.text.trim(),
+          time: DateTimeFormatter.toTimeString(_startDateTime),
+          startDate: DateTimeFormatter.toDateString(_startDateTime),
+          endDate: DateTimeFormatter.toDateString(_endDateTime),
+          type: scheduleType.value,
+          location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+          memo: _memoController.text.trim().isEmpty ? null : _memoController.text.trim(),
+          image: _convertEmojiToIconCode(_selectedEmoji),
+          alarm30Before: _isNotificationEnabled && _selectedNotificationTime == '30분전',
+          alarm60Before: _isNotificationEnabled && _selectedNotificationTime == '1시간전',
+          alarm120Before: _isNotificationEnabled && _selectedNotificationTime == '2시간전',
+        );
+        
+        final recommendablePattern = await _patternRepository.recordSchedulePattern(scheduleModel);
+        
+        // 5번 이상 반복되었으면 루틴 추천 다이얼로그 표시
+        if (recommendablePattern != null && mounted) {
+          final createRoutine = await RoutineRecommendationDialog.show(context, recommendablePattern);
+          if (createRoutine == true && mounted) {
+            // 루틴이 생성되었으면 HomeViewModel 다시 새로고침
+            await homeViewModel.refresh();
+          }
+        }
+      }
       
       _showSuccessDialog();
     } else {
