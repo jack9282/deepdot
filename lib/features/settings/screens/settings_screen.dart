@@ -29,21 +29,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // AI 루틴 추천 설정 상태
   bool _aiRoutineRecommendation = false;
-  
+
   // SharedPreferences 키
   static const String _scheduleNotificationKey = 'schedule_notification';
   static const String _medicationNotificationKey = 'medication_notification';
   static const String _routineNotificationKey = 'routine_notification';
   static const String _deviceSyncKey = 'device_sync';
   static const String _aiRoutineKey = 'ai_routine_recommendation';
-  
+
   @override
   void initState() {
     super.initState();
     _loadSettings();
     _checkLoginStatus();
   }
-  
+
   /// 로그인 상태를 확인합니다
   Future<void> _checkLoginStatus() async {
     final isLoggedIn = await TokenManager.instance.hasValidToken();
@@ -54,7 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _deviceSync = false;
       }
     });
-    
+
     // 로그인 상태가 변경되면 설정 저장
     final prefs = await SharedPreferences.getInstance();
     if (isLoggedIn) {
@@ -67,35 +67,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     setState(() {});
   }
-  
+
   /// SharedPreferences에서 설정값을 불러옵니다
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final isLoggedIn = await TokenManager.instance.hasValidToken();
-    
+
     setState(() {
       _scheduleNotification = prefs.getBool(_scheduleNotificationKey) ?? true;
-      _medicationNotification = prefs.getBool(_medicationNotificationKey) ?? true;
+      _medicationNotification =
+          prefs.getBool(_medicationNotificationKey) ?? true;
       _routineNotification = prefs.getBool(_routineNotificationKey) ?? true;
       // 비회원은 무조건 동기화 OFF, 회원은 저장된 값 사용
-      _deviceSync = isLoggedIn ? (prefs.getBool(_deviceSyncKey) ?? true) : false;
+      _deviceSync = isLoggedIn
+          ? (prefs.getBool(_deviceSyncKey) ?? true)
+          : false;
       _aiRoutineRecommendation = prefs.getBool(_aiRoutineKey) ?? false;
     });
   }
-  
+
   /// 알림 설정 상태를 저장하고 알림을 업데이트합니다
   Future<void> _saveNotificationSetting(String key, bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key, value);
   }
-  
+
   /// 일정 알림 상태를 변경합니다
   Future<void> _toggleScheduleNotification(bool value) async {
     setState(() {
       _scheduleNotification = value;
     });
     await _saveNotificationSetting(_scheduleNotificationKey, value);
-    
+
     if (!value) {
       // 일정 알림 비활성화 시 모든 일정 알림 취소
       await _cancelScheduleNotifications();
@@ -104,14 +107,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _rescheduleScheduleNotifications();
     }
   }
-  
+
   /// 복약 알림 상태를 변경합니다
   Future<void> _toggleMedicationNotification(bool value) async {
     setState(() {
       _medicationNotification = value;
     });
     await _saveNotificationSetting(_medicationNotificationKey, value);
-    
+
     if (!value) {
       // 복약 알림 비활성화 시 모든 복약 알림 취소
       await _cancelMedicationNotifications();
@@ -120,14 +123,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _rescheduleMedicationNotifications();
     }
   }
-  
+
   /// 루틴 알림 상태를 변경합니다
   Future<void> _toggleRoutineNotification(bool value) async {
     setState(() {
       _routineNotification = value;
     });
     await _saveNotificationSetting(_routineNotificationKey, value);
-    
+
     if (!value) {
       // 루틴 알림 비활성화 시 모든 루틴 알림 취소
       await _cancelRoutineNotifications();
@@ -136,13 +139,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _rescheduleRoutineNotifications();
     }
   }
-  
+
   /// 일정 알림을 모두 취소합니다
   Future<void> _cancelScheduleNotifications() async {
     try {
       // 실제 예약된 알림 목록 가져오기
       final pendingAlarms = await AlarmUtility.getPendingAlarms();
-      
+
       // 10000-19999 범위의 일정 알림만 취소
       for (final alarm in pendingAlarms) {
         if (alarm.id >= 10000 && alarm.id < 20000) {
@@ -153,13 +156,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       print('일정 알림 취소 중 오류: $e');
     }
   }
-  
+
   /// 복약 알림을 모두 취소합니다
   Future<void> _cancelMedicationNotifications() async {
     try {
       // 실제 예약된 알림 목록 가져오기
       final pendingAlarms = await AlarmUtility.getPendingAlarms();
-      
+
       // 20000-29999 범위의 복약 알림만 취소
       for (final alarm in pendingAlarms) {
         if (alarm.id >= 20000 && alarm.id < 30000) {
@@ -170,24 +173,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       print('복약 알림 취소 중 오류: $e');
     }
   }
-  
+
   /// 루틴 알림을 모두 취소합니다
   Future<void> _cancelRoutineNotifications() async {
     try {
       // 실제 예약된 알림 목록 가져오기
       final pendingAlarms = await AlarmUtility.getPendingAlarms();
-      
-      // 30000-39999 범위의 루틴 알림만 취소
+
+      // 30000-49999 범위의 루틴 알림 취소 (범위 확장)
       for (final alarm in pendingAlarms) {
-        if (alarm.id >= 30000 && alarm.id < 40000) {
+        if (alarm.id >= 30000 && alarm.id < 50000) {
           await AlarmUtility.cancelAlarm(alarm.id);
+          print('루틴 알림 취소: ID=${alarm.id}');
         }
       }
+      print('루틴 알림 취소 완료');
     } catch (e) {
       print('루틴 알림 취소 중 오류: $e');
     }
   }
-  
+
   /// 일정 알림을 재설정합니다
   Future<void> _rescheduleScheduleNotifications() async {
     try {
@@ -197,7 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       print('일정 알림 재설정 실패: $e');
     }
   }
-  
+
   /// 복약 알림을 재설정합니다
   Future<void> _rescheduleMedicationNotifications() async {
     try {
@@ -207,7 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       print('복약 알림 재설정 실패: $e');
     }
   }
-  
+
   /// 루틴 알림을 재설정합니다
   Future<void> _rescheduleRoutineNotifications() async {
     try {
@@ -224,7 +229,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenHeight < 700; // 작은 화면 감지
     final scaleFactor = screenHeight / 800; // 기준 높이 800px 대비 비율
-    
+
     // 반응형 간격 계산
     double getSpacing(double baseSize) {
       if (isSmallScreen) {
@@ -232,7 +237,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       return baseSize * scaleFactor.clamp(0.7, 1.2); // 0.7 ~ 1.2배 사이로 제한
     }
-    
+
     // 반응형 폰트 크기 계산
     double getFontSize(double baseSize) {
       if (isSmallScreen) {
@@ -240,7 +245,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       return baseSize * scaleFactor.clamp(0.85, 1.1); // 0.85 ~ 1.1배 사이로 제한
     }
-    
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -298,7 +303,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             _buildCompactSettingItem(
                               title: '일정 알림 받기',
                               value: _scheduleNotification,
-                              onChanged: _toggleScheduleNotification,
+                              onChanged: (value) {
+                                _toggleScheduleNotification(value);
+                              },
                               fontSize: getFontSize(18),
                             ),
 
@@ -308,7 +315,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             _buildCompactSettingItem(
                               title: '복약 알림 받기',
                               value: _medicationNotification,
-                              onChanged: _toggleMedicationNotification,
+                              onChanged: (value) {
+                                _toggleMedicationNotification(value);
+                              },
                               fontSize: getFontSize(18),
                             ),
 
@@ -318,7 +327,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             _buildCompactSettingItem(
                               title: '루틴 알림 받기',
                               value: _routineNotification,
-                              onChanged: _toggleRoutineNotification,
+                              onChanged: (value) {
+                                _toggleRoutineNotification(value);
+                              },
                               fontSize: getFontSize(18),
                             ),
                           ],
@@ -338,30 +349,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         value: _deviceSync,
                         enabled: _isLoggedIn,
                         fontSize: getFontSize(18),
-                        onChanged: _isLoggedIn ? (value) async {
-                          setState(() {
-                            _deviceSync = value;
-                          });
-                          await _saveNotificationSetting(_deviceSyncKey, value);
-                          
-                          if (!value) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('로컬 모드로 전환되었습니다.'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          } else {
-                            final scheduleRepo = ScheduleRepository();
-                            await scheduleRepo.syncWithServer();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('서버와 동기화를 시작합니다.'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        } : null,
+                        onChanged: _isLoggedIn
+                            ? (value) async {
+                                setState(() {
+                                  _deviceSync = value;
+                                });
+                                await _saveNotificationSetting(
+                                  _deviceSyncKey,
+                                  value,
+                                );
+
+                                if (!value) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('로컬 모드로 전환되었습니다.'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                } else {
+                                  final scheduleRepo = ScheduleRepository();
+                                  await scheduleRepo.syncWithServer();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('서버와 동기화를 시작합니다.'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              }
+                            : null,
                       ),
 
                       SizedBox(height: getSpacing(20)),
@@ -402,7 +418,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // 하단 액션 버튼들 (항상 표시)
                 SizedBox(height: getSpacing(20)),
-                
+
                 // 로그아웃
                 _buildCompactActionItem(
                   title: '로그아웃',
@@ -527,14 +543,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           GestureDetector(
-            onTap: enabled && onChanged != null ? () => onChanged(!value) : null,
+            onTap: enabled && onChanged != null
+                ? () => onChanged(!value)
+                : null,
             child: Container(
               width: 65,
               height: 31,
               decoration: BoxDecoration(
-                color: enabled 
-                  ? (value ? const Color(0xFF3A71FF) : Colors.grey[300])
-                  : Colors.grey[200],
+                color: enabled
+                    ? (value ? const Color(0xFF3A71FF) : Colors.grey[300])
+                    : Colors.grey[200],
                 borderRadius: BorderRadius.circular(15.5),
               ),
               child: AnimatedAlign(
@@ -567,7 +585,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     double fontSize = 18,
   }) {
     final isSmallScreen = MediaQuery.of(context).size.height < 700;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -600,14 +618,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           GestureDetector(
-            onTap: enabled && onChanged != null ? () => onChanged(!value) : null,
+            onTap: enabled && onChanged != null
+                ? () => onChanged(!value)
+                : null,
             child: Container(
               width: isSmallScreen ? 55 : 65,
               height: isSmallScreen ? 26 : 31,
               decoration: BoxDecoration(
-                color: enabled 
-                  ? (value ? const Color(0xFF3A71FF) : Colors.grey[300])
-                  : Colors.grey[200],
+                color: enabled
+                    ? (value ? const Color(0xFF3A71FF) : Colors.grey[300])
+                    : Colors.grey[200],
                 borderRadius: BorderRadius.circular(15.5),
               ),
               child: AnimatedAlign(

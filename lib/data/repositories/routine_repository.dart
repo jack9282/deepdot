@@ -17,25 +17,14 @@ class RoutineRepository extends ChangeNotifier {
 
   List<RoutineModel> _routineList = [];
   List<Map<String, dynamic>> _availableGoals = [
-    {
-      'goalId': '1',
-      'name': '아침루틴',
-      'inUse': false,
-    },
-    {
-      'goalId': '2',
-      'name': '개강까지 -5KG',
-      'inUse': false,
-    },
-    {
-      'goalId': '3',
-      'name': '정돈된 일상',
-      'inUse': false,
-    },
+    {'goalId': '1', 'name': '아침루틴', 'inUse': false},
+    {'goalId': '2', 'name': '개강까지 -5KG', 'inUse': false},
+    {'goalId': '3', 'name': '정돈된 일상', 'inUse': false},
   ];
 
   List<RoutineModel> get routineList => List.unmodifiable(_routineList);
-  List<Map<String, dynamic>> get availableGoals => List.unmodifiable(_availableGoals);
+  List<Map<String, dynamic>> get availableGoals =>
+      List.unmodifiable(_availableGoals);
 
   // Helpers
   Future<bool> _isGuest() => TokenManager.instance.isGuestMode();
@@ -70,7 +59,16 @@ class RoutineRepository extends ChangeNotifier {
   }) {
     if (goalId <= 0) return false;
     if (name.trim().isEmpty) return false;
-    if (!_hasSelectedDays(mon: mon, tue: tue, wed: wed, thu: thu, fri: fri, sat: sat, sun: sun)) return false;
+    if (!_hasSelectedDays(
+      mon: mon,
+      tue: tue,
+      wed: wed,
+      thu: thu,
+      fri: fri,
+      sat: sat,
+      sun: sun,
+    ))
+      return false;
     if (!_isValidStartTime(startTime)) return false;
     return true;
   }
@@ -104,7 +102,9 @@ class RoutineRepository extends ChangeNotifier {
       if (goalsJson != null) {
         try {
           final List<dynamic> goalsList = jsonDecode(goalsJson);
-          _availableGoals = goalsList.map((item) => Map<String, dynamic>.from(item)).toList();
+          _availableGoals = goalsList
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList();
         } catch (_) {}
       }
     } catch (_) {}
@@ -112,7 +112,10 @@ class RoutineRepository extends ChangeNotifier {
 
   Future<void> saveToStorage() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_routineListKey, jsonEncode(_routineList.map((e) => e.toJson()).toList()));
+    await prefs.setString(
+      _routineListKey,
+      jsonEncode(_routineList.map((e) => e.toJson()).toList()),
+    );
     await prefs.setString(_availableGoalsKey, jsonEncode(_availableGoals));
     await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
   }
@@ -188,7 +191,10 @@ class RoutineRepository extends ChangeNotifier {
         routineId: response['routineId'] as int?,
         name: name,
         goalId: response['goalId'] as int? ?? goalId,
-        goalName: response['goalName'] as String? ?? _getGoalNameById(goalId) ?? '새 목표',
+        goalName:
+            response['goalName'] as String? ??
+            _getGoalNameById(goalId) ??
+            '새 목표',
         mon: mon,
         tue: tue,
         wed: wed,
@@ -226,7 +232,9 @@ class RoutineRepository extends ChangeNotifier {
     required Map<String, int> startTime,
   }) async {
     try {
-      final index = _routineList.indexWhere((routine) => routine.routineId == routineId);
+      final index = _routineList.indexWhere(
+        (routine) => routine.routineId == routineId,
+      );
       if (index == -1) return false;
 
       if (await _isGuest()) {
@@ -292,7 +300,9 @@ class RoutineRepository extends ChangeNotifier {
 
   Future<bool> removeRoutine(int routineId) async {
     try {
-      final index = _routineList.indexWhere((routine) => routine.routineId == routineId);
+      final index = _routineList.indexWhere(
+        (routine) => routine.routineId == routineId,
+      );
       if (index == -1) return false;
 
       if (await _isGuest()) {
@@ -356,7 +366,9 @@ class RoutineRepository extends ChangeNotifier {
 
   Future<bool> updateGoal(String goalId, String name) async {
     try {
-      final index = _availableGoals.indexWhere((goal) => goal['goalId'] == goalId);
+      final index = _availableGoals.indexWhere(
+        (goal) => goal['goalId'] == goalId,
+      );
       if (index == -1) {
         return false;
       }
@@ -367,7 +379,10 @@ class RoutineRepository extends ChangeNotifier {
         return true;
       }
 
-      final response = await RoutineApi.updateGoal(goalId: int.tryParse(goalId) ?? 0, name: name);
+      final response = await RoutineApi.updateGoal(
+        goalId: int.tryParse(goalId) ?? 0,
+        name: name,
+      );
       if (response['data'] != null) {
         _availableGoals[index] = Map<String, dynamic>.from(response['data']);
         await _saveAndNotify();
@@ -381,7 +396,9 @@ class RoutineRepository extends ChangeNotifier {
 
   Future<bool> deleteGoal(String goalId) async {
     try {
-      final index = _availableGoals.indexWhere((goal) => goal['goalId'] == goalId);
+      final index = _availableGoals.indexWhere(
+        (goal) => goal['goalId'] == goalId,
+      );
       if (index == -1) {
         return false;
       }
@@ -457,7 +474,9 @@ class RoutineRepository extends ChangeNotifier {
   Future<DateTime?> getLastSyncTime() async {
     final prefs = await SharedPreferences.getInstance();
     final timestamp = prefs.getInt(_lastSyncKey);
-    return timestamp != null ? DateTime.fromMillisecondsSinceEpoch(timestamp) : null;
+    return timestamp != null
+        ? DateTime.fromMillisecondsSinceEpoch(timestamp)
+        : null;
   }
 
   List<RoutineModel> getRoutinesByGoal(int goalId) {
@@ -466,7 +485,9 @@ class RoutineRepository extends ChangeNotifier {
 
   Future<void> updateRoutineAlarmId(int routineId, int alarmId) async {
     try {
-      final index = _routineList.indexWhere((routine) => routine.routineId == routineId);
+      final index = _routineList.indexWhere(
+        (routine) => routine.routineId == routineId,
+      );
       if (index != -1 && _routineList[index].alarmId != alarmId) {
         _routineList[index] = _routineList[index].copyWith(alarmId: alarmId);
         await saveToStorage();
@@ -475,14 +496,24 @@ class RoutineRepository extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> updateRoutineCheckState(int routineId, int dayIndex, bool isChecked) async {
+  Future<void> updateRoutineCheckState(
+    int routineId,
+    int dayIndex,
+    bool isChecked,
+  ) async {
     try {
-      final index = _routineList.indexWhere((routine) => routine.routineId == routineId);
+      final index = _routineList.indexWhere(
+        (routine) => routine.routineId == routineId,
+      );
       if (index != -1) {
-        final currentCheckStates = List<bool>.from(_routineList[index].checkStates);
+        final currentCheckStates = List<bool>.from(
+          _routineList[index].checkStates,
+        );
         if (dayIndex >= 0 && dayIndex < currentCheckStates.length) {
           currentCheckStates[dayIndex] = isChecked;
-          _routineList[index] = _routineList[index].copyWith(checkStates: currentCheckStates);
+          _routineList[index] = _routineList[index].copyWith(
+            checkStates: currentCheckStates,
+          );
           await saveToStorage();
           notifyListeners();
         }
@@ -492,8 +523,8 @@ class RoutineRepository extends ChangeNotifier {
 
   String? _getGoalNameById(int goalId) {
     try {
-      final goal = _availableGoals.firstWhere((goal) =>
-        int.tryParse(goal['goalId'].toString()) == goalId
+      final goal = _availableGoals.firstWhere(
+        (goal) => int.tryParse(goal['goalId'].toString()) == goalId,
       );
       return goal['name'] as String?;
     } catch (_) {
@@ -520,15 +551,17 @@ class RoutineRepository extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isEnabled = prefs.getBool('routine_notification') ?? true;
-      
+
       if (!isEnabled) {
         // 알림이 비활성화되어 있으면 아무것도 하지 않음
         return;
       }
-      
+
       // 활성화된 모든 루틴에 대해 알림 설정
       for (final routine in _routineList) {
-        if (routine.active && routine.startTime.containsKey('hour') && routine.startTime.containsKey('minute')) {
+        if (routine.active &&
+            routine.startTime.containsKey('hour') &&
+            routine.startTime.containsKey('minute')) {
           // 선택된 요일들 추출
           final List<int> weekdays = [];
           if (routine.mon) weekdays.add(1);
@@ -538,15 +571,19 @@ class RoutineRepository extends ChangeNotifier {
           if (routine.fri) weekdays.add(5);
           if (routine.sat) weekdays.add(6);
           if (routine.sun) weekdays.add(7);
-          
+
           if (weekdays.isNotEmpty) {
             final hour = routine.startTime['hour'] ?? 9;
             final minute = routine.startTime['minute'] ?? 0;
-            final scheduledTime = DateTime.now().copyWith(hour: hour, minute: minute);
-            
+            final scheduledTime = DateTime.now().copyWith(
+              hour: hour,
+              minute: minute,
+            );
+
             // 알람 ID는 30000번대 사용 (루틴용)
-            final baseId = 30000 + routine.routineId.hashCode;
-            
+            // hashCode를 0-19999 범위로 제한하여 30000-49999 사이가 되도록 함
+            final baseId = 30000 + (routine.routineId.hashCode % 20000).abs();
+
             await AlarmUtility.setWeeklyAlarm(
               baseId: baseId,
               scheduledTime: scheduledTime,
@@ -561,4 +598,4 @@ class RoutineRepository extends ChangeNotifier {
       print('루틴 알림 재설정 중 오류: $e');
     }
   }
-} 
+}

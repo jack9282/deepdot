@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ScheduleRepository {
   static const String _localSchedulesKey = 'local_schedules';
   static const String _nextLocalIdKey = 'next_local_schedule_id';
-  
+
   /// 로컬 일정 저장
   Future<void> _saveSchedulesToLocal(List<ScheduleModel> schedules) async {
     try {
@@ -18,14 +18,14 @@ class ScheduleRepository {
       print('로컬 일정 저장 실패: $e');
     }
   }
-  
+
   /// 로컬 일정 불러오기
   Future<List<ScheduleModel>> _getSchedulesFromLocal() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final schedulesString = prefs.getString(_localSchedulesKey);
       if (schedulesString == null) return [];
-      
+
       final List<dynamic> schedulesJson = jsonDecode(schedulesString);
       return schedulesJson
           .map((json) => ScheduleModel.fromJson(json as Map<String, dynamic>))
@@ -35,7 +35,7 @@ class ScheduleRepository {
       return [];
     }
   }
-  
+
   /// 다음 로컬 ID 가져오기 (오프라인 모드용)
   Future<int> _getNextLocalId() async {
     final prefs = await SharedPreferences.getInstance();
@@ -44,7 +44,7 @@ class ScheduleRepository {
     await prefs.setInt(_nextLocalIdKey, nextId);
     return nextId;
   }
-  
+
   /// 서버와 로컬 데이터 병합
   Future<List<ScheduleModel>> _mergeSchedules(
     List<ScheduleModel> serverSchedules,
@@ -52,31 +52,32 @@ class ScheduleRepository {
   ) async {
     // 서버 일정 ID 목록
     final serverIds = serverSchedules.map((s) => s.scheduleId).toSet();
-    
+
     // 로컬에만 있는 일정 (오프라인에서 생성된 일정)
     final localOnlySchedules = localSchedules
         .where((local) => !serverIds.contains(local.scheduleId))
         .toList();
-    
+
     // 병합: 서버 데이터 + 로컬 전용 데이터
     final merged = [...serverSchedules, ...localOnlySchedules];
-    
+
     // 병합된 데이터를 로컬에 저장
     await _saveSchedulesToLocal(merged);
-    
+
     return merged;
   }
+
   /// 동기화 설정 확인
   Future<bool> _isDeviceSyncEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('device_sync') ?? false;
   }
-  
+
   /// 일정 생성 (온라인/오프라인 모드 지원)
   Future<int> createSchedule(ScheduleModel schedule) async {
     // 동기화 설정 확인
     final syncEnabled = await _isDeviceSyncEnabled();
-    
+
     if (!syncEnabled) {
       // 동기화 OFF - 로컬만 사용
       final localSchedules = await _getSchedulesFromLocal();
@@ -100,11 +101,11 @@ class ScheduleRepository {
       await _saveSchedulesToLocal(localSchedules);
       return localId;
     }
-    
+
     try {
       // 동기화 ON - 서버에 생성 시도
       final scheduleId = await ScheduleApi.createSchedule(schedule);
-      
+
       // 서버 생성 성공 시 로컬에도 저장
       final localSchedules = await _getSchedulesFromLocal();
       final scheduleWithId = ScheduleModel(
@@ -124,12 +125,12 @@ class ScheduleRepository {
       );
       localSchedules.add(scheduleWithId);
       await _saveSchedulesToLocal(localSchedules);
-      
+
       return scheduleId;
     } catch (e) {
       // 서버 실패 시 로컬에만 저장 (오프라인 모드)
       print('서버 일정 생성 실패, 로컬 저장 시도: $e');
-      
+
       final localSchedules = await _getSchedulesFromLocal();
       final localId = await _getNextLocalId();
       final scheduleWithId = ScheduleModel(
@@ -149,7 +150,7 @@ class ScheduleRepository {
       );
       localSchedules.add(scheduleWithId);
       await _saveSchedulesToLocal(localSchedules);
-      
+
       return localId;
     }
   }
@@ -167,16 +168,16 @@ class ScheduleRepository {
   Future<List<ScheduleModel>> getAllSchedules() async {
     final localSchedules = await _getSchedulesFromLocal();
     final syncEnabled = await _isDeviceSyncEnabled();
-    
+
     if (!syncEnabled) {
       // 동기화 OFF - 로컬 데이터만 반환
       return localSchedules;
     }
-    
+
     try {
       // 동기화 ON - 서버에서 일정 조회 시도
       final serverSchedules = await ScheduleApi.getAllSchedules();
-      
+
       // 서버와 로컬 데이터 병합
       return await _mergeSchedules(serverSchedules, localSchedules);
     } catch (e) {
@@ -189,53 +190,56 @@ class ScheduleRepository {
   /// 특정 날짜 일정 조회 (서버 + 로컬 병합)
   Future<List<ScheduleModel>> getSchedulesByDate(DateTime date) async {
     final dateStr = _formatDate(date);
-    
+
     try {
       // 서버에서 날짜별 일정 조회
       final serverSchedules = await ScheduleApi.getSchedulesByDate(dateStr);
-      
+
       // 로컬에서도 날짜별 일정 필터링
       final localSchedules = await _getSchedulesFromLocal();
       final localDateSchedules = localSchedules.where((schedule) {
         final startDate = DateTime.parse(schedule.startDate);
         final endDate = DateTime.parse(schedule.endDate);
         final targetDate = DateTime(date.year, date.month, date.day);
-        
+
         return targetDate.isAtSameMomentAs(startDate) ||
-               targetDate.isAtSameMomentAs(endDate) ||
-               (targetDate.isAfter(startDate) && targetDate.isBefore(endDate));
+            targetDate.isAtSameMomentAs(endDate) ||
+            (targetDate.isAfter(startDate) && targetDate.isBefore(endDate));
       }).toList();
-      
+
       // 병합 후 반환
       final merged = await _mergeSchedules(serverSchedules, localDateSchedules);
       return merged.where((schedule) {
         final startDate = DateTime.parse(schedule.startDate);
         final endDate = DateTime.parse(schedule.endDate);
         final targetDate = DateTime(date.year, date.month, date.day);
-        
+
         return targetDate.isAtSameMomentAs(startDate) ||
-               targetDate.isAtSameMomentAs(endDate) ||
-               (targetDate.isAfter(startDate) && targetDate.isBefore(endDate));
+            targetDate.isAtSameMomentAs(endDate) ||
+            (targetDate.isAfter(startDate) && targetDate.isBefore(endDate));
       }).toList();
     } catch (e) {
       // 서버 실패 시 로컬 데이터만 사용
       print('서버 날짜별 일정 조회 실패, 로컬 데이터 사용: $e');
-      
+
       final localSchedules = await _getSchedulesFromLocal();
       return localSchedules.where((schedule) {
         final startDate = DateTime.parse(schedule.startDate);
         final endDate = DateTime.parse(schedule.endDate);
         final targetDate = DateTime(date.year, date.month, date.day);
-        
+
         return targetDate.isAtSameMomentAs(startDate) ||
-               targetDate.isAtSameMomentAs(endDate) ||
-               (targetDate.isAfter(startDate) && targetDate.isBefore(endDate));
+            targetDate.isAtSameMomentAs(endDate) ||
+            (targetDate.isAfter(startDate) && targetDate.isBefore(endDate));
       }).toList();
     }
   }
 
   /// 기간별 일정 조회
-  Future<List<ScheduleModel>> getSchedulesByRange(DateTime from, DateTime to) async {
+  Future<List<ScheduleModel>> getSchedulesByRange(
+    DateTime from,
+    DateTime to,
+  ) async {
     try {
       final fromStr = _formatDate(from);
       final toStr = _formatDate(to);
@@ -246,7 +250,11 @@ class ScheduleRepository {
   }
 
   /// 일정 배치 생성 (여러 날짜에 동일한 일정 생성)
-  Future<List<int>> createScheduleBatch(DateTime from, DateTime to, ScheduleModel schedule) async {
+  Future<List<int>> createScheduleBatch(
+    DateTime from,
+    DateTime to,
+    ScheduleModel schedule,
+  ) async {
     try {
       final fromStr = _formatDate(from);
       final toStr = _formatDate(to);
@@ -265,14 +273,14 @@ class ScheduleRepository {
       localSchedules[index] = schedule;
       await _saveSchedulesToLocal(localSchedules);
     }
-    
+
     // 동기화 설정 확인
     final syncEnabled = await _isDeviceSyncEnabled();
     if (!syncEnabled) {
       // 동기화 OFF - 로컬만 업데이트
       return;
     }
-    
+
     try {
       // 동기화 ON - 서버 업데이트 시도
       await ScheduleApi.updateSchedule(scheduleId, schedule);
@@ -288,14 +296,14 @@ class ScheduleRepository {
     final localSchedules = await _getSchedulesFromLocal();
     localSchedules.removeWhere((s) => s.scheduleId == scheduleId);
     await _saveSchedulesToLocal(localSchedules);
-    
+
     // 동기화 설정 확인
     final syncEnabled = await _isDeviceSyncEnabled();
     if (!syncEnabled) {
       // 동기화 OFF - 로컬만 삭제
       return;
     }
-    
+
     try {
       // 동기화 ON - 서버에서 삭제 시도
       await ScheduleApi.deleteSchedule(scheduleId);
@@ -308,14 +316,14 @@ class ScheduleRepository {
   /// 날짜를 yyyy-MM-dd 형식으로 변환
   String _formatDate(DateTime date) {
     return '${date.year.toString().padLeft(4, '0')}-'
-           '${date.month.toString().padLeft(2, '0')}-'
-           '${date.day.toString().padLeft(2, '0')}';
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 
   /// 시간을 HH:mm 형식으로 변환
   String _formatTime(DateTime time) {
     return '${time.hour.toString().padLeft(2, '0')}:'
-           '${time.minute.toString().padLeft(2, '0')}';
+        '${time.minute.toString().padLeft(2, '0')}';
   }
 
   /// 오늘 일정 조회
@@ -348,9 +356,14 @@ class ScheduleRepository {
   /// 알람이 설정된 일정만 조회 (로컬 캐시 우선)
   Future<List<ScheduleModel>> getSchedulesWithAlarm() async {
     final allSchedules = await getAllSchedules(); // 이미 병합된 데이터
-    return allSchedules.where((schedule) => 
-      schedule.alarm30Before || schedule.alarm60Before || schedule.alarm120Before
-    ).toList();
+    return allSchedules
+        .where(
+          (schedule) =>
+              schedule.alarm30Before ||
+              schedule.alarm60Before ||
+              schedule.alarm120Before,
+        )
+        .toList();
   }
 
   /// 반복 일정만 조회 (로컬 캐시 우선)
@@ -358,27 +371,27 @@ class ScheduleRepository {
     final allSchedules = await getAllSchedules(); // 이미 병합된 데이터
     return allSchedules.where((schedule) => schedule.isRecurring).toList();
   }
-  
+
   /// 로컬 일정 데이터 초기화 (로그아웃 시 사용)
   Future<void> clearLocalSchedules() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_localSchedulesKey);
     await prefs.remove(_nextLocalIdKey);
   }
-  
+
   /// 서버와 로컬 데이터 강제 동기화
   Future<void> syncWithServer() async {
     try {
       final serverSchedules = await ScheduleApi.getAllSchedules();
       final localSchedules = await _getSchedulesFromLocal();
-      
+
       // 로컬에만 있는 일정 (음수 ID)을 서버에 업로드
-      final localOnlySchedules = localSchedules.where((s) => 
-        s.scheduleId != null && s.scheduleId! < 0
-      ).toList();
-      
+      final localOnlySchedules = localSchedules
+          .where((s) => s.scheduleId != null && s.scheduleId! < 0)
+          .toList();
+
       final updatedLocalSchedules = <ScheduleModel>[];
-      
+
       for (final localSchedule in localSchedules) {
         if (localSchedule.scheduleId != null && localSchedule.scheduleId! < 0) {
           try {
@@ -409,7 +422,7 @@ class ScheduleRepository {
           updatedLocalSchedules.add(localSchedule);
         }
       }
-      
+
       // 최종 병합
       await _mergeSchedules(serverSchedules, updatedLocalSchedules);
     } catch (e) {
@@ -422,15 +435,15 @@ class ScheduleRepository {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isEnabled = prefs.getBool('schedule_notification') ?? true;
-      
+
       if (!isEnabled) {
         // 알림이 비활성화되어 있으면 아무것도 하지 않음
         return;
       }
-      
+
       // 알람이 설정된 모든 일정 조회
       final schedulesWithAlarm = await getSchedulesWithAlarm();
-      
+
       for (final schedule in schedulesWithAlarm) {
         // 일정 시작 시간 파싱
         final dateParts = schedule.startDate.split('-');
@@ -442,37 +455,39 @@ class ScheduleRepository {
           int.parse(timeParts[0]),
           int.parse(timeParts[1]),
         );
-        
+
         // 각 알림 시간대별로 알람 설정
         if (schedule.alarm30Before) {
           final alarmTime = scheduledDate.subtract(const Duration(minutes: 30));
           if (alarmTime.isAfter(DateTime.now())) {
             await AlarmUtility.setAlarm(
-              id: 10000 + schedule.scheduleId.hashCode + 30,
+              id: 10000 + (schedule.scheduleId.hashCode % 9800).abs() + 30,
               scheduledTime: alarmTime,
               title: '일정 알림',
               body: '${schedule.title}이(가) 30분 후 시작됩니다.',
             );
           }
         }
-        
+
         if (schedule.alarm60Before) {
           final alarmTime = scheduledDate.subtract(const Duration(minutes: 60));
           if (alarmTime.isAfter(DateTime.now())) {
             await AlarmUtility.setAlarm(
-              id: 10000 + schedule.scheduleId.hashCode + 60,
+              id: 10000 + (schedule.scheduleId.hashCode % 9800).abs() + 60,
               scheduledTime: alarmTime,
               title: '일정 알림',
               body: '${schedule.title}이(가) 1시간 후 시작됩니다.',
             );
           }
         }
-        
+
         if (schedule.alarm120Before) {
-          final alarmTime = scheduledDate.subtract(const Duration(minutes: 120));
+          final alarmTime = scheduledDate.subtract(
+            const Duration(minutes: 120),
+          );
           if (alarmTime.isAfter(DateTime.now())) {
             await AlarmUtility.setAlarm(
-              id: 10000 + schedule.scheduleId.hashCode + 120,
+              id: 10000 + (schedule.scheduleId.hashCode % 9800).abs() + 120,
               scheduledTime: alarmTime,
               title: '일정 알림',
               body: '${schedule.title}이(가) 2시간 후 시작됩니다.',

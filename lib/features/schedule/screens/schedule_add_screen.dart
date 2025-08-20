@@ -18,11 +18,7 @@ class ScheduleAddScreen extends StatefulWidget {
   final TaskPriority priority;
   final TaskModel? taskToEdit;
 
-  const ScheduleAddScreen({
-    super.key,
-    required this.priority,
-    this.taskToEdit,
-  });
+  const ScheduleAddScreen({super.key, required this.priority, this.taskToEdit});
 
   @override
   State<ScheduleAddScreen> createState() => _ScheduleAddScreenState();
@@ -34,11 +30,15 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   final _memoController = TextEditingController();
   final _focusNode = FocusNode(); // 포커스 관리를 위한 FocusNode 추가
   final _patternRepository = RoutinePatternRepository();
-  
+
   // 주어진 시간을 분 단위로 반올림하는 static 함수
-  static DateTime _roundToNearestInterval(DateTime dateTime, int minuteInterval) {
-    final roundedMinute = (dateTime.minute / minuteInterval).round() * minuteInterval;
-    
+  static DateTime _roundToNearestInterval(
+    DateTime dateTime,
+    int minuteInterval,
+  ) {
+    final roundedMinute =
+        (dateTime.minute / minuteInterval).round() * minuteInterval;
+
     // 60분 이상인 경우 시간을 1 증가시키고 분을 0으로 설정
     if (roundedMinute >= 60) {
       return DateTime(
@@ -49,7 +49,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
         0,
       );
     }
-    
+
     return DateTime(
       dateTime.year,
       dateTime.month,
@@ -58,9 +58,12 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       roundedMinute,
     );
   }
-  
+
   DateTime _startDateTime = _roundToNearestInterval(DateTime.now(), 5);
-  DateTime _endDateTime = _roundToNearestInterval(DateTime.now().add(const Duration(hours: 1)), 5);
+  DateTime _endDateTime = _roundToNearestInterval(
+    DateTime.now().add(const Duration(hours: 1)),
+    5,
+  );
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
 
@@ -78,31 +81,97 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     '지금 바로 해야해요',
     '미리 계획해서 준비해요',
     '나중에 처리해요',
-    '시간이 남을 때 해요'
+    '시간이 남을 때 해요',
   ];
 
   // 이모지 목록
   final List<String> _emojis = [
-    '😀', '😃', '😄', '😁', '😆', '🥹', '😅',
-    '😂', '🤣', '🥲', '☺️', '😊', '🙂', '😍',
-    '🥰', '😘', '😙', '😚', '😋', '😝', '🤨',
-    '🤓', '😎', '😏', '🙂', '🥳', '😟', '😖',
-    '😫', '🥺', '😝', '😡', '🤒', '🫠', '😱',
-    '🫢', '😪', '😮', '👍', '👎', '🙏', '🫵',
-    '⚽', '🎨', '🎟️', '🧩', '🎤', '🎬', '🖥️',
-    '💡', '⏰', '💊', '🛁', '🧻', '🚴‍♂️', '🎮',
-    '🍎', '🥗', '❤️', '💣', '🎉', '🍀', '🌙',
-    '🐶', '💪', '🎾', '🏃', '🚩', '🧶', '🔥',
-    '💼', '🍽️', '☕', '🪥', '🚗', '🏥', '📱',
+    '😀',
+    '😃',
+    '😄',
+    '😁',
+    '😆',
+    '🥲',
+    '😅',
+    '😂',
+    '🤣',
+    '🥲',
+    '☺️',
+    '😊',
+    '🙂',
+    '😍',
+    '🥰',
+    '😘',
+    '😙',
+    '😚',
+    '😋',
+    '😝',
+    '🤨',
+    '🤓',
+    '😎',
+    '😏',
+    '🙂',
+    '🥳',
+    '😟',
+    '😖',
+    '😫',
+    '🥺',
+    '😝',
+    '😡',
+    '🤒',
+    '🫠',
+    '😱',
+    '🤭',
+    '😪',
+    '😮',
+    '👍',
+    '👎',
+    '🙏',
+    '👊',
+    '⚽',
+    '🎨',
+    '🎟️',
+    '🧩',
+    '🎤',
+    '🎬',
+    '🖥️',
+    '💡',
+    '⏰',
+    '💊',
+    '🛁',
+    '🧻',
+    '🚴‍♂️',
+    '🎮',
+    '🍎',
+    '🥗',
+    '❤️',
+    '💣',
+    '🎉',
+    '🍀',
+    '🌙',
+    '🐶',
+    '💪',
+    '🎾',
+    '🏃',
+    '🚩',
+    '🧶',
+    '🔥',
+    '💼',
+    '🍽️',
+    '☕',
+    '🪥',
+    '🚗',
+    '🏥',
+    '📱',
   ];
 
   @override
   void initState() {
     super.initState();
-    
+
     // 기본 우선순위 설정
     _selectedPriority = _priorityOptions[3]; // '시간이 남을 때 해요'를 기본값으로 설정
-    
+
     if (widget.taskToEdit != null) {
       _initializeWithExistingTask(widget.taskToEdit!);
     }
@@ -110,7 +179,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
 
   void _initializeWithExistingTask(TaskModel task) {
     _titleController.text = task.title;
-    
+
     // description에서 장소와 메모를 분리 (첫 번째 줄은 장소, 나머지는 메모)
     if (task.description != null && task.description!.isNotEmpty) {
       final lines = task.description!.split('\n');
@@ -121,23 +190,26 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
         }
         // 두 번째 줄 이후가 있을 때만 메모에 설정
         if (lines.length > 1) {
-          final memoLines = lines.skip(1).where((line) => line.trim().isNotEmpty).toList();
+          final memoLines = lines
+              .skip(1)
+              .where((line) => line.trim().isNotEmpty)
+              .toList();
           if (memoLines.isNotEmpty) {
             _memoController.text = memoLines.join('\n');
           }
         }
       }
     }
-    
+
     _startDateTime = task.startDate ?? DateTime.now();
     _selectedEmoji = task.emoji ?? '😊';
     _endDateTime = task.dueDate ?? DateTime.now().add(const Duration(hours: 1));
     _startDate = task.startDate ?? DateTime.now();
     _endDate = task.dueDate ?? DateTime.now();
-    
+
     // 우선순위 설정
     _selectedPriority = _getPriorityStringFromEnum(task.priority);
-    
+
     // 선택 상태 플래그 설정
     _isStartTimeSelected = task.startDate != null;
     _isEndTimeSelected = task.dueDate != null;
@@ -287,7 +359,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   // Future<Map<String, dynamic>> _createApiRequestData() async {
   //   try {
   //     final userId = await TokenManager.instance.getCurrentUserId();
-  //     
+  //
   //     return {
   //       'userId': userId,
   //       'title': _titleController.text.trim(),
@@ -332,11 +404,11 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   // 저장 버튼 활성화 여부 확인
   bool _canSave() {
     return _titleController.text.trim().isNotEmpty &&
-           _isStartTimeSelected &&
-           _isEndTimeSelected &&
-           _isStartDateSelected &&
-           _isEndDateSelected &&
-           _selectedPriority != null;
+        _isStartTimeSelected &&
+        _isEndTimeSelected &&
+        _isStartDateSelected &&
+        _isEndDateSelected &&
+        _selectedPriority != null;
   }
 
   void _showEmojiPicker() {
@@ -354,42 +426,42 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
               topRight: Radius.circular(20),
             ),
           ),
-                     child: GridView.builder(
-             padding: const EdgeInsets.all(16),
-             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-               crossAxisCount: 7,
-               crossAxisSpacing: 8,
-               mainAxisSpacing: 8,
-             ),
-             itemCount: _emojis.length,
-             itemBuilder: (context, index) {
-               return GestureDetector(
-                 onTap: () {
-                   setState(() {
-                     _selectedEmoji = _emojis[index];
-                   });
-                   Navigator.pop(context);
-                 },
-                 child: Container(
-                   decoration: BoxDecoration(
-                     color: _selectedEmoji == _emojis[index] 
-                         ? const Color(0xFF1F5DFF).withOpacity(0.1)
-                         : Colors.transparent,
-                     borderRadius: BorderRadius.circular(8),
-                     border: _selectedEmoji == _emojis[index]
-                         ? Border.all(color: const Color(0xFF1F5DFF))
-                         : null,
-                   ),
-                   child: Center(
-                     child: Text(
-                       _emojis[index],
-                       style: const TextStyle(fontSize: 20),
-                     ),
-                   ),
-                 ),
-               );
-             },
-           ),
+          child: GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: _emojis.length,
+            itemBuilder: (context, index) {
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedEmoji = _emojis[index];
+                  });
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _selectedEmoji == _emojis[index]
+                        ? const Color(0xFF1F5DFF).withOpacity(0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: _selectedEmoji == _emojis[index]
+                        ? Border.all(color: const Color(0xFF1F5DFF))
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      _emojis[index],
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         );
       },
     );
@@ -446,17 +518,17 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                                         onPressed: () {
-                       setState(() {
-                         if (isStartTime) {
-                           _isStartTimeSelected = true;
-                         } else {
-                           _isEndTimeSelected = true;
-                         }
-                       });
-                       _unfocusAll(); // 포커스 해제
-                       Navigator.pop(context);
-                     },
+                    onPressed: () {
+                      setState(() {
+                        if (isStartTime) {
+                          _isStartTimeSelected = true;
+                        } else {
+                          _isEndTimeSelected = true;
+                        }
+                      });
+                      _unfocusAll(); // 포커스 해제
+                      Navigator.pop(context);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       shape: RoundedRectangleBorder(
@@ -485,7 +557,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     DateTime? selectedStartDate;
     DateTime? selectedEndDate;
     DateTime currentMonth = DateTime.now();
-    
+
     showCupertinoModalPopup(
       context: context,
       barrierDismissible: true,
@@ -540,36 +612,39 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: selectedStartDate != null && selectedEndDate != null
-                                                         ? () {
-                                                                setState(() {
-                                 _startDate = selectedStartDate!;
-                                 _endDate = selectedEndDate!;
-                                 _isStartDateSelected = true;
-                                 _isEndDateSelected = true;
-                                 
-                                 // 🔧 수정: startDateTime과 endDateTime도 선택된 날짜로 업데이트
-                                 _startDateTime = DateTime(
-                                   selectedStartDate!.year,
-                                   selectedStartDate!.month,
-                                   selectedStartDate!.day,
-                                   _startDateTime.hour,
-                                   _startDateTime.minute,
-                                 );
-                                 _endDateTime = DateTime(
-                                   selectedEndDate!.year,
-                                   selectedEndDate!.month,
-                                   selectedEndDate!.day,
-                                   _endDateTime.hour,
-                                   _endDateTime.minute,
-                                 );
-                               });
-                                 _unfocusAll(); // 포커스 해제
-                                 Navigator.pop(context);
-                               }
+                        onPressed:
+                            selectedStartDate != null && selectedEndDate != null
+                            ? () {
+                                setState(() {
+                                  _startDate = selectedStartDate!;
+                                  _endDate = selectedEndDate!;
+                                  _isStartDateSelected = true;
+                                  _isEndDateSelected = true;
+
+                                  // 🔧 수정: startDateTime과 endDateTime도 선택된 날짜로 업데이트
+                                  _startDateTime = DateTime(
+                                    selectedStartDate!.year,
+                                    selectedStartDate!.month,
+                                    selectedStartDate!.day,
+                                    _startDateTime.hour,
+                                    _startDateTime.minute,
+                                  );
+                                  _endDateTime = DateTime(
+                                    selectedEndDate!.year,
+                                    selectedEndDate!.month,
+                                    selectedEndDate!.day,
+                                    _endDateTime.hour,
+                                    _endDateTime.minute,
+                                  );
+                                });
+                                _unfocusAll(); // 포커스 해제
+                                Navigator.pop(context);
+                              }
                             : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: selectedStartDate != null && selectedEndDate != null
+                          backgroundColor:
+                              selectedStartDate != null &&
+                                  selectedEndDate != null
                               ? AppTheme.primaryColor
                               : Colors.grey[300],
                           shape: RoundedRectangleBorder(
@@ -579,7 +654,9 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                         child: Text(
                           '확인',
                           style: TextStyle(
-                            color: selectedStartDate != null && selectedEndDate != null
+                            color:
+                                selectedStartDate != null &&
+                                    selectedEndDate != null
                                 ? Colors.white
                                 : Colors.grey[600],
                             fontSize: 16,
@@ -606,14 +683,18 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     required Function(DateTime) onMonthChanged,
   }) {
     final firstDayOfMonth = DateTime(currentMonth.year, currentMonth.month, 1);
-    final lastDayOfMonth = DateTime(currentMonth.year, currentMonth.month + 1, 0);
+    final lastDayOfMonth = DateTime(
+      currentMonth.year,
+      currentMonth.month + 1,
+      0,
+    );
     // Flutter의 weekday를 일요일=0 기준으로 변환 (일요일=0, 월요일=1, ..., 토요일=6)
     final firstDayOfWeek = firstDayOfMonth.weekday % 7;
-    
+
     final daysInMonth = lastDayOfMonth.day;
     final totalDays = firstDayOfWeek + daysInMonth;
     final weeks = (totalDays / 7).ceil();
-    
+
     return Column(
       children: [
         // 월/년도 헤더
@@ -633,14 +714,20 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
               const Spacer(),
               IconButton(
                 onPressed: () {
-                  final previousMonth = DateTime(currentMonth.year, currentMonth.month - 1);
+                  final previousMonth = DateTime(
+                    currentMonth.year,
+                    currentMonth.month - 1,
+                  );
                   onMonthChanged(previousMonth);
                 },
                 icon: const Icon(Icons.chevron_left, color: Color(0xFF1F5DFF)),
               ),
               IconButton(
                 onPressed: () {
-                  final nextMonth = DateTime(currentMonth.year, currentMonth.month + 1);
+                  final nextMonth = DateTime(
+                    currentMonth.year,
+                    currentMonth.month + 1,
+                  );
                   onMonthChanged(nextMonth);
                 },
                 icon: const Icon(Icons.chevron_right, color: Color(0xFF1F5DFF)),
@@ -678,8 +765,9 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
             itemBuilder: (context, weekIndex) {
               return Row(
                 children: List.generate(7, (dayIndex) {
-                  final dayNumber = weekIndex * 7 + dayIndex - firstDayOfWeek + 1;
-                  
+                  final dayNumber =
+                      weekIndex * 7 + dayIndex - firstDayOfWeek + 1;
+
                   if (dayNumber <= 0 || dayNumber > daysInMonth) {
                     // 이전/다음 달의 날짜
                     return Expanded(
@@ -698,19 +786,27 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                       ),
                     );
                   }
-                  
-                  final date = DateTime(currentMonth.year, currentMonth.month, dayNumber);
-                  final isSelected = selectedStartDate != null && 
+
+                  final date = DateTime(
+                    currentMonth.year,
+                    currentMonth.month,
+                    dayNumber,
+                  );
+                  final isSelected =
+                      selectedStartDate != null &&
                       selectedEndDate != null &&
-                      (date.isAtSameMomentAs(selectedStartDate) || 
-                       date.isAtSameMomentAs(selectedEndDate) ||
-                       (date.isAfter(selectedStartDate) && date.isBefore(selectedEndDate)));
-                  
-                  final isStartDate = selectedStartDate != null && 
+                      (date.isAtSameMomentAs(selectedStartDate) ||
+                          date.isAtSameMomentAs(selectedEndDate) ||
+                          (date.isAfter(selectedStartDate) &&
+                              date.isBefore(selectedEndDate)));
+
+                  final isStartDate =
+                      selectedStartDate != null &&
                       date.isAtSameMomentAs(selectedStartDate);
-                  final isEndDate = selectedEndDate != null && 
+                  final isEndDate =
+                      selectedEndDate != null &&
                       date.isAtSameMomentAs(selectedEndDate);
-                  
+
                   return Expanded(
                     child: GestureDetector(
                       onTap: () => onDateSelected(date),
@@ -718,10 +814,15 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                         height: 40,
                         margin: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFFE0EDFF) : Colors.transparent,
+                          color: isSelected
+                              ? const Color(0xFFE0EDFF)
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                           border: isStartDate || isEndDate
-                              ? Border.all(color: const Color(0xFF1F5DFF), width: 2)
+                              ? Border.all(
+                                  color: const Color(0xFF1F5DFF),
+                                  width: 2,
+                                )
                               : null,
                         ),
                         child: Center(
@@ -730,7 +831,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: isSelected 
+                              color: isSelected
                                   ? const Color(0xFF1F5DFF)
                                   : Colors.black,
                               decoration: TextDecoration.none, // 밑줄 제거
@@ -752,30 +853,30 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   Future<void> _saveTask() async {
     // 필수 항목 검증
     if (_titleController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('일정 제목을 입력해주세요')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('일정 제목을 입력해주세요')));
       return;
     }
 
     if (!_isStartTimeSelected || !_isEndTimeSelected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('시작 시간과 종료 시간을 선택해주세요')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('시작 시간과 종료 시간을 선택해주세요')));
       return;
     }
-    
+
     if (!_isStartDateSelected || !_isEndDateSelected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('시작 날짜와 종료 날짜를 선택해주세요')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('시작 날짜와 종료 날짜를 선택해주세요')));
       return;
     }
-    
+
     if (_selectedPriority == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('우선순위를 선택해주세요')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('우선순위를 선택해주세요')));
       return;
     }
 
@@ -783,7 +884,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     if (widget.taskToEdit != null) {
       final viewModel = Provider.of<ScheduleViewModel>(context, listen: false);
       final isRecurring = !_isSameDay(_startDate, _endDate);
-      
+
       // API 형식에 맞게 데이터 변환
       final updatedTask = widget.taskToEdit!.copyWith(
         title: _titleController.text.trim(),
@@ -796,7 +897,8 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
         endTime: DateTimeFormatter.toTimeString(_endDateTime),
         icon: _convertEmojiToIconCode(_selectedEmoji),
         // 기존 필드들도 업데이트 (하위 호환성)
-        description: '${_locationController.text.trim()}\n${_memoController.text.trim()}',
+        description:
+            '${_locationController.text.trim()}\n${_memoController.text.trim()}',
         startDate: _startDateTime,
         dueDate: _endDateTime,
         startDateRange: isRecurring ? _startDate : null,
@@ -804,23 +906,32 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
         isRecurring: isRecurring,
         emoji: _selectedEmoji,
       );
-      
+
       final success = await viewModel.updateTaskWithAlarms(
         updatedTask: updatedTask,
-        alarm30Before: _isNotificationEnabled && _selectedNotificationTime == '30분전',
-        alarm60Before: _isNotificationEnabled && _selectedNotificationTime == '1시간전',
-        alarm120Before: _isNotificationEnabled && _selectedNotificationTime == '2시간전',
+        alarm30Before:
+            _isNotificationEnabled && _selectedNotificationTime == '30분전',
+        alarm60Before:
+            _isNotificationEnabled && _selectedNotificationTime == '1시간전',
+        alarm120Before:
+            _isNotificationEnabled && _selectedNotificationTime == '2시간전',
       );
       if (success) {
         await viewModel.refresh();
-        
+
         // HomeViewModel과 StatisticsViewModel도 업데이트
-        final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+        final homeViewModel = Provider.of<HomeViewModel>(
+          context,
+          listen: false,
+        );
         await homeViewModel.refresh();
-        
-        final statisticsViewModel = Provider.of<StatisticsViewModel>(context, listen: false);
+
+        final statisticsViewModel = Provider.of<StatisticsViewModel>(
+          context,
+          listen: false,
+        );
         await statisticsViewModel.loadCurrentWeekData();
-        
+
         _showSuccessDialog();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -833,7 +944,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     // 새로운 일정 추가 - ViewModel을 통해 처리 (비회원 지원)
     final viewModel = Provider.of<ScheduleViewModel>(context, listen: false);
     final isRecurring = !_isSameDay(_startDate, _endDate);
-    
+
     // ScheduleType으로 변환
     ScheduleType scheduleType;
     switch (_selectedPriority) {
@@ -852,34 +963,45 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       default:
         scheduleType = ScheduleType.whenFree;
     }
-    
+
     final success = await viewModel.addSchedule(
       title: _titleController.text.trim(),
       time: DateTimeFormatter.toTimeString(_startDateTime),
       startDate: _startDateTime,
       endDate: _endDateTime,
       type: scheduleType,
-      location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-      memo: _memoController.text.trim().isEmpty ? null : _memoController.text.trim(),
+      location: _locationController.text.trim().isEmpty
+          ? null
+          : _locationController.text.trim(),
+      memo: _memoController.text.trim().isEmpty
+          ? null
+          : _memoController.text.trim(),
       image: _convertEmojiToIconCode(_selectedEmoji),
-      alarm30Before: _isNotificationEnabled && _selectedNotificationTime == '30분전',
-      alarm60Before: _isNotificationEnabled && _selectedNotificationTime == '1시간전',
-      alarm120Before: _isNotificationEnabled && _selectedNotificationTime == '2시간전',
+      alarm30Before:
+          _isNotificationEnabled && _selectedNotificationTime == '30분전',
+      alarm60Before:
+          _isNotificationEnabled && _selectedNotificationTime == '1시간전',
+      alarm120Before:
+          _isNotificationEnabled && _selectedNotificationTime == '2시간전',
       isRecurring: isRecurring,
     );
-    
+
     if (success) {
       await viewModel.refresh();
-      
+
       // HomeViewModel과 StatisticsViewModel도 업데이트
       final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
       await homeViewModel.refresh();
-      
-      final statisticsViewModel = Provider.of<StatisticsViewModel>(context, listen: false);
+
+      final statisticsViewModel = Provider.of<StatisticsViewModel>(
+        context,
+        listen: false,
+      );
       await statisticsViewModel.loadCurrentWeekData();
-      
+
       // 루틴 패턴 기록 및 추천 체크
-      if (!isRecurring) { // 반복 일정이 아닌 단일 일정일 경우에만 패턴 기록
+      if (!isRecurring) {
+        // 반복 일정이 아닌 단일 일정일 경우에만 패턴 기록
         final scheduleModel = ScheduleModel(
           scheduleId: null,
           title: _titleController.text.trim(),
@@ -887,26 +1009,37 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
           startDate: DateTimeFormatter.toDateString(_startDateTime),
           endDate: DateTimeFormatter.toDateString(_endDateTime),
           type: scheduleType.value,
-          location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-          memo: _memoController.text.trim().isEmpty ? null : _memoController.text.trim(),
+          location: _locationController.text.trim().isEmpty
+              ? null
+              : _locationController.text.trim(),
+          memo: _memoController.text.trim().isEmpty
+              ? null
+              : _memoController.text.trim(),
           image: _convertEmojiToIconCode(_selectedEmoji),
-          alarm30Before: _isNotificationEnabled && _selectedNotificationTime == '30분전',
-          alarm60Before: _isNotificationEnabled && _selectedNotificationTime == '1시간전',
-          alarm120Before: _isNotificationEnabled && _selectedNotificationTime == '2시간전',
+          alarm30Before:
+              _isNotificationEnabled && _selectedNotificationTime == '30분전',
+          alarm60Before:
+              _isNotificationEnabled && _selectedNotificationTime == '1시간전',
+          alarm120Before:
+              _isNotificationEnabled && _selectedNotificationTime == '2시간전',
         );
-        
-        final recommendablePattern = await _patternRepository.recordSchedulePattern(scheduleModel);
-        
+
+        final recommendablePattern = await _patternRepository
+            .recordSchedulePattern(scheduleModel);
+
         // 5번 이상 반복되었으면 루틴 추천 다이얼로그 표시
         if (recommendablePattern != null && mounted) {
-          final createRoutine = await RoutineRecommendationDialog.show(context, recommendablePattern);
+          final createRoutine = await RoutineRecommendationDialog.show(
+            context,
+            recommendablePattern,
+          );
           if (createRoutine == true && mounted) {
             // 루틴이 생성되었으면 HomeViewModel 다시 새로고침
             await homeViewModel.refresh();
           }
         }
       }
-      
+
       _showSuccessDialog();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -920,17 +1053,16 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
 
   bool _isSameDay(DateTime date1, DateTime date2) {
     return date1.year == date2.year &&
-           date1.month == date2.month &&
-           date1.day == date2.day;
+        date1.month == date2.month &&
+        date1.day == date2.day;
   }
 
   void _showSuccessDialog() {
     // 성공 후 완료 화면으로 이동
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ScheduleAddCompleteScreen(
-          isEditMode: widget.taskToEdit != null,
-        ),
+        builder: (context) =>
+            ScheduleAddCompleteScreen(isEditMode: widget.taskToEdit != null),
       ),
     );
   }
@@ -946,14 +1078,14 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-                 title: Text(
-           widget.taskToEdit != null ? '일정 수정' : '일정 추가',
-           style: const TextStyle(
-             color: Colors.black,
-             fontSize: 18,
-             fontWeight: FontWeight.w600,
-           ),
-         ),
+        title: Text(
+          widget.taskToEdit != null ? '일정 수정' : '일정 추가',
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -968,24 +1100,27 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                 Expanded(
                   child: Container(
                     height: 54, // 고정 높이 설정
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
                     ),
-                                         child: TextField(
-                       controller: _titleController,
-                       focusNode: _focusNode, // FocusNode 연결
-                       autofocus: false, // 자동 포커스 비활성화
-                       decoration: const InputDecoration(
-                         hintText: '일정의 제목을 작성해주세요',
-                         hintStyle: TextStyle(
-                           color: Color(0xFFB4B5B6),
-                           fontSize: 16,
-                         ),
-                         border: InputBorder.none,
-                       ),
-                     ),
+                    child: TextField(
+                      controller: _titleController,
+                      focusNode: _focusNode, // FocusNode 연결
+                      autofocus: false, // 자동 포커스 비활성화
+                      decoration: const InputDecoration(
+                        hintText: '일정의 제목을 작성해주세요',
+                        hintStyle: TextStyle(
+                          color: Color(0xFFB4B5B6),
+                          fontSize: 16,
+                        ),
+                        border: InputBorder.none,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1016,15 +1151,17 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
               children: [
                 const Icon(Icons.access_time, color: Colors.black87, size: 20),
                 const SizedBox(width: 12),
-                                 GestureDetector(
-                   onTap: () {
-                     _unfocusAll(); // 포커스 해제
-                     _showTimePicker(true);
-                   },
-                   child: Text(
+                GestureDetector(
+                  onTap: () {
+                    _unfocusAll(); // 포커스 해제
+                    _showTimePicker(true);
+                  },
+                  child: Text(
                     _formatTime(_startDateTime),
                     style: TextStyle(
-                      color: _isStartTimeSelected ? const Color(0xFF1F5DFF) : Colors.grey,
+                      color: _isStartTimeSelected
+                          ? const Color(0xFF1F5DFF)
+                          : Colors.grey,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1033,15 +1170,17 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                 const SizedBox(width: 12),
                 const Text('>', style: TextStyle(color: Colors.grey)),
                 const SizedBox(width: 12),
-                                 GestureDetector(
-                   onTap: () {
-                     _unfocusAll(); // 포커스 해제
-                     _showTimePicker(false);
-                   },
-                   child: Text(
+                GestureDetector(
+                  onTap: () {
+                    _unfocusAll(); // 포커스 해제
+                    _showTimePicker(false);
+                  },
+                  child: Text(
                     _formatTime(_endDateTime),
                     style: TextStyle(
-                      color: _isEndTimeSelected ? const Color(0xFF1F5DFF) : Colors.grey,
+                      color: _isEndTimeSelected
+                          ? const Color(0xFF1F5DFF)
+                          : Colors.grey,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1064,7 +1203,9 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                   child: Text(
                     _formatDate(_startDate),
                     style: TextStyle(
-                      color: _isStartDateSelected ? const Color(0xFF1F5DFF) : Colors.grey,
+                      color: _isStartDateSelected
+                          ? const Color(0xFF1F5DFF)
+                          : Colors.grey,
                       fontSize: 16,
                     ),
                   ),
@@ -1080,7 +1221,9 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                   child: Text(
                     _formatDate(_endDate),
                     style: TextStyle(
-                      color: _isEndDateSelected ? const Color(0xFF1F5DFF) : Colors.grey,
+                      color: _isEndDateSelected
+                          ? const Color(0xFF1F5DFF)
+                          : Colors.grey,
                       fontSize: 16,
                     ),
                   ),
@@ -1088,10 +1231,15 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
               ],
             ),
             // 반복 일정 안내 메시지
-            if (_isStartDateSelected && _isEndDateSelected && !_isSameDay(_startDate, _endDate))
+            if (_isStartDateSelected &&
+                _isEndDateSelected &&
+                !_isSameDay(_startDate, _endDate))
               Container(
                 margin: const EdgeInsets.only(top: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE0EDFF),
                   borderRadius: BorderRadius.circular(8),
@@ -1119,10 +1267,14 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
               ),
             const SizedBox(height: 24),
 
-            // 우선순위 선택 
+            // 우선순위 선택
             Row(
               children: [
-                const Icon(Icons.event_available, color: Colors.black, size: 20),
+                const Icon(
+                  Icons.event_available,
+                  color: Colors.black,
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
                 // 2x2 그리드로 우선순위 버튼 배치
                 Expanded(
@@ -1139,14 +1291,19 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                               },
                               child: Container(
                                 height: 40,
-                                margin: const EdgeInsets.only(right: 8, bottom: 8),
+                                margin: const EdgeInsets.only(
+                                  right: 8,
+                                  bottom: 8,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: _selectedPriority == _priorityOptions[0] 
-                                      ? const Color(0xFFE0EDFF) 
+                                  color:
+                                      _selectedPriority == _priorityOptions[0]
+                                      ? const Color(0xFFE0EDFF)
                                       : const Color(0xFFF5F5F5),
                                   border: Border.all(
-                                    color: _selectedPriority == _priorityOptions[0] 
-                                        ? const Color(0xFF5886FF) 
+                                    color:
+                                        _selectedPriority == _priorityOptions[0]
+                                        ? const Color(0xFF5886FF)
                                         : const Color(0xFFE5E5E5),
                                     width: 1,
                                   ),
@@ -1156,8 +1313,10 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                                   child: Text(
                                     _priorityOptions[0],
                                     style: TextStyle(
-                                      color: _selectedPriority == _priorityOptions[0] 
-                                          ? const Color(0xFF1F5DFF) 
+                                      color:
+                                          _selectedPriority ==
+                                              _priorityOptions[0]
+                                          ? const Color(0xFF1F5DFF)
                                           : const Color(0xFF74787B),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
@@ -1176,14 +1335,19 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                               },
                               child: Container(
                                 height: 40,
-                                margin: const EdgeInsets.only(left: 8, bottom: 8),
+                                margin: const EdgeInsets.only(
+                                  left: 8,
+                                  bottom: 8,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: _selectedPriority == _priorityOptions[1] 
-                                      ? const Color(0xFFE0EDFF) 
+                                  color:
+                                      _selectedPriority == _priorityOptions[1]
+                                      ? const Color(0xFFE0EDFF)
                                       : const Color(0xFFF5F5F5),
                                   border: Border.all(
-                                    color: _selectedPriority == _priorityOptions[1] 
-                                        ? const Color(0xFF5886FF) 
+                                    color:
+                                        _selectedPriority == _priorityOptions[1]
+                                        ? const Color(0xFF5886FF)
                                         : const Color(0xFFE5E5E5),
                                     width: 1,
                                   ),
@@ -1193,8 +1357,10 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                                   child: Text(
                                     _priorityOptions[1],
                                     style: TextStyle(
-                                      color: _selectedPriority == _priorityOptions[1] 
-                                          ? const Color(0xFF1F5DFF) 
+                                      color:
+                                          _selectedPriority ==
+                                              _priorityOptions[1]
+                                          ? const Color(0xFF1F5DFF)
                                           : const Color(0xFF74787B),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
@@ -1219,12 +1385,14 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                                 height: 40,
                                 margin: const EdgeInsets.only(right: 8, top: 8),
                                 decoration: BoxDecoration(
-                                  color: _selectedPriority == _priorityOptions[2] 
-                                      ? const Color(0xFFE0EDFF) 
+                                  color:
+                                      _selectedPriority == _priorityOptions[2]
+                                      ? const Color(0xFFE0EDFF)
                                       : const Color(0xFFF5F5F5),
                                   border: Border.all(
-                                    color: _selectedPriority == _priorityOptions[2] 
-                                        ? const Color(0xFF5886FF) 
+                                    color:
+                                        _selectedPriority == _priorityOptions[2]
+                                        ? const Color(0xFF5886FF)
                                         : const Color(0xFFE5E5E5),
                                     width: 1,
                                   ),
@@ -1234,8 +1402,10 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                                   child: Text(
                                     _priorityOptions[2],
                                     style: TextStyle(
-                                      color: _selectedPriority == _priorityOptions[2] 
-                                          ? const Color(0xFF1F5DFF) 
+                                      color:
+                                          _selectedPriority ==
+                                              _priorityOptions[2]
+                                          ? const Color(0xFF1F5DFF)
                                           : const Color(0xFF74787B),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
@@ -1256,12 +1426,14 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                                 height: 40,
                                 margin: const EdgeInsets.only(left: 8, top: 8),
                                 decoration: BoxDecoration(
-                                  color: _selectedPriority == _priorityOptions[3] 
-                                      ? const Color(0xFFE0EDFF) 
+                                  color:
+                                      _selectedPriority == _priorityOptions[3]
+                                      ? const Color(0xFFE0EDFF)
                                       : const Color(0xFFF5F5F5),
                                   border: Border.all(
-                                    color: _selectedPriority == _priorityOptions[3] 
-                                        ? const Color(0xFF5886FF) 
+                                    color:
+                                        _selectedPriority == _priorityOptions[3]
+                                        ? const Color(0xFF5886FF)
                                         : const Color(0xFFE5E5E5),
                                     width: 1,
                                   ),
@@ -1271,8 +1443,10 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                                   child: Text(
                                     _priorityOptions[3],
                                     style: TextStyle(
-                                      color: _selectedPriority == _priorityOptions[3] 
-                                          ? const Color(0xFF1F5DFF) 
+                                      color:
+                                          _selectedPriority ==
+                                              _priorityOptions[3]
+                                          ? const Color(0xFF1F5DFF)
                                           : const Color(0xFF74787B),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
@@ -1297,7 +1471,11 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.notifications, color: Colors.black, size: 20),
+                    const Icon(
+                      Icons.notifications,
+                      color: Colors.black,
+                      size: 20,
+                    ),
                     const SizedBox(width: 12),
                     const Text(
                       '일정 알림 설정',
@@ -1351,12 +1529,12 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                                   width: 20,
                                   height: 20,
                                   decoration: BoxDecoration(
-                                    color: _selectedNotificationTime == '30분전' 
-                                        ? const Color(0xFF1F5DFF) 
+                                    color: _selectedNotificationTime == '30분전'
+                                        ? const Color(0xFF1F5DFF)
                                         : Colors.transparent,
                                     border: Border.all(
-                                      color: _selectedNotificationTime == '30분전' 
-                                          ? const Color(0xFF1F5DFF) 
+                                      color: _selectedNotificationTime == '30분전'
+                                          ? const Color(0xFF1F5DFF)
                                           : Colors.grey[400]!,
                                       width: 2,
                                     ),
@@ -1374,8 +1552,8 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                                 Text(
                                   '30분전',
                                   style: TextStyle(
-                                    color: _selectedNotificationTime == '30분전' 
-                                        ? const Color(0xFF1F5DFF) 
+                                    color: _selectedNotificationTime == '30분전'
+                                        ? const Color(0xFF1F5DFF)
                                         : Colors.grey[600],
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
@@ -1399,12 +1577,12 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                                   width: 20,
                                   height: 20,
                                   decoration: BoxDecoration(
-                                    color: _selectedNotificationTime == '1시간전' 
-                                        ? const Color(0xFF1F5DFF) 
+                                    color: _selectedNotificationTime == '1시간전'
+                                        ? const Color(0xFF1F5DFF)
                                         : Colors.transparent,
                                     border: Border.all(
-                                      color: _selectedNotificationTime == '1시간전' 
-                                          ? const Color(0xFF1F5DFF) 
+                                      color: _selectedNotificationTime == '1시간전'
+                                          ? const Color(0xFF1F5DFF)
                                           : Colors.grey[400]!,
                                       width: 2,
                                     ),
@@ -1422,8 +1600,8 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                                 Text(
                                   '1시간전',
                                   style: TextStyle(
-                                    color: _selectedNotificationTime == '1시간전' 
-                                        ? const Color(0xFF1F5DFF) 
+                                    color: _selectedNotificationTime == '1시간전'
+                                        ? const Color(0xFF1F5DFF)
                                         : Colors.grey[600],
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
@@ -1447,12 +1625,12 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                                   width: 20,
                                   height: 20,
                                   decoration: BoxDecoration(
-                                    color: _selectedNotificationTime == '2시간전' 
-                                        ? const Color(0xFF1F5DFF) 
+                                    color: _selectedNotificationTime == '2시간전'
+                                        ? const Color(0xFF1F5DFF)
                                         : Colors.transparent,
                                     border: Border.all(
-                                      color: _selectedNotificationTime == '2시간전' 
-                                          ? const Color(0xFF1F5DFF) 
+                                      color: _selectedNotificationTime == '2시간전'
+                                          ? const Color(0xFF1F5DFF)
                                           : Colors.grey[400]!,
                                       width: 2,
                                     ),
@@ -1470,8 +1648,8 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                                 Text(
                                   '2시간전',
                                   style: TextStyle(
-                                    color: _selectedNotificationTime == '2시간전' 
-                                        ? const Color(0xFF1F5DFF) 
+                                    color: _selectedNotificationTime == '2시간전'
+                                        ? const Color(0xFF1F5DFF)
                                         : Colors.grey[600],
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
@@ -1549,31 +1727,33 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
             ),
             const SizedBox(height: 24),
 
-                         // 저장 버튼
-             SizedBox(
-               width: double.infinity,
-               height: 50,
-               child: ElevatedButton(
-                 onPressed: _canSave() ? _saveTask : null,
-                 style: ElevatedButton.styleFrom(
-                   backgroundColor: _canSave() ? AppTheme.primaryColor : Colors.grey[300],
-                   shape: RoundedRectangleBorder(
-                     borderRadius: BorderRadius.circular(12),
-                   ),
-                 ),
-                 child: Text(
-                   '저장하기',
-                   style: TextStyle(
-                     color: _canSave() ? Colors.white : Colors.grey[600],
-                     fontSize: 16,
-                     fontWeight: FontWeight.w600,
-                   ),
-                 ),
-               ),
-             ),
+            // 저장 버튼
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _canSave() ? _saveTask : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _canSave()
+                      ? AppTheme.primaryColor
+                      : Colors.grey[300],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  '저장하기',
+                  style: TextStyle(
+                    color: _canSave() ? Colors.white : Colors.grey[600],
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
-} 
+}
