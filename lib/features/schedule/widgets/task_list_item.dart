@@ -260,13 +260,13 @@ class TaskListItem extends StatelessWidget {
   Color _getPriorityColor(TaskPriority priority) {
     switch (priority) {
       case TaskPriority.urgentImportant:
-        return const Color(0xFFE53E3E); // 빨간색
+        return const Color(0xFFE53E3E); // 빨간색 - 지금 바로 해야해요
       case TaskPriority.important:
-        return const Color(0xFFD69E2E); // 노란색
+        return const Color(0xFF3182CE); // 파란색 - 미리 계획해서 준비해요
       case TaskPriority.urgent:
-        return const Color(0xFF3182CE); // 파란색
+        return const Color(0xFFD69E2E); // 노란색 - 나중에 처리해요
       case TaskPriority.neither:
-        return const Color(0xFF38A169); // 초록색
+        return const Color(0xFF74787B); // 회색 - 시간이 남을 때 해요
     }
   }
 

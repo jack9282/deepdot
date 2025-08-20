@@ -119,7 +119,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     '😝',
     '😡',
     '🤒',
-    '🫠',
+    '😄',
     '😱',
     '🤭',
     '😪',
@@ -180,35 +180,38 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
   void _initializeWithExistingTask(TaskModel task) {
     _titleController.text = task.title;
 
-    // description에서 장소와 메모를 분리 (첫 번째 줄은 장소, 나머지는 메모)
-    if (task.description != null && task.description!.isNotEmpty) {
-      final lines = task.description!.split('\n');
-      if (lines.isNotEmpty) {
-        // 첫 번째 줄이 비어있지 않을 때만 장소에 설정
-        if (lines[0].trim().isNotEmpty) {
-          _locationController.text = lines[0];
-        }
-        // 두 번째 줄 이후가 있을 때만 메모에 설정
-        if (lines.length > 1) {
-          final memoLines = lines
-              .skip(1)
-              .where((line) => line.trim().isNotEmpty)
-              .toList();
-          if (memoLines.isNotEmpty) {
-            _memoController.text = memoLines.join('\n');
-          }
-        }
-      }
+    // 장소와 메모 설정 (별도 필드 사용)
+    if (task.location != null && task.location!.isNotEmpty) {
+      _locationController.text = task.location!;
+    }
+    if (task.memo != null && task.memo!.isNotEmpty) {
+      _memoController.text = task.memo!;
     }
 
     _startDateTime = task.startDate ?? DateTime.now();
-    _selectedEmoji = task.emoji ?? '😊';
+    // 이모티콘 처리 (아이콘 코드인 경우 변환)
+    _selectedEmoji = _convertIconCodeToEmoji(task.emoji ?? task.icon ?? '😊');
     _endDateTime = task.dueDate ?? DateTime.now().add(const Duration(hours: 1));
     _startDate = task.startDate ?? DateTime.now();
     _endDate = task.dueDate ?? DateTime.now();
 
     // 우선순위 설정
     _selectedPriority = _getPriorityStringFromEnum(task.priority);
+
+    // 알림 설정 복원
+    _isNotificationEnabled = task.alarm ?? false;
+    if (_isNotificationEnabled) {
+      // 개별 알림 정보에서 시간 복원
+      if (task.alarm30Before) {
+        _selectedNotificationTime = '30분전';
+      } else if (task.alarm60Before) {
+        _selectedNotificationTime = '1시간전';
+      } else if (task.alarm120Before) {
+        _selectedNotificationTime = '2시간전';
+      } else {
+        _selectedNotificationTime = '30분전'; // 기본값
+      }
+    }
 
     // 선택 상태 플래그 설정
     _isStartTimeSelected = task.startDate != null;
@@ -271,6 +274,98 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
     }
   }
 
+  /// 아이콘 코드를 이모티콘으로 변환
+  String _convertIconCodeToEmoji(String? iconCode) {
+    if (iconCode == null || iconCode.isEmpty) return '😊';
+
+    // 이미 이모티콘인 경우 그대로 반환
+    if (iconCode.contains(RegExp(r'[^\x00-\x7F]'))) {
+      return iconCode;
+    }
+
+    // 아이콘 코드를 이모티콘으로 매핑
+    final iconToEmojiMap = {
+      'SMILE': '😀',
+      'HAPPY': '😃',
+      'JOY': '😄',
+      'GRIN': '😁',
+      'LAUGH': '😆',
+      'TOUCHED': '🥹',
+      'SWEAT': '😅',
+      'CRY_LAUGH': '😂',
+      'ROFL': '🤣',
+      'TEAR_JOY': '🥲',
+      'BLUSH': '☺️',
+      'HAPPY_EYES': '😊',
+      'SLIGHT_SMILE': '🙂',
+      'HEART_EYES': '😍',
+      'LOVE': '🥰',
+      'KISS': '😘',
+      'KISS_SMILE': '😙',
+      'KISS_EYES': '😚',
+      'YUM': '😋',
+      'TONGUE': '😝',
+      'RAISED_EYEBROW': '🤨',
+      'NERD': '🤓',
+      'COOL': '😎',
+      'SMIRK': '😏',
+      'PARTY': '🥳',
+      'WORRIED': '😟',
+      'CONFOUNDED': '😖',
+      'TIRED': '😫',
+      'PLEADING': '🥺',
+      'ANGRY': '😡',
+      'SICK': '🤒',
+      'MELT': '😄',
+      'SCREAM': '😱',
+      'GASP': '🤭',
+      'SLEEPY': '😪',
+      'SURPRISE': '😮',
+      'THUMBS_UP': '👍',
+      'THUMBS_DOWN': '👎',
+      'PRAY': '🙏',
+      'POINT': '👊',
+      'SOCCER': '⚽',
+      'ART': '🎨',
+      'TICKET': '🎟️',
+      'PUZZLE': '🧩',
+      'MIC': '🎤',
+      'MOVIE': '🎬',
+      'COMPUTER': '🖥️',
+      'IDEA': '💡',
+      'ALARM': '⏰',
+      'PILL': '💊',
+      'BATH': '🛁',
+      'TISSUE': '🧻',
+      'BIKE': '🚴‍♂️',
+      'GAME': '🎮',
+      'APPLE': '🍎',
+      'SALAD': '🥗',
+      'HEART': '❤️',
+      'BOMB': '💣',
+      'PARTY_POPPER': '🎉',
+      'CLOVER': '🍀',
+      'MOON': '🌙',
+      'DOG': '🐶',
+      'MUSCLE': '💪',
+      'TENNIS': '🎾',
+      'RUN': '🏃',
+      'FLAG': '🚩',
+      'YARN': '🧶',
+      'FIRE': '🔥',
+      'BRIEFCASE': '💼',
+      'DINNER': '🍽️',
+      'COFFEE': '☕',
+      'TOOTHBRUSH': '🪥',
+      'CAR': '🚗',
+      'HOSPITAL': '🏥',
+      'PHONE': '📱',
+      'NOTE': '📅',
+    };
+
+    return iconToEmojiMap[iconCode] ?? '😊';
+  }
+
   /// 이모지를 API에서 요구하는 아이콘 코드로 변환
   String _convertEmojiToIconCode(String emoji) {
     // 이모지별 아이콘 코드 매핑
@@ -306,7 +401,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       '🥺': 'PLEADING',
       '😡': 'ANGRY',
       '🤒': 'SICK',
-      '🫠': 'MELT',
+      '😄': 'MELT',
       '😱': 'SCREAM',
       '🫢': 'GASP',
       '😪': 'SLEEPY',
@@ -885,8 +980,9 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
       final viewModel = Provider.of<ScheduleViewModel>(context, listen: false);
       final isRecurring = !_isSameDay(_startDate, _endDate);
 
-      // API 형식에 맞게 데이터 변환
+      // API 형식에 맞게 데이터 변환 (모든 필드 포함) - ID 유지 중요!
       final updatedTask = widget.taskToEdit!.copyWith(
+        id: widget.taskToEdit!.id, // 기존 ID 유지 (중요!)
         title: _titleController.text.trim(),
         memo: _memoController.text.trim(),
         location: _locationController.text.trim(),
@@ -896,15 +992,19 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
         startTime: DateTimeFormatter.toTimeString(_startDateTime),
         endTime: DateTimeFormatter.toTimeString(_endDateTime),
         icon: _convertEmojiToIconCode(_selectedEmoji),
-        // 기존 필드들도 업데이트 (하위 호환성)
-        description:
-            '${_locationController.text.trim()}\n${_memoController.text.trim()}',
         startDate: _startDateTime,
         dueDate: _endDateTime,
         startDateRange: isRecurring ? _startDate : null,
         endDateRange: isRecurring ? _endDate : null,
         isRecurring: isRecurring,
         emoji: _selectedEmoji,
+        // 알림 시간 정보 저장 (추후 개별 필드로 분리 필요)
+        alarm30Before:
+            _isNotificationEnabled && _selectedNotificationTime == '30분전',
+        alarm60Before:
+            _isNotificationEnabled && _selectedNotificationTime == '1시간전',
+        alarm120Before:
+            _isNotificationEnabled && _selectedNotificationTime == '2시간전',
       );
 
       final success = await viewModel.updateTaskWithAlarms(

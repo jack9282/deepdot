@@ -16,10 +16,10 @@ class AppTheme {
   static const Color darkColor = Color(0xFF2D3748);
   static const Color buttonColor = Color(0xFF6C63FF);
   
-  static const Color urgentImportantColor = Color(0xFFE53E3E); // 빨간색
-  static const Color importantColor = Color(0xFFD69E2E); // 노란색
-  static const Color urgentColor = Color(0xFF3182CE); // 파란색
-  static const Color neitherColor = Color(0xFF38A169); // 초록색
+  static const Color urgentImportantColor = Color(0xFFE53E3E); // 빨간색 - 지금 바로 해야해요
+  static const Color importantColor = Color(0xFF3182CE); // 파란색 - 미리 계획해서 준비해요
+  static const Color urgentColor = Color(0xFFD69E2E); // 노란색 - 나중에 처리해요
+  static const Color neitherColor = Color(0xFF74787B); // 회색 - 시간이 남을 때 해요
 
   static const List<Color> checkListColor = [
     Color(0xFF3A71FF), // 파란색

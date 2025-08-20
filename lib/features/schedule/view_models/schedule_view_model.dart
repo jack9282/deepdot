@@ -12,23 +12,23 @@ class ScheduleViewModel with ChangeNotifier {
   final ScheduleRepository _scheduleRepository = ScheduleRepository();
   final TaskRepository _taskRepository = TaskRepository();
   final FocusSessionRepository _focusRepository = FocusSessionRepository();
-  
+
   // 생성자에서 Repository 변경사항 구독
   ScheduleViewModel() {
     _taskRepository.addListener(_onRepositoryChanged);
   }
-  
+
   @override
   void dispose() {
     _taskRepository.removeListener(_onRepositoryChanged);
     super.dispose();
   }
-  
+
   // Repository 변경사항 감지 시 UI 업데이트
   void _onRepositoryChanged() {
     _setTasks(_taskRepository.tasks);
   }
-  
+
   // 상태 변수들
   List<ScheduleModel> _schedules = [];
   List<TaskModel> _tasks = [];
@@ -50,15 +50,17 @@ class ScheduleViewModel with ChangeNotifier {
   // 현재 타입의 일정만 필터링해서 가져오기
   List<ScheduleModel> get filteredSchedules {
     if (_currentType == null) return _schedules;
-    return _schedules.where((schedule) => schedule.type == _currentType!.value).toList();
+    return _schedules
+        .where((schedule) => schedule.type == _currentType!.value)
+        .toList();
   }
-  
+
   // 현재 우선순위의 할일만 필터링해서 가져오기
   List<TaskModel> get filteredTasks {
     if (_currentPriority == null) return _tasks;
     return _tasks.where((task) => task.priority == _currentPriority).toList();
   }
-  
+
   // 완료되지 않은 할일들만 가져오기
   List<TaskModel> get incompleteTasks {
     return filteredTasks.where((task) => !task.isCompleted).toList();
@@ -86,7 +88,7 @@ class ScheduleViewModel with ChangeNotifier {
     _schedules = schedules;
     notifyListeners();
   }
-  
+
   // 할일 목록 설정
   void _setTasks(List<TaskModel> tasks) {
     _tasks = tasks;
@@ -109,14 +111,14 @@ class ScheduleViewModel with ChangeNotifier {
     try {
       // 먼저 로컬 데이터 로드
       await _taskRepository.loadTasksFromStorage();
-      
+
       // 중복 제거
       final uniqueTasks = <String, TaskModel>{};
       for (final task in _taskRepository.tasks) {
         uniqueTasks[task.id] = task;
       }
       _setTasks(uniqueTasks.values.toList());
-      
+
       // 백그라운드에서 Schedule API 시도 (회원인 경우만 동작)
       _syncSchedulesWithAPI();
     } catch (e) {
@@ -138,11 +140,15 @@ class ScheduleViewModel with ChangeNotifier {
       final filteredTasks = _taskRepository.tasks.where((task) {
         final taskDate = task.startDate ?? task.dueDate;
         if (taskDate == null) return false;
-        final taskDateOnly = DateTime(taskDate.year, taskDate.month, taskDate.day);
+        final taskDateOnly = DateTime(
+          taskDate.year,
+          taskDate.month,
+          taskDate.day,
+        );
         return taskDateOnly.isAtSameMomentAs(dateOnly);
       }).toList();
       _setTasks(filteredTasks);
-      
+
       // 백그라운드에서 API 시도
       _syncSchedulesByDateWithAPI(date);
     } catch (e) {
@@ -168,7 +174,7 @@ class ScheduleViewModel with ChangeNotifier {
         return !taskDate.isBefore(fromOnly) && !taskDate.isAfter(toOnly);
       }).toList();
       _setTasks(filteredTasks);
-      
+
       // 백그라운드에서 API 시도
       _syncSchedulesByRangeWithAPI(from, to);
     } catch (e) {
@@ -194,7 +200,7 @@ class ScheduleViewModel with ChangeNotifier {
       final weekday = now.weekday;
       final weekStart = now.subtract(Duration(days: weekday - 1));
       final weekEnd = weekStart.add(const Duration(days: 6));
-      
+
       // 로컬 데이터 로드 및 필터링
       await loadSchedulesByRange(weekStart, weekEnd);
     } catch (e) {
@@ -214,7 +220,7 @@ class ScheduleViewModel with ChangeNotifier {
       final now = DateTime.now();
       final monthStart = DateTime(now.year, now.month, 1);
       final monthEnd = DateTime(now.year, now.month + 1, 0);
-      
+
       // 로컬 데이터 로드 및 필터링
       await loadSchedulesByRange(monthStart, monthEnd);
     } catch (e) {
@@ -231,7 +237,9 @@ class ScheduleViewModel with ChangeNotifier {
     _currentType = type;
 
     try {
-      final schedules = await _scheduleRepository.getSchedulesByType(type.value);
+      final schedules = await _scheduleRepository.getSchedulesByType(
+        type.value,
+      );
       _setSchedules(schedules);
     } catch (e) {
       _setError('타입별 일정을 불러오는데 실패했습니다: ${e.toString()}');
@@ -264,9 +272,38 @@ class ScheduleViewModel with ChangeNotifier {
         return false;
       }
 
-      // 로컬에 먼저 저장
+      // Schedule API 먼저 시도 (회원인 경우)
+      String taskId = 'task_${DateTime.now().millisecondsSinceEpoch}';
+      
+      try {
+        final schedule = ScheduleModel(
+          title: title,
+          time: time,
+          startDate: _formatDate(startDate),
+          endDate: _formatDate(endDate),
+          type: type.value,
+          location: location,
+          memo: memo,
+          image: image ?? '📅',
+          alarm30Before: alarm30Before,
+          alarm60Before: alarm60Before,
+          alarm120Before: alarm120Before,
+          isRecurring: isRecurring,
+        );
+        
+        // API 호출하고 scheduleId 받기
+        final scheduleId = await _scheduleRepository.createSchedule(schedule);
+        // API 성공하면 음수 ID 사용
+        taskId = scheduleId.toString();
+        print('[ScheduleViewModel] Schedule API 생성 성공 - scheduleId: $scheduleId');
+      } catch (e) {
+        // API 실패 시 로컬 ID 유지
+        print('[ScheduleViewModel] Schedule API 생성 실패, 로컬 ID 사용: $e');
+      }
+
+      // 로컬에 저장 (API ID 또는 로컬 ID 사용)
       final task = TaskModel(
-        id: 'task_${DateTime.now().millisecondsSinceEpoch}',
+        id: taskId,
         title: title,
         priority: scheduleTypeToPriority(type),
         createdAt: DateTime.now(),
@@ -279,14 +316,17 @@ class ScheduleViewModel with ChangeNotifier {
         isRecurring: isRecurring,
         startTime: time,
         endTime: time,
+        alarm30Before: alarm30Before,
+        alarm60Before: alarm60Before,
+        alarm120Before: alarm120Before,
       );
-      
+
       final success = await _taskRepository.addTask(task);
       if (!success) {
         _setError('일정 추가에 실패했습니다');
         return false;
       }
-      
+
       // 알림 설정
       await _setScheduleAlarms(
         taskId: task.id,
@@ -298,24 +338,6 @@ class ScheduleViewModel with ChangeNotifier {
         alarm120Before: alarm120Before,
       );
 
-      // 백그라운드에서 Schedule API 시도 (회원인 경우)
-      final schedule = ScheduleModel(
-        title: title,
-        time: time,
-        startDate: _formatDate(startDate),
-        endDate: _formatDate(endDate),
-        type: type.value,
-        location: location,
-        memo: memo,
-        image: image ?? '📅',
-        alarm30Before: alarm30Before,
-        alarm60Before: alarm60Before,
-        alarm120Before: alarm120Before,
-        isRecurring: isRecurring,
-      );
-      
-      _createScheduleInBackground(schedule);
-      
       await refresh();
       return true;
     } catch (e) {
@@ -389,17 +411,21 @@ class ScheduleViewModel with ChangeNotifier {
       // ScheduleModel을 TaskModel로 변환하여 로컬 업데이트
       final task = scheduleToTask(updatedSchedule);
       final success = await _taskRepository.updateTask(task);
-      
+
       if (!success) {
         _setError('일정 수정에 실패했습니다');
         return false;
       }
-      
+
       // 백그라운드에서 Schedule API 시도 (회원인 경우)
-      if (updatedSchedule.scheduleId != null && updatedSchedule.scheduleId! > 0) {
-        _updateScheduleInBackground(updatedSchedule.scheduleId!, updatedSchedule);
+      if (updatedSchedule.scheduleId != null &&
+          updatedSchedule.scheduleId! > 0) {
+        _updateScheduleInBackground(
+          updatedSchedule.scheduleId!,
+          updatedSchedule,
+        );
       }
-      
+
       await refresh();
       return true;
     } catch (e) {
@@ -422,19 +448,19 @@ class ScheduleViewModel with ChangeNotifier {
       if (taskToDelete != null) {
         // 알림 취소
         await _cancelScheduleAlarms(taskId);
-        
+
         await _taskRepository.deleteTask(taskId);
-        
+
         // 해당 일정의 집중시간 데이터도 함께 삭제
         await _focusRepository.loadSessionsFromStorage();
         await _focusRepository.deleteSessionsByTaskTitle(taskToDelete.title);
       }
-      
+
       // 백그라운드에서 Schedule API 시도 (회원인 경우)
       if (scheduleId > 0) {
         _deleteScheduleInBackground(scheduleId);
       }
-      
+
       await refresh();
       return true;
     } catch (e) {
@@ -448,7 +474,9 @@ class ScheduleViewModel with ChangeNotifier {
   // ID로 일정 찾기
   ScheduleModel? getScheduleById(int scheduleId) {
     try {
-      return _schedules.firstWhere((schedule) => schedule.scheduleId == scheduleId);
+      return _schedules.firstWhere(
+        (schedule) => schedule.scheduleId == scheduleId,
+      );
     } catch (e) {
       return null;
     }
@@ -457,21 +485,21 @@ class ScheduleViewModel with ChangeNotifier {
   // 날짜 포맷팅
   String _formatDate(DateTime date) {
     return '${date.year.toString().padLeft(4, '0')}-'
-           '${date.month.toString().padLeft(2, '0')}-'
-           '${date.day.toString().padLeft(2, '0')}';
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 
   // 타입별 색상 가져오기
   Color getTypeColor(ScheduleType type) {
     switch (type) {
       case ScheduleType.urgentNow:
-        return const Color(0xFFE53E3E);
+        return const Color(0xFFE53E3E); // 빨간색 - 지금 바로 해야해요
       case ScheduleType.planAhead:
-        return const Color(0xFFD69E2E);
-      case ScheduleType.whenFree:
-        return const Color(0xFF3182CE);
+        return const Color(0xFF3182CE); // 파란색 - 미리 계획해서 준비해요
       case ScheduleType.laterProcessing:
-        return const Color(0xFF38A169);
+        return const Color(0xFFD69E2E); // 노란색 - 나중에 처리해요
+      case ScheduleType.whenFree:
+        return const Color(0xFF74787B); // 회색 - 시간이 남을 때 해요
     }
   }
 
@@ -479,13 +507,13 @@ class ScheduleViewModel with ChangeNotifier {
   String getTypeTitle(ScheduleType type) {
     switch (type) {
       case ScheduleType.urgentNow:
-        return '지금 바로 해야해요';
+        return '지금 바로 해야해요'; // 중요&긴급
       case ScheduleType.planAhead:
-        return '미리 계획해서 준비해요';
-      case ScheduleType.whenFree:
-        return '시간이 남을 때 해요';
+        return '미리 계획해서 준비해요'; // 중요
       case ScheduleType.laterProcessing:
-        return '나중에 처리해요';
+        return '나중에 처리해요'; // 긴급
+      case ScheduleType.whenFree:
+        return '시간이 남을 때 해요'; // 둘다 아님
     }
   }
 
@@ -493,13 +521,13 @@ class ScheduleViewModel with ChangeNotifier {
   String getTypeDescription(ScheduleType type) {
     switch (type) {
       case ScheduleType.urgentNow:
-        return '긴급하고 중요한 일정';
+        return '긴급하고 중요한 일정'; // 중요&긴급
       case ScheduleType.planAhead:
-        return '계획적으로 준비할 일정';
-      case ScheduleType.whenFree:
-        return '여유 시간에 처리할 일정';
+        return '계획적으로 준비할 일정'; // 중요
       case ScheduleType.laterProcessing:
-        return '나중에 처리해도 되는 일정';
+        return '긴급하지만 덜 중요한 일정'; // 긴급
+      case ScheduleType.whenFree:
+        return '여유 시간에 처리할 일정'; // 둘다 아님
     }
   }
 
@@ -550,7 +578,7 @@ class ScheduleViewModel with ChangeNotifier {
   }
 
   // ===== Task 관련 메서드들 (하위 호환성) =====
-  
+
   // 특정 우선순위의 할일들 로드
   Future<void> loadTasksByPriority(TaskPriority priority) async {
     _setLoading(true);
@@ -596,10 +624,10 @@ class ScheduleViewModel with ChangeNotifier {
         _setError('삭제할 일정을 찾을 수 없습니다');
         return false;
       }
-      
+
       // 알림 취소
       await _cancelScheduleAlarms(taskId);
-      
+
       final success = await _taskRepository.deleteTask(taskId);
       if (success) {
         await _focusRepository.loadSessionsFromStorage();
@@ -621,17 +649,21 @@ class ScheduleViewModel with ChangeNotifier {
     try {
       // 기존 task를 먼저 가져와서 제목 변경 여부 확인
       final oldTask = getTaskById(updatedTask.id);
-      final titleChanged = oldTask != null && oldTask.title != updatedTask.title;
+      final titleChanged =
+          oldTask != null && oldTask.title != updatedTask.title;
       final oldTitle = oldTask?.title ?? '';
-      
+
       final success = await _taskRepository.updateTask(updatedTask);
       if (success) {
         // 제목이 변경되었다면 focus session의 제목도 업데이트
         if (titleChanged && oldTitle.isNotEmpty) {
           await _focusRepository.loadSessionsFromStorage();
-          await _focusRepository.updateSessionTaskTitle(oldTitle, updatedTask.title);
+          await _focusRepository.updateSessionTaskTitle(
+            oldTitle,
+            updatedTask.title,
+          );
         }
-        
+
         _setTasks(_taskRepository.tasks);
         return true;
       } else {
@@ -643,7 +675,21 @@ class ScheduleViewModel with ChangeNotifier {
       return false;
     }
   }
-  
+
+  // TaskPriority를 ScheduleType으로 변환
+  ScheduleType _priorityToScheduleType(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.urgentImportant:
+        return ScheduleType.urgentNow; // 중요&긴급 → 지금 바로 해야해요
+      case TaskPriority.important:
+        return ScheduleType.planAhead; // 중요 → 미리 계획해서 준비해요
+      case TaskPriority.urgent:
+        return ScheduleType.laterProcessing; // 긴급 → 나중에 처리해요
+      case TaskPriority.neither:
+        return ScheduleType.whenFree; // 둘다 아님 → 시간이 남을 때 해요
+    }
+  }
+
   // 할일 수정 및 알림 업데이트
   Future<bool> updateTaskWithAlarms({
     required TaskModel updatedTask,
@@ -654,17 +700,21 @@ class ScheduleViewModel with ChangeNotifier {
     try {
       // 기존 task를 먼저 가져와서 제목 변경 여부 확인
       final oldTask = getTaskById(updatedTask.id);
-      final titleChanged = oldTask != null && oldTask.title != updatedTask.title;
+      final titleChanged =
+          oldTask != null && oldTask.title != updatedTask.title;
       final oldTitle = oldTask?.title ?? '';
-      
+
       final success = await _taskRepository.updateTask(updatedTask);
       if (success) {
         // 제목이 변경되었다면 focus session의 제목도 업데이트
         if (titleChanged && oldTitle.isNotEmpty) {
           await _focusRepository.loadSessionsFromStorage();
-          await _focusRepository.updateSessionTaskTitle(oldTitle, updatedTask.title);
+          await _focusRepository.updateSessionTaskTitle(
+            oldTitle,
+            updatedTask.title,
+          );
         }
-        
+
         // 기존 알림 취소 후 새로 설정
         await _cancelScheduleAlarms(updatedTask.id);
         if (updatedTask.alarm && updatedTask.startDate != null) {
@@ -678,7 +728,47 @@ class ScheduleViewModel with ChangeNotifier {
             alarm120Before: alarm120Before,
           );
         }
-        
+
+        // Schedule API로 업데이트 (회원인 경우만)
+        final isGuest = await TokenManager.instance.isGuestMode();
+        if (!isGuest) {
+          final scheduleId = int.tryParse(updatedTask.id);
+          if (scheduleId != null && scheduleId < 0) { // 음수 ID는 서버 일정
+            try {
+              final type = _priorityToScheduleType(updatedTask.priority);
+              final schedule = ScheduleModel(
+                scheduleId: scheduleId.abs(), // 양수로 변환
+                title: updatedTask.title,
+                time: updatedTask.startTime,
+                startDate: updatedTask.calendarDate ?? 
+                    '${updatedTask.startDate?.year.toString().padLeft(4, '0')}-'
+                    '${updatedTask.startDate?.month.toString().padLeft(2, '0')}-'
+                    '${updatedTask.startDate?.day.toString().padLeft(2, '0')}',
+                endDate: updatedTask.calendarDate ?? 
+                    '${updatedTask.dueDate?.year.toString().padLeft(4, '0')}-'
+                    '${updatedTask.dueDate?.month.toString().padLeft(2, '0')}-'
+                    '${updatedTask.dueDate?.day.toString().padLeft(2, '0')}',
+                type: type.value,
+                location: updatedTask.location,
+                memo: updatedTask.memo ?? updatedTask.description,
+                image: updatedTask.icon ?? updatedTask.emoji ?? '📅',
+                alarm30Before: alarm30Before,
+                alarm60Before: alarm60Before,
+                alarm120Before: alarm120Before,
+                isRecurring: updatedTask.isRecurring,
+              );
+              
+              await _scheduleRepository.updateSchedule(scheduleId.abs(), schedule);
+              print('[ScheduleViewModel] Schedule API 업데이트 완료 - scheduleId: ${scheduleId.abs()}');
+            } catch (e) {
+              print('[ScheduleViewModel] Schedule API 업데이트 실패: $e');
+              // API 실패해도 로컬은 이미 업데이트됨
+            }
+          }
+        } else {
+          print('[ScheduleViewModel] 비회원 모드 - API 업데이트 스킵');
+        }
+
         _setTasks(_taskRepository.tasks);
         return true;
       } else {
@@ -719,18 +809,18 @@ class ScheduleViewModel with ChangeNotifier {
   }
 
   // ===== TaskPriority 관련 메서드 (UI 호환성) =====
-  
+
   // 우선순위별 색상 가져오기
   Color getPriorityColor(TaskPriority priority) {
     switch (priority) {
       case TaskPriority.urgentImportant:
-        return const Color(0xFFE53E3E); // 빨간색
+        return const Color(0xFFE53E3E); // 빨간색 - 지금 바로 해야해요
       case TaskPriority.important:
-        return const Color(0xFFD69E2E); // 노란색
+        return const Color(0xFF3182CE); // 파란색 - 미리 계획해서 준비해요
       case TaskPriority.urgent:
-        return const Color(0xFF3182CE); // 파란색
+        return const Color(0xFFD69E2E); // 노란색 - 나중에 처리해요
       case TaskPriority.neither:
-        return const Color(0xFF38A169); // 초록색
+        return const Color(0xFF74787B); // 회색 - 시간이 남을 때 해요
     }
   }
 
@@ -763,18 +853,18 @@ class ScheduleViewModel with ChangeNotifier {
   }
 
   // ===== 매핑 헬퍼 메서드 =====
-  
+
   // TaskPriority를 ScheduleType으로 변환
   ScheduleType priorityToScheduleType(TaskPriority priority) {
     switch (priority) {
       case TaskPriority.urgentImportant:
-        return ScheduleType.urgentNow; // 지금 바로 해야해요
+        return ScheduleType.urgentNow; // 중요&긴급 → 지금 바로 해야해요
       case TaskPriority.important:
-        return ScheduleType.planAhead; // 미리 계획해서 준비해요
+        return ScheduleType.planAhead; // 중요 → 미리 계획해서 준비해요
       case TaskPriority.urgent:
-        return ScheduleType.whenFree; // 시간이 남을 때 해요
+        return ScheduleType.laterProcessing; // 긴급 → 나중에 처리해요
       case TaskPriority.neither:
-        return ScheduleType.laterProcessing; // 나중에 처리해요
+        return ScheduleType.whenFree; // 둘다 아님 → 시간이 남을 때 해요
     }
   }
 
@@ -782,13 +872,13 @@ class ScheduleViewModel with ChangeNotifier {
   TaskPriority scheduleTypeToPriority(ScheduleType type) {
     switch (type) {
       case ScheduleType.urgentNow:
-        return TaskPriority.urgentImportant;
+        return TaskPriority.urgentImportant; // 지금 바로 해야해요 → 중요&긴급
       case ScheduleType.planAhead:
-        return TaskPriority.important;
-      case ScheduleType.whenFree:
-        return TaskPriority.urgent;
+        return TaskPriority.important; // 미리 계획해서 준비해요 → 중요
       case ScheduleType.laterProcessing:
-        return TaskPriority.neither;
+        return TaskPriority.urgent; // 나중에 처리해요 → 긴급
+      case ScheduleType.whenFree:
+        return TaskPriority.neither; // 시간이 남을 때 해요 → 둘다 아님
     }
   }
 
@@ -798,7 +888,8 @@ class ScheduleViewModel with ChangeNotifier {
       scheduleId: int.tryParse(task.id),
       title: task.title,
       time: task.startTime,
-      startDate: task.calendarDate ?? _formatDate(task.startDate ?? DateTime.now()),
+      startDate:
+          task.calendarDate ?? _formatDate(task.startDate ?? DateTime.now()),
       endDate: task.calendarDate ?? _formatDate(task.dueDate ?? DateTime.now()),
       type: priorityToScheduleType(task.priority).value,
       location: task.location,
@@ -814,13 +905,24 @@ class ScheduleViewModel with ChangeNotifier {
   // ScheduleModel을 TaskModel로 변환
   TaskModel scheduleToTask(ScheduleModel schedule) {
     final type = ScheduleType.fromString(schedule.type);
+    // 이모티콘 변환 (아이콘 코드를 이모티콘으로)
+    final emoji = _convertIconCodeToEmoji(schedule.image ?? '📅');
+
     return TaskModel(
-      id: schedule.scheduleId?.toString() ?? 'temp_${DateTime.now().millisecondsSinceEpoch}',
+      id:
+          schedule.scheduleId?.toString() ??
+          'temp_${DateTime.now().millisecondsSinceEpoch}',
       title: schedule.title,
       memo: schedule.memo,
       location: schedule.location,
       priority: scheduleTypeToPriority(type),
-      alarm: schedule.alarm30Before || schedule.alarm60Before || schedule.alarm120Before,
+      alarm:
+          schedule.alarm30Before ||
+          schedule.alarm60Before ||
+          schedule.alarm120Before,
+      alarm30Before: schedule.alarm30Before,
+      alarm60Before: schedule.alarm60Before,
+      alarm120Before: schedule.alarm120Before,
       isCompleted: false,
       createdAt: DateTime.now(),
       calendarDate: schedule.startDate,
@@ -828,17 +930,110 @@ class ScheduleViewModel with ChangeNotifier {
       endTime: schedule.time,
       icon: schedule.image,
       isRecurring: schedule.isRecurring,
+      emoji: emoji,
     );
   }
-  
+
+  // 아이코 코드를 이모티콘으로 변환
+  String _convertIconCodeToEmoji(String? iconCode) {
+    if (iconCode == null || iconCode.isEmpty) return '😊';
+
+    // 이미 이모티콘인 경우 그대로 반환
+    if (iconCode.contains(RegExp(r'[^\x00-\x7F]'))) {
+      return iconCode;
+    }
+
+    // 아이코 코드를 이모티콘으로 매핑
+    final iconToEmojiMap = {
+      'SMILE': '😀',
+      'HAPPY': '😃',
+      'JOY': '😄',
+      'GRIN': '😁',
+      'LAUGH': '😆',
+      'TOUCHED': '🥹',
+      'SWEAT': '😅',
+      'CRY_LAUGH': '😂',
+      'ROFL': '🤣',
+      'TEAR_JOY': '🥲',
+      'BLUSH': '☺️',
+      'HAPPY_EYES': '😊',
+      'SLIGHT_SMILE': '🙂',
+      'HEART_EYES': '😍',
+      'LOVE': '🥰',
+      'KISS': '😘',
+      'KISS_SMILE': '😙',
+      'KISS_EYES': '😚',
+      'YUM': '😋',
+      'TONGUE': '😝',
+      'RAISED_EYEBROW': '🤨',
+      'NERD': '🤓',
+      'COOL': '😎',
+      'SMIRK': '😏',
+      'PARTY': '🥳',
+      'WORRIED': '😟',
+      'CONFOUNDED': '😖',
+      'TIRED': '😫',
+      'PLEADING': '🥺',
+      'ANGRY': '😡',
+      'SICK': '🤒',
+      'MELT': '😄',
+      'SCREAM': '😱',
+      'GASP': '🤭',
+      'SLEEPY': '😪',
+      'SURPRISE': '😮',
+      'THUMBS_UP': '👍',
+      'THUMBS_DOWN': '👎',
+      'PRAY': '🙏',
+      'POINT': '👊',
+      'SOCCER': '⚽',
+      'ART': '🎨',
+      'TICKET': '🎟️',
+      'PUZZLE': '🧩',
+      'MIC': '🎤',
+      'MOVIE': '🎬',
+      'COMPUTER': '🖥️',
+      'IDEA': '💡',
+      'ALARM': '⏰',
+      'PILL': '💊',
+      'BATH': '🛁',
+      'TISSUE': '🧻',
+      'BIKE': '🚴‍♂️',
+      'GAME': '🎮',
+      'APPLE': '🍎',
+      'SALAD': '🥗',
+      'HEART': '❤️',
+      'BOMB': '💣',
+      'PARTY_POPPER': '🎉',
+      'CLOVER': '🍀',
+      'MOON': '🌙',
+      'DOG': '🐶',
+      'MUSCLE': '💪',
+      'TENNIS': '🎾',
+      'RUN': '🏃',
+      'FLAG': '🚩',
+      'YARN': '🧶',
+      'FIRE': '🔥',
+      'BRIEFCASE': '💼',
+      'DINNER': '🍽️',
+      'COFFEE': '☕',
+      'TOOTHBRUSH': '🪥',
+      'CAR': '🚗',
+      'HOSPITAL': '🏥',
+      'PHONE': '📱',
+      'NOTE': '📅',
+    };
+
+    return iconToEmojiMap[iconCode] ?? '😊';
+  }
+
   // ===== 백그라운드 API 동기화 메서드 (비회원 지원) =====
-  
+
   // Schedule API와 동기화 (백그라운드)
   Future<void> _syncSchedulesWithAPI() async {
     try {
       // API 호출 시도 (인증 실패 시 무시)
       final schedules = await _scheduleRepository.getAllSchedules();
-      
+
       // API 데이터가 있으면 병합
       if (schedules.isNotEmpty) {
         _setSchedules(schedules);
@@ -848,7 +1043,7 @@ class ScheduleViewModel with ChangeNotifier {
       print('Schedule API 동기화 건너뜀: $e');
     }
   }
-  
+
   // 날짜별 Schedule API 동기화 (백그라운드)
   Future<void> _syncSchedulesByDateWithAPI(DateTime date) async {
     try {
@@ -860,7 +1055,7 @@ class ScheduleViewModel with ChangeNotifier {
       print('Schedule API 날짜별 동기화 건너뜀: $e');
     }
   }
-  
+
   // 기간별 Schedule API 동기화 (백그라운드)
   Future<void> _syncSchedulesByRangeWithAPI(DateTime from, DateTime to) async {
     try {
@@ -872,7 +1067,7 @@ class ScheduleViewModel with ChangeNotifier {
       print('Schedule API 기간별 동기화 건너뜀: $e');
     }
   }
-  
+
   // 백그라운드에서 Schedule 생성
   Future<void> _createScheduleInBackground(ScheduleModel schedule) async {
     try {
@@ -882,9 +1077,12 @@ class ScheduleViewModel with ChangeNotifier {
       print('Schedule API 생성 건너뜀: $e');
     }
   }
-  
+
   // 백그라운드에서 Schedule 수정
-  Future<void> _updateScheduleInBackground(int scheduleId, ScheduleModel schedule) async {
+  Future<void> _updateScheduleInBackground(
+    int scheduleId,
+    ScheduleModel schedule,
+  ) async {
     try {
       await _scheduleRepository.updateSchedule(scheduleId, schedule);
     } catch (e) {
@@ -892,7 +1090,7 @@ class ScheduleViewModel with ChangeNotifier {
       print('Schedule API 수정 건너뜀: $e');
     }
   }
-  
+
   // 백그라운드에서 Schedule 삭제
   Future<void> _deleteScheduleInBackground(int scheduleId) async {
     try {
@@ -902,9 +1100,9 @@ class ScheduleViewModel with ChangeNotifier {
       print('Schedule API 삭제 건너뜀: $e');
     }
   }
-  
+
   // ===== 알림 관련 메서드 =====
-  
+
   // 시간 포맷팅 함수 (오전/오후)
   String _formatTimeToKorean(DateTime time) {
     final hour = time.hour;
@@ -913,21 +1111,21 @@ class ScheduleViewModel with ChangeNotifier {
     final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
     return '$period ${displayHour.toString()}:${minute.toString().padLeft(2, '0')}';
   }
-  
+
   // 우선순위별 알림 텍스트 가져오기
   String _getPriorityText(TaskPriority priority) {
     switch (priority) {
       case TaskPriority.urgentImportant:
-        return '지금 바로 해야해요';
+        return '지금 바로 해야해요'; // 중요&긴급
       case TaskPriority.important:
-        return '미리 계획해서 준비해요';
+        return '미리 계획해서 준비해요'; // 중요
       case TaskPriority.urgent:
-        return '시간이 남을때 해요';
+        return '나중에 처리해요'; // 긴급
       case TaskPriority.neither:
-        return '나중에 처리해요';
+        return '시간이 남을 때 해요'; // 둘다 아님
     }
   }
-  
+
   // 사용자 이름 가져오기
   Future<String> _getUserName() async {
     try {
@@ -940,7 +1138,7 @@ class ScheduleViewModel with ChangeNotifier {
     }
     return '구름'; // 기본값 (비회원)
   }
-  
+
   // 일정 알림 설정
   Future<void> _setScheduleAlarms({
     required String taskId,
@@ -954,16 +1152,16 @@ class ScheduleViewModel with ChangeNotifier {
     try {
       // taskId를 숫자로 변환 (알림 ID 생성용)
       final baseId = taskId.hashCode.abs() % 1000000;
-      
+
       // 사용자 이름 가져오기
       final userName = await _getUserName();
-      
+
       // 일정 시작 시간 포맷
       final formattedTime = _formatTimeToKorean(startDate);
-      
+
       // 우선순위 텍스트 가져오기
       final priorityText = _getPriorityText(priority);
-      
+
       // 30분 전 알림
       if (alarm30Before) {
         final alarmTime = startDate.subtract(const Duration(minutes: 30));
@@ -977,7 +1175,7 @@ class ScheduleViewModel with ChangeNotifier {
           );
         }
       }
-      
+
       // 1시간 전 알림
       if (alarm60Before) {
         final alarmTime = startDate.subtract(const Duration(hours: 1));
@@ -991,7 +1189,7 @@ class ScheduleViewModel with ChangeNotifier {
           );
         }
       }
-      
+
       // 2시간 전 알림
       if (alarm120Before) {
         final alarmTime = startDate.subtract(const Duration(hours: 2));
@@ -1009,12 +1207,12 @@ class ScheduleViewModel with ChangeNotifier {
       print('일정 알림 설정 중 오류: $e');
     }
   }
-  
+
   // 일정 알림 취소
   Future<void> _cancelScheduleAlarms(String taskId) async {
     try {
       final baseId = taskId.hashCode.abs() % 1000000;
-      
+
       // 모든 가능한 알림 취소 (30분전, 1시간전, 2시간전)
       for (int i = 0; i < 3; i++) {
         final alarmId = baseId * 10 + i;
