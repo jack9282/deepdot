@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../models/routine_model.dart';
 import '../../api/token_manager.dart';
 import '../../api/routine_api.dart';
+import '../../utils/alarm.dart';
 
 class RoutineRepository extends ChangeNotifier {
   static const String _routineListKey = 'routine_list';
@@ -511,6 +512,53 @@ class RoutineRepository extends ChangeNotifier {
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// 모든 루틴 알림을 재설정합니다
+  Future<void> rescheduleAllNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isEnabled = prefs.getBool('routine_notification') ?? true;
+      
+      if (!isEnabled) {
+        // 알림이 비활성화되어 있으면 아무것도 하지 않음
+        return;
+      }
+      
+      // 활성화된 모든 루틴에 대해 알림 설정
+      for (final routine in _routineList) {
+        if (routine.active && routine.startTime.containsKey('hour') && routine.startTime.containsKey('minute')) {
+          // 선택된 요일들 추출
+          final List<int> weekdays = [];
+          if (routine.mon) weekdays.add(1);
+          if (routine.tue) weekdays.add(2);
+          if (routine.wed) weekdays.add(3);
+          if (routine.thu) weekdays.add(4);
+          if (routine.fri) weekdays.add(5);
+          if (routine.sat) weekdays.add(6);
+          if (routine.sun) weekdays.add(7);
+          
+          if (weekdays.isNotEmpty) {
+            final hour = routine.startTime['hour'] ?? 9;
+            final minute = routine.startTime['minute'] ?? 0;
+            final scheduledTime = DateTime.now().copyWith(hour: hour, minute: minute);
+            
+            // 알람 ID는 30000번대 사용 (루틴용)
+            final baseId = 30000 + routine.routineId.hashCode;
+            
+            await AlarmUtility.setWeeklyAlarm(
+              baseId: baseId,
+              scheduledTime: scheduledTime,
+              title: '루틴 알림',
+              body: AlarmUtility.generateRoutineMessage('사용자', routine.name),
+              weekdays: weekdays,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('루틴 알림 재설정 중 오류: $e');
     }
   }
 } 

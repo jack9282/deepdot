@@ -623,6 +623,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
                   color: Color(0xFF1F5DFF),
+                  decoration: TextDecoration.none, // 밑줄 제거
                 ),
               ),
               const Spacer(),
@@ -656,6 +657,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: Colors.black,
+                      decoration: TextDecoration.none, // 밑줄 제거
                     ),
                   ),
                 ),
@@ -683,7 +685,10 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                         child: const Center(
                           child: Text(
                             '',
-                            style: TextStyle(color: Colors.grey),
+                            style: TextStyle(
+                              color: Colors.grey,
+                              decoration: TextDecoration.none, // 밑줄 제거
+                            ),
                           ),
                         ),
                       ),
@@ -724,6 +729,7 @@ class _ScheduleAddScreenState extends State<ScheduleAddScreen> {
                               color: isSelected 
                                   ? const Color(0xFF1F5DFF)
                                   : Colors.black,
+                              decoration: TextDecoration.none, // 밑줄 제거
                             ),
                           ),
                         ),

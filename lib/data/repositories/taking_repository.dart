@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/taking_model.dart';
 import '../../api/taking-api.dart';
 import '../../api/token_manager.dart';
+import '../../utils/alarm.dart';
 
 class TakingRepository {
   static const String _takingListKey = 'taking_list';
@@ -472,5 +473,51 @@ class TakingRepository {
     final prefs = await SharedPreferences.getInstance();
     final timestamp = prefs.getInt(_lastSyncKey);
     return timestamp != null ? DateTime.fromMillisecondsSinceEpoch(timestamp) : null;
+  }
+
+  /// 모든 복약 알림을 재설정합니다
+  Future<void> rescheduleAllNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isEnabled = prefs.getBool('medication_notification') ?? true;
+      
+      if (!isEnabled) {
+        // 알림이 비활성화되어 있으면 아무것도 하지 않음
+        return;
+      }
+      
+      // 알람이 활성화된 모든 복약 조회
+      for (final taking in _takingList) {
+        if (taking.alarmEnabled) {
+          // 각 복용 시간마다 알람 설정
+          for (int i = 0; i < taking.times.length; i++) {
+            final timeStr = taking.times[i];
+            final timeParts = timeStr.split(':');
+            final hour = int.parse(timeParts[0]);
+            final minute = int.parse(timeParts[1]);
+            
+            final now = DateTime.now();
+            var alarmTime = DateTime(now.year, now.month, now.day, hour, minute);
+            
+            // 이미 지난 시간이면 다음 날로 설정
+            if (alarmTime.isBefore(now)) {
+              alarmTime = alarmTime.add(const Duration(days: 1));
+            }
+            
+            // 알람 ID는 20000번대 사용 (복약용)
+            final alarmId = 20000 + taking.id.hashCode + i;
+            
+            await AlarmUtility.setDailyAlarm(
+              id: alarmId,
+              scheduledTime: alarmTime,
+              title: '복약 알림',
+              body: AlarmUtility.generateTakingMessage('사용자', alarmTime),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('복약 알림 재설정 중 오류: $e');
+    }
   }
 } 

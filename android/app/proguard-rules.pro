@@ -52,4 +52,27 @@
 -keep class com.dexterous.flutterlocalnotifications.** { *; }
 
 # Keep all classes in the timezone package
--keep class com.example.deepdot.** { *; } 
+-keep class com.example.deepdot.** { *; }
+
+# Google Error Prone Annotations
+-dontwarn com.google.errorprone.annotations.**
+-keep class com.google.errorprone.annotations.** { *; }
+
+# javax.lang.model (for annotations processing)
+-dontwarn javax.lang.model.**
+-keep class javax.lang.model.** { *; }
+-keep class javax.lang.model.element.** { *; }
+
+# Additional rules for common issues
+-dontwarn javax.annotation.**
+-dontwarn javax.inject.**
+-dontwarn sun.misc.Unsafe
+
+# Keep Guava classes if used
+-dontwarn com.google.common.**
+-keep class com.google.common.** { *; }
+
+# Keep annotation attributes
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes SourceFile,LineNumberTable 

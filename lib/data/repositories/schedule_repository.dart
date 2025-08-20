@@ -1,5 +1,7 @@
 import '../models/schedule_model.dart';
 import '../../api/schedule_api.dart';
+import '../../utils/alarm.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ScheduleRepository {
   /// 일정 생성
@@ -131,5 +133,73 @@ class ScheduleRepository {
   Future<List<ScheduleModel>> getRecurringSchedules() async {
     final allSchedules = await getAllSchedules();
     return allSchedules.where((schedule) => schedule.isRecurring).toList();
+  }
+
+  /// 모든 일정 알림을 재설정합니다
+  Future<void> rescheduleAllNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isEnabled = prefs.getBool('schedule_notification') ?? true;
+      
+      if (!isEnabled) {
+        // 알림이 비활성화되어 있으면 아무것도 하지 않음
+        return;
+      }
+      
+      // 알람이 설정된 모든 일정 조회
+      final schedulesWithAlarm = await getSchedulesWithAlarm();
+      
+      for (final schedule in schedulesWithAlarm) {
+        // 일정 시작 시간 파싱
+        final dateParts = schedule.startDate.split('-');
+        final timeParts = (schedule.time ?? '09:00').split(':');
+        final scheduledDate = DateTime(
+          int.parse(dateParts[0]),
+          int.parse(dateParts[1]),
+          int.parse(dateParts[2]),
+          int.parse(timeParts[0]),
+          int.parse(timeParts[1]),
+        );
+        
+        // 각 알림 시간대별로 알람 설정
+        if (schedule.alarm30Before) {
+          final alarmTime = scheduledDate.subtract(const Duration(minutes: 30));
+          if (alarmTime.isAfter(DateTime.now())) {
+            await AlarmUtility.setAlarm(
+              id: 10000 + schedule.scheduleId.hashCode + 30,
+              scheduledTime: alarmTime,
+              title: '일정 알림',
+              body: '${schedule.title}이(가) 30분 후 시작됩니다.',
+            );
+          }
+        }
+        
+        if (schedule.alarm60Before) {
+          final alarmTime = scheduledDate.subtract(const Duration(minutes: 60));
+          if (alarmTime.isAfter(DateTime.now())) {
+            await AlarmUtility.setAlarm(
+              id: 10000 + schedule.scheduleId.hashCode + 60,
+              scheduledTime: alarmTime,
+              title: '일정 알림',
+              body: '${schedule.title}이(가) 1시간 후 시작됩니다.',
+            );
+          }
+        }
+        
+        if (schedule.alarm120Before) {
+          final alarmTime = scheduledDate.subtract(const Duration(minutes: 120));
+          if (alarmTime.isAfter(DateTime.now())) {
+            await AlarmUtility.setAlarm(
+              id: 10000 + schedule.scheduleId.hashCode + 120,
+              scheduledTime: alarmTime,
+              title: '일정 알림',
+              body: '${schedule.title}이(가) 2시간 후 시작됩니다.',
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('일정 알림 재설정 중 오류: $e');
+    }
   }
 }
