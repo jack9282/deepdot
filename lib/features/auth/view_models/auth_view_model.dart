@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/models/user_model.dart';
 import '../../../api/token_manager.dart';
@@ -247,6 +248,11 @@ class AuthViewModel with ChangeNotifier {
         _setUser(_authRepository.currentUser);
         // 로그인 성공 시 토큰 자동 갱신 시작
         await TokenManager.instance.startAutoRefresh();
+        
+        // 로그인 성공 시 기기간 동기화 자동 활성화
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('device_sync', true);
+        
         return true;
       } else {
         _setError('로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요');
@@ -340,6 +346,10 @@ class AuthViewModel with ChangeNotifier {
       await TokenManager.instance.clearAuthData();
       _setUser(null);
       _isGuestMode = false; // 비회원 모드도 해제
+      
+      // 로그아웃 시 기기간 동기화 OFF
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('device_sync', false);
     } catch (e) {
       _setError('로그아웃 중 오류가 발생했습니다');
     } finally {

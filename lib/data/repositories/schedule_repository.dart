@@ -66,10 +66,43 @@ class ScheduleRepository {
     
     return merged;
   }
+  /// 동기화 설정 확인
+  Future<bool> _isDeviceSyncEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('device_sync') ?? false;
+  }
+  
   /// 일정 생성 (온라인/오프라인 모드 지원)
   Future<int> createSchedule(ScheduleModel schedule) async {
+    // 동기화 설정 확인
+    final syncEnabled = await _isDeviceSyncEnabled();
+    
+    if (!syncEnabled) {
+      // 동기화 OFF - 로컬만 사용
+      final localSchedules = await _getSchedulesFromLocal();
+      final localId = await _getNextLocalId();
+      final scheduleWithId = ScheduleModel(
+        scheduleId: localId,
+        title: schedule.title,
+        time: schedule.time,
+        startDate: schedule.startDate,
+        endDate: schedule.endDate,
+        type: schedule.type,
+        location: schedule.location,
+        memo: schedule.memo,
+        image: schedule.image,
+        alarm30Before: schedule.alarm30Before,
+        alarm60Before: schedule.alarm60Before,
+        alarm120Before: schedule.alarm120Before,
+        isRecurring: schedule.isRecurring,
+      );
+      localSchedules.add(scheduleWithId);
+      await _saveSchedulesToLocal(localSchedules);
+      return localId;
+    }
+    
     try {
-      // 서버에 생성 시도
+      // 동기화 ON - 서버에 생성 시도
       final scheduleId = await ScheduleApi.createSchedule(schedule);
       
       // 서버 생성 성공 시 로컬에도 저장
@@ -133,9 +166,15 @@ class ScheduleRepository {
   /// 모든 일정 조회 (서버 + 로컬 병합)
   Future<List<ScheduleModel>> getAllSchedules() async {
     final localSchedules = await _getSchedulesFromLocal();
+    final syncEnabled = await _isDeviceSyncEnabled();
+    
+    if (!syncEnabled) {
+      // 동기화 OFF - 로컬 데이터만 반환
+      return localSchedules;
+    }
     
     try {
-      // 서버에서 일정 조회 시도
+      // 동기화 ON - 서버에서 일정 조회 시도
       final serverSchedules = await ScheduleApi.getAllSchedules();
       
       // 서버와 로컬 데이터 병합
@@ -227,8 +266,15 @@ class ScheduleRepository {
       await _saveSchedulesToLocal(localSchedules);
     }
     
+    // 동기화 설정 확인
+    final syncEnabled = await _isDeviceSyncEnabled();
+    if (!syncEnabled) {
+      // 동기화 OFF - 로컬만 업데이트
+      return;
+    }
+    
     try {
-      // 서버 업데이트 시도
+      // 동기화 ON - 서버 업데이트 시도
       await ScheduleApi.updateSchedule(scheduleId, schedule);
     } catch (e) {
       // 서버 실패해도 로컬은 이미 업데이트됨
@@ -243,8 +289,15 @@ class ScheduleRepository {
     localSchedules.removeWhere((s) => s.scheduleId == scheduleId);
     await _saveSchedulesToLocal(localSchedules);
     
+    // 동기화 설정 확인
+    final syncEnabled = await _isDeviceSyncEnabled();
+    if (!syncEnabled) {
+      // 동기화 OFF - 로컬만 삭제
+      return;
+    }
+    
     try {
-      // 서버에서 삭제 시도
+      // 동기화 ON - 서버에서 삭제 시도
       await ScheduleApi.deleteSchedule(scheduleId);
     } catch (e) {
       // 서버 실패해도 로컬은 이미 삭제됨

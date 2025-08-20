@@ -8,6 +8,7 @@ import '../../../utils/alarm.dart';
 import '../../../data/repositories/schedule_repository.dart';
 import '../../../data/repositories/taking_repository.dart';
 import '../../../data/repositories/routine_repository.dart';
+import '../../../api/token_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -24,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // 동기화 설정 상태
   bool _deviceSync = true;
+  bool _isLoggedIn = false; // 로그인 상태
 
   // AI 루틴 추천 설정 상태
   bool _aiRoutineRecommendation = false;
@@ -39,16 +41,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadSettings();
+    _checkLoginStatus();
+  }
+  
+  /// 로그인 상태를 확인합니다
+  Future<void> _checkLoginStatus() async {
+    final isLoggedIn = await TokenManager.instance.hasValidToken();
+    setState(() {
+      _isLoggedIn = isLoggedIn;
+      // 비회원은 무조건 동기화 OFF
+      if (!isLoggedIn) {
+        _deviceSync = false;
+      }
+    });
+    
+    // 로그인 상태가 변경되면 설정 저장
+    final prefs = await SharedPreferences.getInstance();
+    if (isLoggedIn) {
+      // 로그인 시 자동으로 동기화 ON
+      _deviceSync = prefs.getBool(_deviceSyncKey) ?? true;
+      await prefs.setBool(_deviceSyncKey, _deviceSync);
+    } else {
+      // 비회원은 무조건 OFF
+      await prefs.setBool(_deviceSyncKey, false);
+    }
+    setState(() {});
   }
   
   /// SharedPreferences에서 설정값을 불러옵니다
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    final isLoggedIn = await TokenManager.instance.hasValidToken();
+    
     setState(() {
       _scheduleNotification = prefs.getBool(_scheduleNotificationKey) ?? true;
       _medicationNotification = prefs.getBool(_medicationNotificationKey) ?? true;
       _routineNotification = prefs.getBool(_routineNotificationKey) ?? true;
-      _deviceSync = prefs.getBool(_deviceSyncKey) ?? true;
+      // 비회원은 무조건 동기화 OFF, 회원은 저장된 값 사용
+      _deviceSync = isLoggedIn ? (prefs.getBool(_deviceSyncKey) ?? true) : false;
       _aiRoutineRecommendation = prefs.getBool(_aiRoutineKey) ?? false;
     });
   }
@@ -261,13 +291,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // 기기간 동기화
             _buildSettingItem(
               title: '기기간 동기화',
+              subtitle: _isLoggedIn ? null : '로그인 후 사용 가능',
               value: _deviceSync,
-              onChanged: (value) async {
+              enabled: _isLoggedIn, // 로그인 상태에서만 활성화
+              onChanged: _isLoggedIn ? (value) async {
                 setState(() {
                   _deviceSync = value;
                 });
                 await _saveNotificationSetting(_deviceSyncKey, value);
-              },
+                
+                // 동기화 OFF일 때 로컬 모드로 전환
+                if (!value) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('로컬 모드로 전환되었습니다. 서버와 동기화되지 않습니다.'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                } else {
+                  // 동기화 ON일 때 서버와 동기화
+                  final scheduleRepo = ScheduleRepository();
+                  await scheduleRepo.syncWithServer();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('서버와 동기화를 시작합니다.'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } : null,
             ),
 
             const SizedBox(height: 40),
@@ -381,29 +433,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // 설정 아이템 위젯 (스위치 포함)
   Widget _buildSettingItem({
     required String title,
+    String? subtitle,
     required bool value,
-    required ValueChanged<bool> onChanged,
+    required ValueChanged<bool>? onChanged,
+    bool enabled = true,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: enabled ? Colors.black : Colors.grey,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           GestureDetector(
-            onTap: () => onChanged(!value),
+            onTap: enabled && onChanged != null ? () => onChanged(!value) : null,
             child: Container(
               width: 65,
               height: 31,
               decoration: BoxDecoration(
-                color: value ? const Color(0xFF3A71FF) : Colors.grey[300],
+                color: enabled 
+                  ? (value ? const Color(0xFF3A71FF) : Colors.grey[300])
+                  : Colors.grey[200],
                 borderRadius: BorderRadius.circular(15.5),
               ),
               child: AnimatedAlign(
@@ -413,8 +487,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   width: 27,
                   height: 27,
                   margin: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: enabled ? Colors.white : Colors.grey[100],
                     shape: BoxShape.circle,
                   ),
                 ),
