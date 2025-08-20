@@ -7,8 +7,9 @@ class RoutineListItem extends StatefulWidget {
   final Map<String, dynamic> routine;
   final int index;
   final RoutineViewModel routineVM;
-  final Function(int index)? onDelete;
+  final Function(int routineIdOrIndex)? onDelete;
   final VoidCallback? onEditPressed;
+  final int goalIndex;
 
   const RoutineListItem({
     super.key,
@@ -17,6 +18,7 @@ class RoutineListItem extends StatefulWidget {
     required this.routineVM,
     this.onDelete,
     this.onEditPressed,
+    required this.goalIndex,
   });
 
   @override
@@ -24,17 +26,24 @@ class RoutineListItem extends StatefulWidget {
 }
 
 class _RoutineListItemState extends State<RoutineListItem> {
-  static const Color naverBlue = Color(0xFF3973F4);
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
     final String routineName = widget.routine['name'] ?? '';
-    final List<String> days = List<String>.from(widget.routine['days'] ?? []);
+    final bool mon = widget.routine['mon'] ?? false;
+    final bool tue = widget.routine['tue'] ?? false;
+    final bool wed = widget.routine['wed'] ?? false;
+    final bool thu = widget.routine['thu'] ?? false;
+    final bool fri = widget.routine['fri'] ?? false;
+    final bool sat = widget.routine['sat'] ?? false;
+    final bool sun = widget.routine['sun'] ?? false;
 
     return Consumer<RoutineViewModel>(
       builder: (context, routineVM, child) {
-        final List<bool> checks = routineVM.getRoutineChecks(widget.index);
-        
         return Container(
           height: 44,
           margin: const EdgeInsets.symmetric(vertical: 2),
@@ -61,19 +70,21 @@ class _RoutineListItemState extends State<RoutineListItem> {
                 ),
               ),
               ...List.generate(7, (dayIndex) {
-                final bool isDayActive = days.contains(_dayString(dayIndex));
-                final bool isChecked = checks[dayIndex];
+                final bool isDayActive = _isDayActive(dayIndex, mon, tue, wed, thu, fri, sat, sun);
+                final routineId = widget.routine['routineId'] as int?;
+                final checkStates = routineId != null 
+                    ? widget.routineVM.getRoutineById(routineId)?.checkStates ?? List.generate(7, (_) => false)
+                    : List.generate(7, (_) => false);
+                final bool isChecked = dayIndex < checkStates.length ? checkStates[dayIndex] : false;
                 
                 return Expanded(
                   child: Center(
                     child: isDayActive
                         ? GestureDetector(
                             onTap: () {
-                              routineVM.updateRoutineCheck(
-                                widget.index,
-                                dayIndex,
-                                !isChecked,
-                              );
+                              if (routineId != null) {
+                                widget.routineVM.updateRoutineCheckState(routineId, dayIndex, !isChecked);
+                              }
                             },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
@@ -82,9 +93,9 @@ class _RoutineListItemState extends State<RoutineListItem> {
                               height: 28,
                               margin: const EdgeInsets.symmetric(vertical: 2),
                               decoration: BoxDecoration(
-                                color: isChecked ? naverBlue : Colors.white,
+                                color: isChecked ? AppTheme.checkListColor[widget.goalIndex % AppTheme.checkListColor.length] : Colors.white,
                                 border: Border.all(
-                                  color: isChecked ? naverBlue : Colors.grey[400]!,
+                                  color: isChecked ? AppTheme.checkListColor[widget.goalIndex % AppTheme.checkListColor.length] : AppTheme.textGreyColor,
                                   width: 2,
                                 ),
                                 borderRadius: BorderRadius.circular(5),
@@ -113,10 +124,20 @@ class _RoutineListItemState extends State<RoutineListItem> {
     );
   }
 
-  String _dayString(int index) {
-    const days = ['월', '화', '수', '목', '금', '토', '일'];
-    return days[index];
+  bool _isDayActive(int dayIndex, bool mon, bool tue, bool wed, bool thu, bool fri, bool sat, bool sun) {
+    switch (dayIndex) {
+      case 0: return mon;
+      case 1: return tue;
+      case 2: return wed;
+      case 3: return thu;
+      case 4: return fri;
+      case 5: return sat;
+      case 6: return sun;
+      default: return false;
+    }
   }
+
+
 
   void _showPopupMenu(BuildContext context) {
     final RenderBox button = context.findRenderObject() as RenderBox;
@@ -174,12 +195,19 @@ class _RoutineListItemState extends State<RoutineListItem> {
         }
       } else if (value == 'delete') {
         if (widget.onDelete != null) {
-          widget.onDelete!(widget.index);
+          // routineId가 있으면 routineId를, 없으면 index를 전달
+          final routineId = widget.routine['routineId'] as int?;
+          print('삭제할 루틴 정보: routineId=$routineId, name=${widget.routine['name']}');
+          if (routineId != null) {
+            widget.onDelete!(routineId);
+          } else {
+            print('routineId가 null이므로 index 사용: ${widget.index}');
+            widget.onDelete!(widget.index);
+          }
         }
       }
     });
   }
-
 }
 
 class DayBubble extends StatefulWidget {
@@ -208,7 +236,7 @@ class _DayBubbleState extends State<DayBubble> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF3973F4),
+              color: AppTheme.primaryColorBright,
               borderRadius: BorderRadius.circular(24),
             ),
             child: const Text(

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../view_models/taking_view_model.dart';
 import '../widgets/taking_list_item.dart';
+import '../../../common/theme/app_theme.dart';
 
 class TakingListScreen extends StatelessWidget {
   const TakingListScreen({super.key});
@@ -61,28 +62,49 @@ class _TakingListScreenBodyState extends State<_TakingListScreenBody>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text(
-          '복용 체크리스트',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
+      backgroundColor: const Color.fromARGB(255, 250, 250, 255),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(70),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: AppBar(
+            title: Text(
+                '복용 체크리스트',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: const SizedBox.shrink(),
+            centerTitle: true,
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 15),
+                child: IconButton(
+                  icon: const Icon(Icons.add, color: AppTheme.greyPrimaryColor),
+                  iconSize: 25,
+                  alignment: Alignment.center,
+                  onPressed: () {
+                    context.push('/taking-add');
+                  },
+                ),
+              ),
+            ],
           ),
         ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: const SizedBox.shrink(),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.black, size: 28),
-            onPressed: () {
-              context.push('/taking-add');
-            },
-          ),
-        ],
       ),
       body: Column(
         children: [

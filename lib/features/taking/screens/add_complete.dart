@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lottie/lottie.dart';
 import '../../../common/theme/app_theme.dart';
 
 class TakingAddCompleteScreen extends StatelessWidget {

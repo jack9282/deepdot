@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import '../models/routine_model.dart';
 import '../../api/token_manager.dart';
+import '../../api/routine_api.dart';
 
-class RoutineRepository {
+class RoutineRepository extends ChangeNotifier {
   static const String _routineListKey = 'routine_list';
   static const String _lastSyncKey = 'routine_last_sync_timestamp';
   static const String _availableGoalsKey = 'available_goals';
@@ -13,37 +15,98 @@ class RoutineRepository {
   RoutineRepository._internal();
 
   List<RoutineModel> _routineList = [];
-  List<String> _availableGoals = ['아침루틴', '개강까지 -5KG', '정돈된 일상'];
+  List<Map<String, dynamic>> _availableGoals = [
+    {
+      'goalId': '1',
+      'name': '아침루틴',
+      'inUse': false,
+    },
+    {
+      'goalId': '2',
+      'name': '개강까지 -5KG',
+      'inUse': false,
+    },
+    {
+      'goalId': '3',
+      'name': '정돈된 일상',
+      'inUse': false,
+    },
+  ];
 
   List<RoutineModel> get routineList => List.unmodifiable(_routineList);
-  List<String> get availableGoals => List.unmodifiable(_availableGoals);
+  List<Map<String, dynamic>> get availableGoals => List.unmodifiable(_availableGoals);
+
+  // Helpers
+  Future<bool> _isGuest() => TokenManager.instance.isGuestMode();
+
+  bool _hasSelectedDays({
+    required bool mon,
+    required bool tue,
+    required bool wed,
+    required bool thu,
+    required bool fri,
+    required bool sat,
+    required bool sun,
+  }) {
+    return mon || tue || wed || thu || fri || sat || sun;
+  }
+
+  bool _isValidStartTime(Map<String, int> startTime) {
+    return startTime['hour'] != null && startTime['minute'] != null;
+  }
+
+  bool _isValidRoutineParams({
+    required String name,
+    required int goalId,
+    required bool mon,
+    required bool tue,
+    required bool wed,
+    required bool thu,
+    required bool fri,
+    required bool sat,
+    required bool sun,
+    required Map<String, int> startTime,
+  }) {
+    if (goalId <= 0) return false;
+    if (name.trim().isEmpty) return false;
+    if (!_hasSelectedDays(mon: mon, tue: tue, wed: wed, thu: thu, fri: fri, sat: sat, sun: sun)) return false;
+    if (!_isValidStartTime(startTime)) return false;
+    return true;
+  }
+
+  Future<void> _saveAndNotify() async {
+    await saveToStorage();
+    notifyListeners();
+  }
 
   Future<void> loadFromStorage() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // 루틴 목록 로드
-    final routineJson = prefs.getString(_routineListKey);
-    if (routineJson != null) {
-      final List<dynamic> jsonList = jsonDecode(routineJson);
-      _routineList = jsonList.map((item) {
-        final routine = RoutineModel.fromJson(item);
-        
-        // 체크 상태가 올바르지 않은 경우 초기화
-        if (routine.checks.length != 7) {
-          return routine.copyWith(
-            checks: List.generate(7, (_) => false),
-          );
-        }
-        return routine;
-      }).toList();
-    }
-    
-    // 사용 가능한 목표 목록 로드
-    final goalsJson = prefs.getString(_availableGoalsKey);
-    if (goalsJson != null) {
-      final List<dynamic> goalsList = jsonDecode(goalsJson);
-      _availableGoals = goalsList.map((item) => item.toString()).toList();
-    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final routineJson = prefs.getString(_routineListKey);
+      if (routineJson != null) {
+        final List<dynamic> jsonList = jsonDecode(routineJson);
+        _routineList = jsonList
+            .map((item) {
+              try {
+                return RoutineModel.fromJson(item);
+              } catch (_) {
+                return null;
+              }
+            })
+            .where((routine) => routine != null)
+            .cast<RoutineModel>()
+            .toList();
+      }
+
+      final goalsJson = prefs.getString(_availableGoalsKey);
+      if (goalsJson != null) {
+        try {
+          final List<dynamic> goalsList = jsonDecode(goalsJson);
+          _availableGoals = goalsList.map((item) => Map<String, dynamic>.from(item)).toList();
+        } catch (_) {}
+      }
+    } catch (_) {}
   }
 
   Future<void> saveToStorage() async {
@@ -53,334 +116,401 @@ class RoutineRepository {
     await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
   }
 
-  Future<void> addRoutine(String name, List<String> goals, List<String> days, bool notificationEnabled, String notificationTime, String memo) async {
-    // 비회원 모드 체크
-    if (await TokenManager.instance.isGuestMode()) {
-      print('비회원 모드 - 로컬에서만 저장');
-      final id = DateTime.now().millisecondsSinceEpoch.toString();
-      final checks = List.generate(7, (_) => false);
-      
-      final newRoutine = RoutineModel(
-        id: id,
-        name: name,
-        goals: goals,
-        days: days,
-        notificationEnabled: notificationEnabled,
-        notificationTime: notificationTime,
-        memo: memo,
-        checks: checks,
-        createdAt: DateTime.now(),
-      );
-      _routineList.add(newRoutine);
-      await saveToStorage();
-      return;
-    }
-
+  Future<bool> addRoutine({
+    required String name,
+    required int goalId,
+    required bool mon,
+    required bool tue,
+    required bool wed,
+    required bool thu,
+    required bool fri,
+    required bool sat,
+    required bool sun,
+    required bool active,
+    required String memo,
+    required Map<String, int> startTime,
+  }) async {
     try {
-      // TODO: RoutineApi.createRoutine() 구현 후 실제 API 호출로 교체
-      // final newRoutine = await RoutineApi.createRoutine(
-      //   name: name,
-      //   goals: goals,
-      //   days: days,
-      //   notificationEnabled: notificationEnabled,
-      //   notificationTime: notificationTime,
-      //   memo: memo,
-      // );
-      
-      // 현재는 API 호출을 시뮬레이션하고 실패하도록 설정
-      throw Exception('서버 연결에 실패했습니다');
-    } catch (e) {
-      // 서버 연결 실패 시 로컬에만 저장
-      print('서버 연결 실패, 로컬에서만 저장: $e');
-      final id = DateTime.now().millisecondsSinceEpoch.toString();
-      final checks = List.generate(7, (_) => false);
-      
-      final newRoutine = RoutineModel(
-        id: id,
+      if (await _isGuest()) {
+        final newRoutine = RoutineModel(
+          name: name,
+          goalId: goalId,
+          goalName: _getGoalNameById(goalId) ?? '새 목표',
+          mon: mon,
+          tue: tue,
+          wed: wed,
+          thu: thu,
+          fri: fri,
+          sat: sat,
+          sun: sun,
+          active: active,
+          memo: memo,
+          startTime: startTime,
+          createdAt: DateTime.now(),
+        );
+        _routineList.add(newRoutine);
+        await _saveAndNotify();
+        return true;
+      }
+
+      if (!_isValidRoutineParams(
         name: name,
-        goals: goals,
-        days: days,
-        notificationEnabled: notificationEnabled,
-        notificationTime: notificationTime,
+        goalId: goalId,
+        mon: mon,
+        tue: tue,
+        wed: wed,
+        thu: thu,
+        fri: fri,
+        sat: sat,
+        sun: sun,
+        startTime: startTime,
+      )) {
+        return false;
+      }
+
+      final response = await RoutineApi.createRoutine(
+        name: name,
+        goalId: goalId,
+        mon: mon,
+        tue: tue,
+        wed: wed,
+        thu: thu,
+        fri: fri,
+        sat: sat,
+        sun: sun,
+        active: active,
         memo: memo,
-        checks: checks,
+        startTime: startTime,
+      );
+
+      final newRoutine = RoutineModel(
+        routineId: response['routineId'] as int?,
+        name: name,
+        goalId: response['goalId'] as int? ?? goalId,
+        goalName: response['goalName'] as String? ?? _getGoalNameById(goalId) ?? '새 목표',
+        mon: mon,
+        tue: tue,
+        wed: wed,
+        thu: thu,
+        fri: fri,
+        sat: sat,
+        sun: sun,
+        active: response['active'] as bool? ?? active,
+        memo: memo,
+        startTime: startTime,
         createdAt: DateTime.now(),
       );
+
       _routineList.add(newRoutine);
-      await saveToStorage();
-      print('서버 연결 실패로 로컬에만 저장되었습니다.');
+      await _saveAndNotify();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
-  Future<void> updateRoutine(int index, String name, List<String> goals, List<String> days, bool notificationEnabled, String notificationTime, String memo) async {
-    if (index >= 0 && index < _routineList.length) {
-      final oldRoutine = _routineList[index];
-      
-      // 비회원 모드 체크
-      if (await TokenManager.instance.isGuestMode()) {
-        print('비회원 모드 - 로컬에서만 저장');
-        _routineList[index] = oldRoutine.copyWith(
-          name: name,
-          goals: goals,
-          days: days,
-          notificationEnabled: notificationEnabled,
-          notificationTime: notificationTime,
-          memo: memo,
-          updatedAt: DateTime.now(),
-        );
-        await saveToStorage();
-        return;
-      }
-      
-      try {
-        // TODO: RoutineApi.updateRoutine() 구현 후 실제 API 호출로 교체
-        // final updatedRoutine = await RoutineApi.updateRoutine(
-        //   routineId: int.parse(oldRoutine.id),
-        //   name: name,
-        //   goals: goals,
-        //   days: days,
-        //   notificationEnabled: notificationEnabled,
-        //   notificationTime: notificationTime,
-        //   memo: memo,
-        // );
-        
-        // 현재는 로컬에서만 저장
-        print('API 호출 건너뛰고 로컬에서만 저장');
-        _routineList[index] = oldRoutine.copyWith(
-          name: name,
-          goals: goals,
-          days: days,
-          notificationEnabled: notificationEnabled,
-          notificationTime: notificationTime,
-          memo: memo,
-          updatedAt: DateTime.now(),
-        );
-      } catch (e) {
-        print('API 수정 실패, 로컬에서만 저장: $e');
-        _routineList[index] = oldRoutine.copyWith(
-          name: name,
-          goals: goals,
-          days: days,
-          notificationEnabled: notificationEnabled,
-          notificationTime: notificationTime,
-          memo: memo,
-          updatedAt: DateTime.now(),
-        );
-        print('서버 연결 실패로 로컬에만 저장되었습니다.');
-      }
-      
-      await saveToStorage();
-    }
-  }
+  Future<bool> updateRoutine({
+    required int routineId,
+    required String name,
+    required int goalId,
+    required bool mon,
+    required bool tue,
+    required bool wed,
+    required bool thu,
+    required bool fri,
+    required bool sat,
+    required bool sun,
+    required bool active,
+    required String memo,
+    required Map<String, int> startTime,
+  }) async {
+    try {
+      final index = _routineList.indexWhere((routine) => routine.routineId == routineId);
+      if (index == -1) return false;
 
-  Future<void> updateRoutineCheck(int routineIndex, int dayIndex, bool isChecked) async {
-    if (routineIndex >= 0 && routineIndex < _routineList.length) {
-      final routine = _routineList[routineIndex];
-      
-      // 체크 상태 배열이 올바르지 않은 경우 초기화
-      List<bool> newChecks;
-      if (routine.checks.length != 7) {
-        newChecks = List.generate(7, (_) => false);
-      } else {
-        newChecks = List<bool>.from(routine.checks);
+      if (await _isGuest()) {
+        _routineList[index] = _routineList[index].copyWith(
+          name: name,
+          goalId: goalId,
+          goalName: _getGoalNameById(goalId) ?? '새 목표',
+          mon: mon,
+          tue: tue,
+          wed: wed,
+          thu: thu,
+          fri: fri,
+          sat: sat,
+          sun: sun,
+          active: active,
+          memo: memo,
+          startTime: startTime,
+          updatedAt: DateTime.now(),
+        );
+        await _saveAndNotify();
+        return true;
       }
-      
-      // 요일 인덱스가 유효한지 확인
-      if (dayIndex >= 0 && dayIndex < 7) {
-        newChecks[dayIndex] = isChecked;
-      }
-      
-      _routineList[routineIndex] = routine.copyWith(
-        checks: newChecks,
+
+      final response = await RoutineApi.updateRoutine(
+        routineId: routineId,
+        name: name,
+        goalId: goalId,
+        mon: mon,
+        tue: tue,
+        wed: wed,
+        thu: thu,
+        fri: fri,
+        sat: sat,
+        sun: sun,
+        active: active,
+        memo: memo,
+        startTime: startTime,
+      );
+
+      _routineList[index] = _routineList[index].copyWith(
+        name: name,
+        goalId: response['goalId'] as int,
+        goalName: response['goalName'] as String,
+        mon: mon,
+        tue: tue,
+        wed: wed,
+        thu: thu,
+        fri: fri,
+        sat: sat,
+        sun: sun,
+        active: response['active'] as bool,
+        memo: memo,
+        startTime: startTime,
         updatedAt: DateTime.now(),
       );
-      await saveToStorage();
+
+      await _saveAndNotify();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
-  Future<void> removeRoutine(int index) async {
-    if (index >= 0 && index < _routineList.length) {
-      final id = _routineList[index].id;
-      
-      // 비회원 모드 체크
-      if (await TokenManager.instance.isGuestMode()) {
-        print('비회원 모드 - 로컬에서만 삭제');
+  Future<bool> removeRoutine(int routineId) async {
+    try {
+      final index = _routineList.indexWhere((routine) => routine.routineId == routineId);
+      if (index == -1) return false;
+
+      if (await _isGuest()) {
         _routineList.removeAt(index);
-        await saveToStorage();
-        return;
+        await _saveAndNotify();
+        return true;
       }
-      
-      try {
-        // TODO: RoutineApi.deleteRoutine() 구현 후 실제 API 호출로 교체
-        // await RoutineApi.deleteRoutine(int.parse(id));
-        print('API 호출 건너뛰고 로컬에서만 삭제');
-      } catch (e) {
-        print('API 삭제 실패, 로컬에서만 삭제: $e');
-      }
-      
+
+      await RoutineApi.deleteRoutine(routineId: routineId);
       _routineList.removeAt(index);
-      await saveToStorage();
+      await _saveAndNotify();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> loadGoalsFromServer() async {
+    try {
+      if (await _isGuest()) {
+        return false;
+      }
+
+      final response = await RoutineApi.getGoals();
+      if (response['data'] != null) {
+        final goalsData = List<Map<String, dynamic>>.from(response['data']);
+        _availableGoals = goalsData;
+        await _saveAndNotify();
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> addGoal(String name) async {
+    try {
+      if (await _isGuest()) {
+        final newGoal = {
+          'goalId': (_availableGoals.length + 1).toString(),
+          'name': name,
+          'inUse': false,
+        };
+        _availableGoals.add(newGoal);
+        await _saveAndNotify();
+        return true;
+      }
+
+      final response = await RoutineApi.createGoal(name: name);
+      if (response['data'] != null) {
+        _availableGoals.add(Map<String, dynamic>.from(response['data']));
+        await _saveAndNotify();
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> updateGoal(String goalId, String name) async {
+    try {
+      final index = _availableGoals.indexWhere((goal) => goal['goalId'] == goalId);
+      if (index == -1) {
+        return false;
+      }
+
+      if (await _isGuest()) {
+        _availableGoals[index]['name'] = name;
+        await _saveAndNotify();
+        return true;
+      }
+
+      final response = await RoutineApi.updateGoal(goalId: int.tryParse(goalId) ?? 0, name: name);
+      if (response['data'] != null) {
+        _availableGoals[index] = Map<String, dynamic>.from(response['data']);
+        await _saveAndNotify();
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteGoal(String goalId) async {
+    try {
+      final index = _availableGoals.indexWhere((goal) => goal['goalId'] == goalId);
+      if (index == -1) {
+        return false;
+      }
+
+      final isInUse = _availableGoals[index]['inUse'] == true;
+      if (isInUse) {
+        return false;
+      }
+
+      if (await _isGuest()) {
+        _availableGoals.removeAt(index);
+        await _saveAndNotify();
+        return true;
+      }
+
+      await RoutineApi.deleteGoal(goalId: int.tryParse(goalId) ?? 0);
+      _availableGoals.removeAt(index);
+      await _saveAndNotify();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> loadRoutinesFromServer() async {
+    try {
+      if (await _isGuest()) {
+        return false;
+      }
+
+      final allRoutines = <RoutineModel>[];
+      for (final goal in _availableGoals) {
+        final goalId = int.tryParse(goal['goalId'].toString()) ?? 0;
+        try {
+          final response = await RoutineApi.getRoutinesByGoal(goalId: goalId);
+          if (response['data'] != null) {
+            final routines = List<Map<String, dynamic>>.from(response['data']);
+            for (final routineData in routines) {
+              try {
+                final routine = RoutineModel.fromJson(routineData);
+                allRoutines.add(routine);
+              } catch (_) {}
+            }
+          }
+        } catch (_) {}
+      }
+
+      _routineList = allRoutines;
+      await _saveAndNotify();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
   void clearAllData() async {
     _routineList.clear();
+    _availableGoals.clear();
     await saveToStorage();
+    notifyListeners();
   }
 
-  RoutineModel? getRoutineById(String id) {
+  RoutineModel? getRoutineById(int routineId) {
     try {
-      return _routineList.firstWhere((item) => item.id == id);
-    } catch (e) {
+      return _routineList.firstWhere((item) => item.routineId == routineId);
+    } catch (_) {
       return null;
     }
   }
 
   int getRoutineCount() => _routineList.length;
 
-  /// 마지막 동기화 시간 확인
   Future<DateTime?> getLastSyncTime() async {
     final prefs = await SharedPreferences.getInstance();
     final timestamp = prefs.getInt(_lastSyncKey);
     return timestamp != null ? DateTime.fromMillisecondsSinceEpoch(timestamp) : null;
   }
 
-  /// 특정 목표의 루틴 목록 조회
-  List<RoutineModel> getRoutinesByGoal(String goal) {
-    return _routineList.where((routine) => routine.goals.contains(goal)).toList();
+  List<RoutineModel> getRoutinesByGoal(int goalId) {
+    return _routineList.where((routine) => routine.goalId == goalId).toList();
   }
 
-  /// 특정 루틴의 체크 상태 조회
-  List<bool> getRoutineChecks(int routineIndex) {
-    if (routineIndex >= 0 && routineIndex < _routineList.length) {
-      final routine = _routineList[routineIndex];
-      
-      // 체크 상태 배열이 올바르지 않은 경우 기본값 반환
-      if (routine.checks.length != 7) {
-        return List.generate(7, (_) => false);
-      }
-      
-      return List<bool>.from(routine.checks);
-    }
-    return List.generate(7, (_) => false);
-  }
-
-  /// 체크 상태 통계 조회
-  Map<String, dynamic> getRoutineStats() {
-    int totalRoutines = _routineList.length;
-    int totalChecks = 0;
-    int completedChecks = 0;
-
-    for (final routine in _routineList) {
-      for (final check in routine.checks) {
-        totalChecks++;
-        if (check) completedChecks++;
-      }
-    }
-
-    return {
-      'totalRoutines': totalRoutines,
-      'totalChecks': totalChecks,
-      'completedChecks': completedChecks,
-      'completionRate': totalChecks > 0 ? (completedChecks / totalChecks) : 0.0,
-    };
-  }
-
-  /// API에서 모든 루틴 데이터 동기화
-  Future<void> syncFromApi() async {
-    // 비회원 모드 체크
-    if (await TokenManager.instance.isGuestMode()) {
-      print('비회원 모드 - API 동기화 건너뛰기');
-      return;
-    }
-    
+  Future<void> updateRoutineAlarmId(int routineId, int alarmId) async {
     try {
-      // TODO: RoutineApi 구현 후 실제 API 호출로 교체
-      // final apiRoutines = await RoutineApi.getAllRoutines();
-      
-      // 현재는 로컬 데이터만 유지
-      print('루틴 API 동기화 - 현재는 로컬 데이터만 사용');
-      await saveToStorage();
-    } catch (e) {
-      print('루틴 API 동기화 실패: $e');
-      // API 실패 시 로컬 데이터 유지
-    }
-  }
-
-  /// 루틴의 알람 ID를 업데이트합니다.
-  Future<void> updateRoutineAlarmId(int routineIndex, int alarmId) async {
-    try {
-      if (routineIndex >= 0 && routineIndex < _routineList.length) {
-        final routine = _routineList[routineIndex];
-        final updatedRoutine = routine.copyWith(alarmId: alarmId);
-        _routineList[routineIndex] = updatedRoutine;
+      final index = _routineList.indexWhere((routine) => routine.routineId == routineId);
+      if (index != -1 && _routineList[index].alarmId != alarmId) {
+        _routineList[index] = _routineList[index].copyWith(alarmId: alarmId);
         await saveToStorage();
+        notifyListeners();
       }
-    } catch (e) {
-      print('알람 ID 업데이트 중 오류 발생: $e');
-    }
+    } catch (_) {}
   }
 
-  /// 마지막에 추가된 루틴의 알람 ID를 설정합니다.
-  Future<void> setLastAddedRoutineAlarmId(int alarmId) async {
+  Future<void> updateRoutineCheckState(int routineId, int dayIndex, bool isChecked) async {
     try {
-      if (_routineList.isNotEmpty) {
-        final lastIndex = _routineList.length - 1;
-        final lastRoutine = _routineList[lastIndex];
-        final updatedRoutine = lastRoutine.copyWith(alarmId: alarmId);
-        _routineList[lastIndex] = updatedRoutine;
-        await saveToStorage();
-      }
-    } catch (e) {
-      print('마지막 루틴 알람 ID 설정 중 오류 발생: $e');
-    }
-  }
-
-  /// 목표 추가
-  Future<void> addGoal(String goal) async {
-    if (!_availableGoals.contains(goal)) {
-      _availableGoals.add(goal);
-      await saveToStorage();
-    }
-  }
-
-  /// 목표 수정
-  Future<void> updateGoal(String oldGoal, String newGoal) async {
-    final index = _availableGoals.indexOf(oldGoal);
-    if (index != -1 && newGoal.isNotEmpty) {
-      _availableGoals[index] = newGoal;
-      
-      // 해당 목표를 사용하는 모든 루틴의 목표도 업데이트
-      for (int i = 0; i < _routineList.length; i++) {
-        final routine = _routineList[i];
-        if (routine.goals.contains(oldGoal)) {
-          final updatedGoals = List<String>.from(routine.goals);
-          final goalIndex = updatedGoals.indexOf(oldGoal);
-          if (goalIndex != -1) {
-            updatedGoals[goalIndex] = newGoal;
-            _routineList[i] = routine.copyWith(goals: updatedGoals);
-          }
+      final index = _routineList.indexWhere((routine) => routine.routineId == routineId);
+      if (index != -1) {
+        final currentCheckStates = List<bool>.from(_routineList[index].checkStates);
+        if (dayIndex >= 0 && dayIndex < currentCheckStates.length) {
+          currentCheckStates[dayIndex] = isChecked;
+          _routineList[index] = _routineList[index].copyWith(checkStates: currentCheckStates);
+          await saveToStorage();
+          notifyListeners();
         }
       }
-      await saveToStorage();
+    } catch (_) {}
+  }
+
+  String? _getGoalNameById(int goalId) {
+    try {
+      final goal = _availableGoals.firstWhere((goal) =>
+        int.tryParse(goal['goalId'].toString()) == goalId
+      );
+      return goal['name'] as String?;
+    } catch (_) {
+      return null;
     }
   }
 
-  /// 목표 삭제
-  Future<void> deleteGoal(String goal) async {
-    if (_availableGoals.contains(goal)) {
-      _availableGoals.remove(goal);
-      
-      // 해당 목표를 사용하는 모든 루틴에서도 제거
-      for (int i = 0; i < _routineList.length; i++) {
-        final routine = _routineList[i];
-        if (routine.goals.contains(goal)) {
-          final updatedGoals = List<String>.from(routine.goals);
-          updatedGoals.remove(goal);
-          _routineList[i] = routine.copyWith(goals: updatedGoals);
-        }
+  Future<bool> syncWithServer() async {
+    try {
+      if (await _isGuest()) {
+        return false;
       }
-      await saveToStorage();
+
+      await loadGoalsFromServer();
+      await loadRoutinesFromServer();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 } 

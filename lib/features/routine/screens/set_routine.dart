@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../view_models/routine_view_model.dart';
 import '../widgets/goal_item.dart';
 import '../../../common/theme/app_theme.dart';
+import '../../../data/repositories/routine_repository.dart';
+import '../../../utils/snak_bar.dart';
 
 class SetRoutineScreen extends StatefulWidget {
   final Map<String, dynamic>? existingRoutine;
@@ -19,9 +22,10 @@ class SetRoutineScreen extends StatefulWidget {
 class _SetRoutineScreenState extends State<SetRoutineScreen> {
   final TextEditingController _routineNameController = TextEditingController();
   final TextEditingController _memoController = TextEditingController();
-  final List<String> _selectedGoals = [];
+  String? _selectedGoalId;
+  String? _selectedGoalName;
   final List<bool> _selectedDays = List.filled(7, false);
-  bool _notificationEnabled = true;
+  bool _active = true;
   bool _showTimePicker = false;
 
   final List<String> _days = ['월', '화', '수', '목', '금', '토', '일'];
@@ -37,40 +41,35 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
     if (widget.existingRoutine != null) {
       _routineNameController.text = widget.existingRoutine!['name'] ?? '';
       _memoController.text = widget.existingRoutine!['memo'] ?? '';
-      _notificationEnabled =
-          widget.existingRoutine!['notificationEnabled'] ?? true;
+      _active = widget.existingRoutine!['active'] ?? true;
 
-      final existingTime = widget.existingRoutine!['notificationTime'] as String?;
-      if (existingTime != null && existingTime.isNotEmpty) {
-        final parts = existingTime.split(':');
-        if (parts.length == 2) {
-          try {
-            final hour = int.parse(parts[0]);
-            final minute = int.parse(parts[1]);
-            if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
-              _selectedTime = TimeOfDay(hour: hour, minute: minute);
-            }
-          } catch (e) {
-            _selectedTime = const TimeOfDay(hour: 8, minute: 20);
-          }
-        }
+      // 시작 시간 설정
+      final startTime = widget.existingRoutine!['startTime'] as Map<String, dynamic>?;
+      if (startTime != null) {
+        final hour = startTime['hour'] != null ? int.tryParse(startTime['hour'].toString()) ?? 8 : 8;
+        final minute = startTime['minute'] != null ? int.tryParse(startTime['minute'].toString()) ?? 20 : 20;
+        _selectedTime = TimeOfDay(hour: hour, minute: minute);
       }
 
-      final existingGoals = widget.existingRoutine!['goals'] as List?;
-      if (existingGoals != null) {
-        _selectedGoals.addAll(existingGoals.cast<String>());
-      }
+      // 목표 설정
+      _selectedGoalId = widget.existingRoutine!['goalId']?.toString();
+      _selectedGoalName = widget.existingRoutine!['goalName'] as String?;
 
-      final existingDays = widget.existingRoutine!['days'] as List?;
-      if (existingDays != null) {
-        for (int i = 0; i < _days.length; i++) {
-          _selectedDays[i] = existingDays.contains(_days[i]);
-        }
-      }
+      // 요일 설정
+      _selectedDays[0] = widget.existingRoutine!['mon'] ?? false;
+      _selectedDays[1] = widget.existingRoutine!['tue'] ?? false;
+      _selectedDays[2] = widget.existingRoutine!['wed'] ?? false;
+      _selectedDays[3] = widget.existingRoutine!['thu'] ?? false;
+      _selectedDays[4] = widget.existingRoutine!['fri'] ?? false;
+      _selectedDays[5] = widget.existingRoutine!['sat'] ?? false;
+      _selectedDays[6] = widget.existingRoutine!['sun'] ?? false;
     }
+    
+    // 화면 로드 시 목표 목록 새로고침
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshGoals();
+    });
   }
-
-
 
   @override
   void dispose() {
@@ -87,7 +86,11 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+          icon: SvgPicture.asset(
+            'assets/svg/back.svg',
+            width: 7,
+            height: 12,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         centerTitle: true,
@@ -115,7 +118,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     const Text(
                       '루틴이름',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: Colors.black,
                       ),
@@ -128,26 +131,20 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         FocusScope.of(context).nextFocus();
                       },
                       decoration: InputDecoration(
-                        hintText: '아침 물 마시기',
+                        hintText: '루틴을 작성해주세요',
                         hintStyle: TextStyle(
-                          color: Colors.grey[400],
+                          color: AppTheme.textGreyColor,
                           fontWeight: FontWeight.w500,
                         ),
                         filled: true,
                         fillColor: Colors.grey[100],
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            color: _showNameError ? Colors.red : Colors.grey[300]!,
-                            width: _showNameError ? 2 : 1,
-                          ),
+                          borderSide: BorderSide.none,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            color: _showNameError ? Colors.red : Colors.grey[300]!,
-                            width: _showNameError ? 2 : 2,
-                          ),
+                          borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -171,51 +168,75 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     const SizedBox(height: 8),
                     Text(
                       '예시 : 자기 전 스트레칭, 공복유산소, 이거 보면 목 스트레칭 등',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 12, color: AppTheme.textGreyColor),
                     ),
                     const SizedBox(height: 24),
 
                     // 목표 설정
-                    const Text(
-                      '목표설정',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '목표설정',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _refreshGoals,
+                          icon: const Icon(Icons.refresh, size: 15),
+                          tooltip: '목표 목록 새로고침',
+                        ),
+                      ],
                     ),
                     Text(
                       '길게눌러 수정 및 삭제 가능',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 12, color: AppTheme.textGreyColor),
                     ),
                     const SizedBox(height: 12),
                     Consumer<RoutineViewModel>(
                       builder: (context, routineVM, child) {
-                        final availableGoals = routineVM.availableGoals;
+                        final availableGoalNames = routineVM.availableGoalNames;
+                        
+                        if (availableGoalNames.isEmpty) {
+                          return _buildAddGoalChip();
+                        }
+                        
                         return Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            ...availableGoals.map((goal) => GoalItem(
-                              goal: goal,
-                              isSelected: _selectedGoals.contains(goal),
-                              onTap: () {
-                                setState(() {
-                                  if (_selectedGoals.contains(goal)) {
-                                    _selectedGoals.remove(goal);
-                                  } else {
-                                    _selectedGoals.add(goal);
-                                  }
-                                  _showGoalError = false;
-                                });
-                              },
-                              onEditPressed: () {
-                                _showEditGoalNameDialog(goal);
-                              },
-                              onDeletePressed: () {
-                                _deleteGoal(goal);
-                              },
-                            )),
+                            ...availableGoalNames.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final goal = entry.value;
+                              return GoalItem(
+                                goal: goal,
+                                isSelected: _selectedGoalName == goal,
+                                colorIndex: index,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedGoalName = goal;
+                                    // 실제 goalId 찾기
+                                    final goalIndex = availableGoalNames.indexOf(goal);
+                                    if (goalIndex != -1) {
+                                      final goalData = routineVM.availableGoals[goalIndex];
+                                      final goalId = goalData['goalId'];
+                                      _selectedGoalId = goalId?.toString();
+                                      print('선택된 목표: $goal, goalId: $_selectedGoalId');
+                                    }
+                                    _showGoalError = false;
+                                  });
+                                },
+                                onEditPressed: () {
+                                  _showEditGoalNameDialog(goal);
+                                },
+                                onDeletePressed: () {
+                                  _deleteGoal(goal);
+                                },
+                              );
+                            }),
                             _buildAddGoalChip(),
                           ],
                         );
@@ -225,7 +246,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 4, left: 4),
                         child: Text(
-                          '목표를 하나 이상 선택해주세요',
+                          '목표를 선택해주세요',
                           style: TextStyle(fontSize: 12, color: Colors.red[600]),
                         ),
                       ),
@@ -238,16 +259,16 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         const Text(
                           '루틴 알림을 받을까요?',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Colors.black,
                           ),
                         ),
                         Switch(
-                          value: _notificationEnabled,
+                          value: _active,
                           onChanged: (value) {
                             setState(() {
-                              _notificationEnabled = value;
+                              _active = value;
                               if (value) {
                                 _showTimePicker = true;
                               }
@@ -259,13 +280,12 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     ),
 
                     // 시간 설정 표시
-                    if (_notificationEnabled)
+                    if (_active)
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF5F6FA),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFE0E0E0)),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -294,7 +314,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         ),
                       ),
 
-                    if (_notificationEnabled)
+                    if (_active)
                       const SizedBox(height: 16),
 
                     const SizedBox(height: 24),
@@ -303,7 +323,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     const Text(
                       '얼마나 자주할 건가요?',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: Colors.black,
                       ),
@@ -331,7 +351,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                                 border: Border.all(
                                   color: _selectedDays[i]
                                       ? AppTheme.primaryColor
-                                      : const Color(0xFFE0E0E0),
+                                      : AppTheme.textGreyColor,
                                 ),
                                 borderRadius: BorderRadius.circular(18),
                               ),
@@ -341,7 +361,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                                   style: TextStyle(
                                     color: _selectedDays[i]
                                         ? Colors.white
-                                        : const Color(0xFFB0B0B0),
+                                        : AppTheme.textGreyColor,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 15,
                                   ),
@@ -352,24 +372,12 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-
-                    // 메모
-                    const Text(
-                      '메모',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
+                    const SizedBox(height: 40),
+                                          Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       child: TextField(
                         controller: _memoController,
                         maxLines: 4,
@@ -419,10 +427,17 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                     return;
                   }
                   
-                  if (_selectedGoals.isEmpty) {
+                  if (_selectedGoalName == null || _selectedGoalId == null) {
                     setState(() {
                       _showGoalError = true;
                     });
+                    CustomSnackBar.showError(context, '목표를 선택해주세요');
+                    return;
+                  }
+                  
+                  // 최소 하나의 요일이 선택되어야 함
+                  if (!_selectedDays.contains(true)) {
+                    CustomSnackBar.showError(context, '최소 하나의 요일을 선택해주세요');
                     return;
                   }
                   
@@ -439,31 +454,63 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                   
                   final notificationTimeString = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
                   
+                  final startTime = {
+                    'hour': _selectedTime.hour,
+                    'minute': _selectedTime.minute,
+                    'second': 0,
+                    'nano': 0,
+                  };
+                  
+                  print('=== 루틴 저장 정보 ===');
+                  print('이름: ${_routineNameController.text.trim()}');
+                  print('선택된 목표: $_selectedGoalName');
+                  print('선택된 goalId: $_selectedGoalId');
+                  print('선택된 요일: $selectedDaysList');
+                  print('알림 시간: $notificationTimeString');
+                  print('활성화: $_active');
+                  print('메모: ${_memoController.text.trim()}');
+                  print('========================');
+
                   if (widget.existingRoutine != null && widget.routineIndex != null) {
                     // 기존 루틴 수정
-                    await routineVM.updateRoutine(
-                      widget.routineIndex!,
-                      _routineNameController.text.trim(),
-                      _selectedGoals,
-                      selectedDaysList,
-                      _notificationEnabled,
-                      notificationTimeString,
-                      _memoController.text.trim(),
-                    );
+                    final routineId = widget.existingRoutine!['routineId'];
+                    if (routineId != null) {
+                      final id = int.tryParse(routineId.toString());
+                      if (id != null) {
+                        await routineVM.updateRoutine(
+                          routineId: id,
+                          name: _routineNameController.text.trim(),
+                          goalId: int.tryParse(_selectedGoalId ?? '1') ?? 1,
+                          mon: _selectedDays[0],
+                          tue: _selectedDays[1],
+                          wed: _selectedDays[2],
+                          thu: _selectedDays[3],
+                          fri: _selectedDays[4],
+                          sat: _selectedDays[5],
+                          sun: _selectedDays[6],
+                          active: _active,
+                          memo: _memoController.text.trim(),
+                          startTime: startTime,
+                        );
+                      }
+                    }
                   } else {
                     // 새 루틴 생성
                     await routineVM.addRoutine(
-                      _routineNameController.text.trim(),
-                      _selectedGoals,
-                      selectedDaysList,
-                      _notificationEnabled,
-                      notificationTimeString,
-                      _memoController.text.trim(),
+                      name: _routineNameController.text.trim(),
+                      goalId: int.tryParse(_selectedGoalId ?? '1') ?? 1,
+                      mon: _selectedDays[0],
+                      tue: _selectedDays[1],
+                      wed: _selectedDays[2],
+                      thu: _selectedDays[3],
+                      fri: _selectedDays[4],
+                      sat: _selectedDays[5],
+                      sun: _selectedDays[6],
+                      active: _active,
+                      memo: _memoController.text.trim(),
+                      startTime: startTime,
                     );
                   }
-
-                  // 알람 설정은 RoutineViewModel에서 자동으로 처리됨
-                  // 별도의 알람 설정 로직이 필요 없음
 
                   if (widget.existingRoutine != null) {
                     Navigator.of(context).pop();
@@ -481,11 +528,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                 ),
                 child: const Text(
                   '저장하기',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -511,10 +554,170 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
     );
   }
 
+  Widget _buildAddGoalChip() {
+    final routineVM = context.read<RoutineViewModel>();
+    final isMaxGoalsReached = routineVM.availableGoalNames.length >= 5;
+    
+    return GestureDetector(
+      onTap: isMaxGoalsReached ? null : () {
+        _showAddGoalDialog();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: isMaxGoalsReached ? AppTheme.textGreyColor : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: isMaxGoalsReached ? AppTheme.textGreyColor : AppTheme.textGreyColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.add, 
+              color: isMaxGoalsReached ? AppTheme.textGreyColor : AppTheme.textGreyColor, 
+              size: 16
+            ),
+            const SizedBox(width: 4),
+            Text(
+              isMaxGoalsReached ? '목표 5개 제한' : '목표 추가하기',
+              style: TextStyle(
+                color: isMaxGoalsReached ? AppTheme.textGreyColor : AppTheme.textGreyColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
+  void _showAddGoalDialog() {
+    final TextEditingController goalController = TextEditingController();
+    final routineVM = context.read<RoutineViewModel>();
+    final isMaxGoalsReached = routineVM.availableGoalNames.length >= 5;
+    
+    if (isMaxGoalsReached) {
+      CustomSnackBar.showWarning(context, '목표는 최대 5개까지 추가할 수 있습니다');
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            '새 목표 추가',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '현재 ${routineVM.availableGoalNames.length}/5개 목표',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: goalController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: '목표를 입력해주세요',
+                  hintStyle: TextStyle(
+                    color: Colors.grey[400],
+                    fontWeight: FontWeight.w500,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: AppTheme.primaryColor),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Colors.black,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                '취소',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newGoal = goalController.text.trim();
+                if (newGoal.isNotEmpty) {
+                  final routineVM = context.read<RoutineViewModel>();
+                  await routineVM.addGoal(newGoal);
+                  
+                  setState(() {
+                    if (_selectedGoalName == null || _selectedGoalName != newGoal) {
+                      _selectedGoalName = newGoal;
+                    }
+                    _showGoalError = false;
+                  });
+                }
+                Navigator.of(context).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                '추가',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   void _showEditGoalNameDialog(String oldGoal) async {
     final TextEditingController goalController = TextEditingController(text: oldGoal);
+    
+    // goalId 찾기
+    final routineVM = context.read<RoutineViewModel>();
+    final goalIndex = routineVM.availableGoalNames.indexOf(oldGoal);
+    final goalId = goalIndex != -1 ? routineVM.availableGoals[goalIndex]['goalId']?.toString() ?? '' : '';
     
     showDialog(
       context: context,
@@ -579,13 +782,11 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
               onPressed: () async {
                 final newGoal = goalController.text.trim();
                 if (newGoal.isNotEmpty && newGoal != oldGoal) {
-                  final routineVM = context.read<RoutineViewModel>();
-                  await routineVM.updateGoal(oldGoal, newGoal);
+                  await routineVM.updateGoal(goalId, newGoal);
                   
                   setState(() {
-                    final selectedIndex = _selectedGoals.indexOf(oldGoal);
-                    if (selectedIndex != -1) {
-                      _selectedGoals[selectedIndex] = newGoal;
+                    if (_selectedGoalName == oldGoal) {
+                      _selectedGoalName = newGoal;
                     }
                   });
                 }
@@ -612,50 +813,60 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
     );
   }
 
+  void _refreshGoals() async {
+    try {
+      final routineVM = context.read<RoutineViewModel>();
+      await RoutineRepository().loadGoalsFromServer();
+      setState(() {});
+    } catch (e) {
+      print('목표 목록 새로고침 실패: $e');
+    }
+  }
+
   void _deleteGoal(String goal) async {
     final routineVM = context.read<RoutineViewModel>();
-    await routineVM.deleteGoal(goal);
-    
-    setState(() {
-      _selectedGoals.remove(goal);
-    });
+    final goalIndex = routineVM.availableGoalNames.indexOf(goal);
+    if (goalIndex != -1) {
+      final goalData = routineVM.availableGoals[goalIndex];
+      final goalId = goalData['goalId']?.toString() ?? '';
+      final isInUse = goalData['inUse'] == true;
+      
+      if (goalId.isNotEmpty) {
+        // 삭제 확인 다이얼로그
+        final shouldDelete = await _showDeleteGoalDialog(goal, isInUse);
+        
+        if (shouldDelete) {
+          try {
+            final success = await routineVM.deleteGoal(goalId);
+            
+            if (success) {
+              CustomSnackBar.showSuccess(context, '목표가 성공적으로 삭제되었습니다.');
+              
+              setState(() {
+                if (_selectedGoalName == goal) {
+                  _selectedGoalName = null;
+                  _selectedGoalId = null;
+                }
+              });
+            } else {
+              CustomSnackBar.showError(context, '목표 삭제에 실패했습니다.');
+            }
+          } catch (e) {
+            print('목표 삭제 중 오류: $e');
+            CustomSnackBar.showError(context, '목표 삭제 중 오류가 발생했습니다: $e');
+          }
+        }
+      }
+    }
   }
 
-  Widget _buildAddGoalChip() {
-    return GestureDetector(
-      onTap: () {
-        _showAddGoalDialog();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F6FA),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF888888)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.add, color: const Color(0xFF888888), size: 16),
-            const SizedBox(width: 4),
-            Text(
-              '목표 추가하기',
-              style: const TextStyle(
-                color: Color(0xFF888888),
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAddGoalDialog() {
-    final TextEditingController goalController = TextEditingController();
+  Future<bool> _showDeleteGoalDialog(String goalName, bool isInUse) async {
+    if (isInUse) {
+      CustomSnackBar.showWarning(context, '사용 중인 목표는 삭제할 수 없습니다.');
+      return false;
+    }
     
-    showDialog(
+    return await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -664,47 +875,39 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
             borderRadius: BorderRadius.circular(16),
           ),
           title: const Text(
-            '새 목표 추가',
+            '목표 삭제',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: Colors.black,
             ),
           ),
-          content: TextField(
-            controller: goalController,
-            autofocus: true,
-            decoration: InputDecoration(
-              hintText: '목표를 입력해주세요',
-              hintStyle: TextStyle(
-                color: Colors.grey[400],
-                fontWeight: FontWeight.w500,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '정말로 "$goalName" 목표를 삭제하시겠습니까?',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black,
+                ),
               ),
-              filled: true,
-              fillColor: Colors.grey[100],
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: Colors.grey[300]!),
+              const SizedBox(height: 8),
+              const Text(
+                '⚠️ 이 목표에 연결된 모든 루틴도 함께 삭제됩니다.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.red,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: AppTheme.primaryColor),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-            ),
-            style: const TextStyle(
-              fontSize: 15,
-              color: Colors.black,
-              fontWeight: FontWeight.w500,
-            ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(false);
               },
               child: Text(
                 '취소',
@@ -715,23 +918,11 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
               ),
             ),
             ElevatedButton(
-              onPressed: () async {
-                final newGoal = goalController.text.trim();
-                if (newGoal.isNotEmpty) {
-                  final routineVM = context.read<RoutineViewModel>();
-                  await routineVM.addGoal(newGoal);
-                  
-                  setState(() {
-                    if (!_selectedGoals.contains(newGoal)) {
-                      _selectedGoals.add(newGoal);
-                    }
-                    _showGoalError = false;
-                  });
-                }
-                Navigator.of(context).pop();
+              onPressed: () {
+                Navigator.of(context).pop(true);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
+                backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -739,7 +930,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                 elevation: 0,
               ),
               child: const Text(
-                '추가',
+                '삭제',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                 ),
@@ -748,7 +939,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
           ],
         );
       },
-    );
+    ) ?? false;
   }
 }
 

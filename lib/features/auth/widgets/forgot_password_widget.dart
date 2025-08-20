@@ -307,7 +307,7 @@ class _ForgotPasswordWidgetState extends State<ForgotPasswordWidget> {
                                       leading: BackButton(),
                                       centerTitle: true,
                                       title: Text(
-                                        '아이디 / 비밀번호 찾기',
+                                        '비밀번호 재설정',
                                         style: TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.w600,
@@ -315,7 +315,10 @@ class _ForgotPasswordWidgetState extends State<ForgotPasswordWidget> {
                                         ),
                                       ),
                                     ),
-                                    body: ResetPasswordWidget(),
+                                    body: ResetPasswordWidget(
+                                      username: _idController.text.trim(),
+                                      email: _emailController.text.trim(),
+                                    ),
                                   ),
                                 ),
                               );

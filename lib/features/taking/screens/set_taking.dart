@@ -1,10 +1,9 @@
-import 'package:deepdot/common/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../view_models/taking_view_model.dart';
-import '../../../utils/alarm.dart';
+import '../../../common/theme/app_theme.dart';
 
 class SetTakingScreen extends StatelessWidget {
   final int? editIndex;
@@ -60,7 +59,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
   final List<String> _minuteOptions = ['00', '30'];
 
   // 시간 리스트 (최대 3개)
-  List<String> _takingTimes = ['08:00'];
+  List<String> _takingTimes = [];
 
   final List<String> _medicationTemplates = [
     '타이레놀',
@@ -279,7 +278,11 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+          icon: SvgPicture.asset(
+            'assets/svg/back.svg',
+            width: 7,
+            height: 12,
+          ),
           onPressed: () {
             if (GoRouter.of(context).canPop()) {
               GoRouter.of(context).pop();
@@ -329,14 +332,14 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                 style: const TextStyle(fontSize: 18, color: Colors.black),
                 decoration: InputDecoration(
                   hintText: '예시) 타이레놀, 이지엔6',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  hintStyle: TextStyle(color: AppTheme.greyPrimaryColor),
                   contentPadding: const EdgeInsets.symmetric(
                     vertical: 12,
                     horizontal: 16,
                   ),
                   border: InputBorder.none,
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.search, color: Colors.black),
+                    icon: const Icon(Icons.search, color: AppTheme.greyPrimaryColor, size: 20),
                     onPressed: () {
                       _searchFocusNode.unfocus();
                       if (_nameController.text.trim().isNotEmpty) {
@@ -475,7 +478,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF666666),
+                color: Colors.black,
               ),
             ),
             const SizedBox(height: 12),
@@ -640,21 +643,16 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
               }),
             ),
             const SizedBox(height: 48),
-            const Text(
-              '복용 전 알림을 받을까요?',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  '알림',
-                  style: TextStyle(fontSize: 18, color: Colors.black),
+                  '복용 전 알림을 받을까요?',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
                 ),
                 Switch(
                   value: _alarmOn,

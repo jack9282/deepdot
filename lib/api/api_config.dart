@@ -34,4 +34,9 @@ class ApiConfig {
 
   // 통계바 - 주간 집중시간 조회
   static const String focusWeeklyEndpoint = '/api/focus/weekly';
+
+  // Email API 엔드포인트들
+  static const String emailSendCodeEndpoint = '/api/email/send-code';
+  static const String emailVerifySignupEndpoint = '/api/email/verify-signup';
+  static const String emailVerifyIdEndpoint = '/api/email/verify-id';
 }

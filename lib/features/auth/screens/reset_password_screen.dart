@@ -5,9 +5,14 @@ import 'package:provider/provider.dart';
 import '../view_models/auth_view_model.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
-  // 생성자에 'token' 또는 'email' 등 비밀번호 재설정을 위한 식별자를 받을 수 있도록 추가
-  // 여기서는 목업이므로 사용하지 않지만, 실제 앱에서는 필요합니다.
-  const ResetPasswordScreen({super.key});
+  final String username;
+  final String email;
+  
+  const ResetPasswordScreen({
+    super.key,
+    required this.username,
+    required this.email,
+  });
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -198,6 +203,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                               return;
                             }
                             final result = await authViewModel.resetPassword(
+                              widget.username,
+                              widget.email,
                               _passwordController.text.trim(),
                               _confirmPasswordController.text.trim(),
                             );
