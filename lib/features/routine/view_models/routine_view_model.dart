@@ -43,7 +43,7 @@ class RoutineViewModel extends ChangeNotifier {
       _loadRoutineList();
       _isInitialized = true;
       
-      // 알람 복원은 한 번만 실행
+      // 알람 복원은 한 번만 실행 (초기화 시에만)
       if (!_isAlarmRestoring) {
         _isAlarmRestoring = true;
         await restoreAllRoutineAlarms();
@@ -253,12 +253,8 @@ class RoutineViewModel extends ChangeNotifier {
       await _syncWithApi();
       _loadRoutineList();
       
-      // 알람 복원은 한 번만 실행
-      if (!_isAlarmRestoring) {
-        _isAlarmRestoring = true;
-        await restoreAllRoutineAlarms();
-        _isAlarmRestoring = false;
-      }
+      // 새로고침 시에는 알람 복원하지 않음 (초기화에서만 실행)
+      // 필요시 별도 메서드로 알람 동기화 가능
     } catch (e) {
       _setError('데이터 새로고침 중 오류가 발생했습니다: $e');
     } finally {
@@ -386,9 +382,16 @@ class RoutineViewModel extends ChangeNotifier {
     }
 
     try {
-      // 이미 설정된 알람이 있는지 확인
+      // 이미 설정된 알람이 있는지 확인 (메모리 + 실제 시스템 상태)
       if (routine.routineId != null && _routineAlarmIds.containsKey(routine.routineId!)) {
-        return;
+        final existingAlarmId = _routineAlarmIds[routine.routineId!];
+        final pendingAlarms = await AlarmUtility.getPendingAlarms();
+        final hasActiveAlarm = pendingAlarms.any((alarm) => alarm.id == existingAlarmId);
+        
+        if (hasActiveAlarm) {
+          print('알람이 이미 설정되어 있습니다: RoutineID=${routine.routineId}, AlarmID=$existingAlarmId');
+          return;
+        }
       }
 
       // 안정적인 baseId 결정: 저장된 alarmId > routineId 기반 > 신규 생성 순
@@ -420,8 +423,13 @@ class RoutineViewModel extends ChangeNotifier {
         _routineAlarmIds[routine.routineId!] = baseId;
         // 모델에도 영구 저장
         await RoutineRepository().updateRoutineAlarmId(routine.routineId!, baseId);
+        print('루틴 알람 설정 완료: RoutineID=${routine.routineId}, AlarmID=$baseId, 시간=${time.hour}:${time.minute}');
       }
-    } catch (e) {}
+    } catch (e) {
+      print('루틴 알람 설정 실패: ${routine.name}, 오류: $e');
+      // 사용자에게 알림 설정 실패 피드백 제공
+      _setError('알림 설정에 실패했습니다. 알림 권한을 확인해주세요.');
+    }
   }
 
   Future<void> removeRoutineAlarm(int routineId) async {
@@ -455,15 +463,21 @@ class RoutineViewModel extends ChangeNotifier {
       if (alarmId != null) {
         await AlarmUtility.cancelAllWeeklyAlarmsForBaseId(alarmId);
         _routineAlarmIds.remove(routineId);
+        print('루틴 알람 제거 완료: RoutineID=$routineId, AlarmID=$alarmId');
       }
-    } catch (e) {}
+    } catch (e) {
+      print('루틴 알람 제거 실패: RoutineID=$routineId, 오류: $e');
+    }
   }
 
   Future<void> removeAllRoutineAlarms() async {
     try {
       await AlarmUtility.cancelAllAlarms();
       _routineAlarmIds.clear();
-    } catch (e) {}
+      print('모든 루틴 알람 제거 완료');
+    } catch (e) {
+      print('모든 루틴 알람 제거 실패: $e');
+    }
   }
 
   int? getRoutineAlarmId(int routineId) {
@@ -479,17 +493,25 @@ class RoutineViewModel extends ChangeNotifier {
     
     try {
       _isAlarmRestoring = true;
+      print('루틴 알람 복원 시작...');
       
       // 기존 알람 모두 제거
       await removeAllRoutineAlarms();
       
       // 활성화된 루틴들의 알람만 설정
+      int restoredCount = 0;
       for (final routine in _routineList) {
         if (routine.active && routine.days.isNotEmpty) {
           await setupRoutineAlarm(routine);
+          restoredCount++;
         }
       }
-    } catch (e) {} finally {
+      
+      print('루틴 알람 복원 완료: $restoredCount개 알람 설정됨');
+    } catch (e) {
+      print('루틴 알람 복원 실패: $e');
+      _setError('알림 복원 중 오류가 발생했습니다.');
+    } finally {
       _isAlarmRestoring = false;
     }
   }
@@ -535,6 +557,20 @@ class RoutineViewModel extends ChangeNotifier {
   Future<void> updateRoutineCheckState(int routineId, int dayIndex, bool isChecked) async {
     await RoutineRepository().updateRoutineCheckState(routineId, dayIndex, isChecked);
     _loadRoutineList();
+  }
+
+  /// 알람 동기화를 위한 별도 메서드 (필요시 호출)
+  Future<void> syncAlarms() async {
+    if (_isAlarmRestoring) return;
+    
+    try {
+      _isAlarmRestoring = true;
+      await restoreAllRoutineAlarms();
+    } catch (e) {
+      print('알람 동기화 실패: $e');
+    } finally {
+      _isAlarmRestoring = false;
+    }
   }
 }
 
