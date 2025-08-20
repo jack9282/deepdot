@@ -14,9 +14,16 @@ class ScheduleApi {
         body: schedule.toJson(),
       );
 
-      if (response.statusCode == 201) {
-        final Map<String, dynamic> responseData = jsonDecode(response.body);
-        return responseData['scheduleId'] as int;
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        // 서버가 직접 int를 반환하는 경우 처리
+        if (responseData is int) {
+          return responseData;
+        } else if (responseData is Map<String, dynamic>) {
+          return responseData['scheduleId'] as int;
+        } else {
+          throw Exception('예상치 못한 응답 형식: $responseData');
+        }
       } else {
         throw _handleError(response, '일정 등록 실패');
       }
