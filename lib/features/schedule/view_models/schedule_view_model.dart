@@ -7,6 +7,7 @@ import '../../../data/models/task_model.dart';
 import '../../../utils/alarm.dart';
 import '../../../utils/alarm_id_generator.dart';
 import '../../../api/token_manager.dart';
+import '../../../common/constants/emoji_constants.dart';
 
 class ScheduleViewModel with ChangeNotifier {
   final ScheduleRepository _scheduleRepository = ScheduleRepository();
@@ -934,96 +935,9 @@ class ScheduleViewModel with ChangeNotifier {
     );
   }
 
-  // 아이코 코드를 이모티콘으로 변환
+  // 아이콘 코드를 이모티콘으로 변환
   String _convertIconCodeToEmoji(String? iconCode) {
-    if (iconCode == null || iconCode.isEmpty) return '😊';
-
-    // 이미 이모티콘인 경우 그대로 반환
-    if (iconCode.contains(RegExp(r'[^\x00-\x7F]'))) {
-      return iconCode;
-    }
-
-    // 아이코 코드를 이모티콘으로 매핑
-    final iconToEmojiMap = {
-      'SMILE': '😀',
-      'HAPPY': '😃',
-      'JOY': '😄',
-      'GRIN': '😁',
-      'LAUGH': '😆',
-      'TOUCHED': '🥹',
-      'SWEAT': '😅',
-      'CRY_LAUGH': '😂',
-      'ROFL': '🤣',
-      'TEAR_JOY': '🥲',
-      'BLUSH': '☺️',
-      'HAPPY_EYES': '😊',
-      'SLIGHT_SMILE': '🙂',
-      'HEART_EYES': '😍',
-      'LOVE': '🥰',
-      'KISS': '😘',
-      'KISS_SMILE': '😙',
-      'KISS_EYES': '😚',
-      'YUM': '😋',
-      'TONGUE': '😝',
-      'RAISED_EYEBROW': '🤨',
-      'NERD': '🤓',
-      'COOL': '😎',
-      'SMIRK': '😏',
-      'PARTY': '🥳',
-      'WORRIED': '😟',
-      'CONFOUNDED': '😖',
-      'TIRED': '😫',
-      'PLEADING': '🥺',
-      'ANGRY': '😡',
-      'SICK': '🤒',
-      'MELT': '😄',
-      'SCREAM': '😱',
-      'GASP': '🤭',
-      'SLEEPY': '😪',
-      'SURPRISE': '😮',
-      'THUMBS_UP': '👍',
-      'THUMBS_DOWN': '👎',
-      'PRAY': '🙏',
-      'POINT': '👊',
-      'SOCCER': '⚽',
-      'ART': '🎨',
-      'TICKET': '🎟️',
-      'PUZZLE': '🧩',
-      'MIC': '🎤',
-      'MOVIE': '🎬',
-      'COMPUTER': '🖥️',
-      'IDEA': '💡',
-      'ALARM': '⏰',
-      'PILL': '💊',
-      'BATH': '🛁',
-      'TISSUE': '🧻',
-      'BIKE': '🚴‍♂️',
-      'GAME': '🎮',
-      'APPLE': '🍎',
-      'SALAD': '🥗',
-      'HEART': '❤️',
-      'BOMB': '💣',
-      'PARTY_POPPER': '🎉',
-      'CLOVER': '🍀',
-      'MOON': '🌙',
-      'DOG': '🐶',
-      'MUSCLE': '💪',
-      'TENNIS': '🎾',
-      'RUN': '🏃',
-      'FLAG': '🚩',
-      'YARN': '🧶',
-      'FIRE': '🔥',
-      'BRIEFCASE': '💼',
-      'DINNER': '🍽️',
-      'COFFEE': '☕',
-      'TOOTHBRUSH': '🪥',
-      'CAR': '🚗',
-      'HOSPITAL': '🏥',
-      'PHONE': '📱',
-      'NOTE': '📅',
-    };
-
-    return iconToEmojiMap[iconCode] ?? '😊';
+    return EmojiConstants.convertIconCodeToEmoji(iconCode);
   }
 
   // ===== 백그라운드 API 동기화 메서드 (비회원 지원) =====

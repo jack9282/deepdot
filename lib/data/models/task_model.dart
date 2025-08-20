@@ -1,3 +1,5 @@
+import '../../common/constants/emoji_constants.dart';
+
 enum TaskPriority {
   urgentImportant, // 중요 & 긴급
   important,       // 중요
@@ -225,86 +227,7 @@ class TaskModel {
 
   /// 아이콘 코드를 이모지로 변환
   static String? _iconToEmoji(String? icon) {
-    final iconToEmojiMap = {
-      'SMILE': '😀',
-      'HAPPY': '😃',
-      'JOY': '😄',
-      'GRIN': '😁',
-      'LAUGH': '😆',
-      'TOUCHED': '🥹',
-      'SWEAT': '😅',
-      'CRY_LAUGH': '😂',
-      'ROFL': '🤣',
-      'TEAR_JOY': '🥲',
-      'BLUSH': '☺️',
-      'HAPPY_EYES': '😊',
-      'SLIGHT_SMILE': '🙂',
-      'HEART_EYES': '😍',
-      'LOVE': '🥰',
-      'KISS': '😘',
-      'KISS_SMILE': '😙',
-      'KISS_EYES': '😚',
-      'YUM': '😋',
-      'TONGUE': '😝',
-      'RAISED_EYEBROW': '🤨',
-      'NERD': '🤓',
-      'COOL': '😎',
-      'SMIRK': '😏',
-      'PARTY': '🥳',
-      'WORRIED': '😟',
-      'CONFOUNDED': '😖',
-      'TIRED': '😫',
-      'PLEADING': '🥺',
-      'ANGRY': '😡',
-      'SICK': '🤒',
-      'MELT': '😄',
-      'SCREAM': '😱',
-      'GASP': '🫢',
-      'SLEEPY': '😪',
-      'SURPRISE': '😮',
-      'THUMBS_UP': '👍',
-      'THUMBS_DOWN': '👎',
-      'PRAY': '🙏',
-      'POINT': '🫵',
-      'SOCCER': '⚽',
-      'ART': '🎨',
-      'TICKET': '🎟️',
-      'PUZZLE': '🧩',
-      'MIC': '🎤',
-      'MOVIE': '🎬',
-      'COMPUTER': '🖥️',
-      'IDEA': '💡',
-      'ALARM': '⏰',
-      'PILL': '💊',
-      'BATH': '🛁',
-      'TISSUE': '🧻',
-      'BIKE': '🚴‍♂️',
-      'GAME': '🎮',
-      'APPLE': '🍎',
-      'SALAD': '🥗',
-      'HEART': '❤️',
-      'BOMB': '💣',
-      'PARTY_POPPER': '🎉',
-      'CLOVER': '🍀',
-      'MOON': '🌙',
-      'DOG': '🐶',
-      'MUSCLE': '💪',
-      'TENNIS': '🎾',
-      'RUN': '🏃',
-      'FLAG': '🚩',
-      'YARN': '🧶',
-      'FIRE': '🔥',
-      'BRIEFCASE': '💼',
-      'DINNER': '🍽️',
-      'COFFEE': '☕',
-      'TOOTHBRUSH': '🪥',
-      'CAR': '🚗',
-      'HOSPITAL': '🏥',
-      'PHONE': '📱',
-      'NOTE': '📝',
-      // 기본값들
-    };
-    return iconToEmojiMap[icon] ?? '😊';
+    return EmojiConstants.convertIconCodeToEmoji(icon);
   }
 
   /// 날짜와 시간을 DateTime으로 결합
