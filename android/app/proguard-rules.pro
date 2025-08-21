@@ -3,6 +3,36 @@
 -keep class androidx.core.app.** { *; }
 -keep class androidx.work.** { *; }
 
+# HTTP 통신 관련 클래스 보호
+-keep class okhttp3.** { *; }
+-keep class retrofit2.** { *; }
+-keep class com.squareup.okhttp.** { *; }
+-keep class org.conscrypt.** { *; }
+
+# HTTP 클라이언트 관련 클래스 보호
+-keep class dart.** { *; }
+-keep class io.flutter.** { *; }
+-keep class io.flutter.plugin.** { *; }
+
+# JSON 관련 클래스 보호
+-keep class com.google.gson.** { *; }
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+
+# Google Play Core 라이브러리 관련 클래스 보호
+-dontwarn com.google.android.play.core.splitcompat.SplitCompatApplication
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallException
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallManager
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallManagerFactory
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallRequest$Builder
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallRequest
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallSessionState
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallStateUpdatedListener
+-dontwarn com.google.android.play.core.tasks.OnFailureListener
+-dontwarn com.google.android.play.core.tasks.OnSuccessListener
+-dontwarn com.google.android.play.core.tasks.Task
+
 # Keep notification related classes
 -keep class * extends androidx.core.app.NotificationCompat$Builder { *; }
 -keep class * extends androidx.core.app.NotificationCompat$Action { *; }
