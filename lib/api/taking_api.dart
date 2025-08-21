@@ -275,65 +275,34 @@ class TakingApi {
     }
   }
 
-  /// 복용 시간 삭제 (모든 시간 삭제 후 다시 추가하는 방식)
+  /// 복용 시간 전체 삭제
+  /// URL: /api/medication/{medicationId}/times
+  /// 설명: 복용약 시간 전체 삭제. 성공 시 204 반환.
   static Future<void> deleteAllMedicationTimes(int medicationId) async {
     try {
       print('약물의 모든 복용 시간 삭제 시도: medicationId=$medicationId');
       
-      // 먼저 현재 약물의 모든 시간 정보를 가져옴
-      final medicationResponse = await HttpClient.get('$_baseEndpoint/$medicationId');
-      if (medicationResponse.statusCode == 200) {
-        final medicationData = jsonDecode(medicationResponse.body);
-        final times = medicationData['times'] as List<dynamic>?;
-        
-        if (times != null && times.isNotEmpty) {
-          print('삭제할 시간 개수: ${times.length}');
-          
-          // 각 시간의 timeId를 추출하여 개별 삭제
-          print('삭제할 시간 데이터: $times');
-          for (final timeData in times) {
-            print('시간 데이터 처리: $timeData');
-            if (timeData is Map<String, dynamic> && timeData.containsKey('timeId')) {
-              final timeId = timeData['timeId'] as int;
-              print('삭제 시도: timeId=$timeId');
-              try {
-                await deleteMedicationTime(timeId);
-                print('시간 삭제 성공: timeId=$timeId');
-              } catch (e) {
-                print('개별 시간 삭제 실패 (timeId: $timeId): $e');
-                // 개별 삭제 실패는 무시하고 계속 진행
-              }
-            } else {
-              print('timeId가 없는 시간 데이터: $timeData');
-            }
-          }
-          
-          // 삭제 완료 후 확인
-          await Future.delayed(Duration(milliseconds: 500)); // 서버 처리 시간 대기
-          
-          // 삭제가 완료되었는지 확인
-          final verifyResponse = await HttpClient.get('$_baseEndpoint/$medicationId');
-          if (verifyResponse.statusCode == 200) {
-            final verifyData = jsonDecode(verifyResponse.body);
-            final remainingTimes = verifyData['times'] as List<dynamic>?;
-            if (remainingTimes != null && remainingTimes.isNotEmpty) {
-              print('경고: 일부 시간이 삭제되지 않았습니다. 남은 시간 개수: ${remainingTimes.length}');
-              // 삭제가 완료되지 않았으므로 예외 발생
-              throw Exception('기존 시간 삭제가 완료되지 않았습니다.');
-            } else {
-              print('모든 시간 삭제 완료 확인됨');
-            }
-          }
-        } else {
-          print('삭제할 시간이 없습니다.');
-        }
+      final response = await HttpClient.delete('$_baseEndpoint/$medicationId/times');
+
+      print('복용 시간 전체 삭제 응답: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        print('복용 시간 전체 삭제 성공: medicationId=$medicationId');
+        return;
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다');
+      } else if (response.statusCode == 403) {
+        throw Exception('삭제 권한이 없습니다');
+      } else if (response.statusCode == 404) {
+        throw Exception('약물을 찾을 수 없습니다 (ID: $medicationId)');
+      } else if (response.statusCode == 500) {
+        throw Exception('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
       } else {
-        print('약물 정보 조회 실패: ${medicationResponse.statusCode}');
-        throw Exception('약물 정보를 가져올 수 없습니다.');
+        throw Exception('복용 시간 전체 삭제 실패: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('모든 복용 시간 삭제 중 상세 오류: $e');
-      throw Exception('모든 복용 시간 삭제 중 오류 발생: $e');
+      print('복용 시간 전체 삭제 중 상세 오류: $e');
+      throw Exception('복용 시간 전체 삭제 중 오류 발생: $e');
     }
   }
 

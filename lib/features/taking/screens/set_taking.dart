@@ -87,6 +87,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
 
   // 추가: 약 이름 에러 상태
   bool _showNameError = false;
+  bool _showDuplicateError = false;
 
   void _addRecentSearch(String name) {
     final now = DateTime.now();
@@ -115,6 +116,40 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
     });
   }
 
+  void _checkDuplicateName() {
+    final takingVM = context.read<TakingViewModel>();
+    final currentName = _nameController.text.trim().toLowerCase();
+    
+    if (currentName.isEmpty) {
+      setState(() {
+        _showDuplicateError = false;
+      });
+      return;
+    }
+
+    // 수정 모드일 때는 현재 편집 중인 항목을 제외하고 체크
+    if (widget.editIndex != null) {
+      final currentItem = takingVM.takingList[widget.editIndex!];
+      final hasDuplicate = takingVM.takingList.any((item) => 
+        item.id != currentItem.id && 
+        item.name.toLowerCase() == currentName
+      );
+      
+      setState(() {
+        _showDuplicateError = hasDuplicate;
+      });
+    } else {
+      // 새로 추가하는 경우
+      final hasDuplicate = takingVM.takingList.any((item) => 
+        item.name.toLowerCase() == currentName
+      );
+      
+      setState(() {
+        _showDuplicateError = hasDuplicate;
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -140,6 +175,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
         final timeParts = item.alarmTime.split(':');
         _selectedHour = timeParts[0];
         _selectedMinute = timeParts[1];
+        _showDuplicateError = false; // 수정 모드에서는 초기에 중복 에러 숨김
       });
     }
   }
@@ -161,6 +197,9 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
           : _medicationTemplates
                 .where((med) => med.toLowerCase().contains(query))
                 .toList();
+      
+      // 중복 체크
+      _checkDuplicateName();
     });
   }
 
@@ -203,9 +242,17 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
     if (_nameController.text.trim().isEmpty) {
       setState(() {
         _showNameError = true;
+        _showDuplicateError = false;
       });
       return;
     }
+    
+    // 중복 체크
+    _checkDuplicateName();
+    if (_showDuplicateError) {
+      return;
+    }
+    
     setState(() {
       _showNameError = false;
     });
@@ -322,7 +369,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                 color: const Color(0xFFF2F2F2),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: _showNameError ? Colors.red : Colors.transparent,
+                  color: (_showNameError || _showDuplicateError) ? Colors.red : Colors.transparent,
                   width: 1.5,
                 ),
               ),
@@ -355,6 +402,14 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                 padding: const EdgeInsets.only(left: 4, top: 4),
                 child: Text(
                   '약 이름을 입력해주세요',
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ),
+            if (_showDuplicateError)
+              Padding(
+                padding: const EdgeInsets.only(left: 4, top: 4),
+                child: Text(
+                  '이미 존재하는 약 이름입니다',
                   style: TextStyle(color: Colors.red, fontSize: 12),
                 ),
               ),
