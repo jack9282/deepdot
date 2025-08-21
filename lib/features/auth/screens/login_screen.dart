@@ -72,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
-                                    '구글, 비회원으로 로그인이 가능합니다.',
+                                    '비회원으로 로그인이 가능합니다.',
                                     textAlign: TextAlign.left,
                                     style: TextStyle(
                                       fontSize: 14,

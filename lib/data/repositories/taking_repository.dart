@@ -28,13 +28,12 @@ class TakingRepository {
       _takingList = jsonList.map((item) {
         final taking = TakingModel.fromJson(item);
 
-        // times 필드가 비어있거나 null인 경우 기본값 설정
         if (taking.times.isEmpty) {
           return TakingModel(
             id: taking.id,
             name: taking.name,
-            times: ['08:00', '12:00', '18:00'], // 기본 복용 시간
-            timeIds: [1, 2, 3], // 기본 timeIds
+            times: ['08:00', '12:00', '18:00'],
+            timeIds: [1, 2, 3],
             alarmEnabled: taking.alarmEnabled,
             alarmTime: taking.alarmTime.isEmpty ? '08:00' : taking.alarmTime,
             createdAt: taking.createdAt,
@@ -53,7 +52,6 @@ class TakingRepository {
       );
     }
 
-    // 체크 상태가 없는 항목들에 대해 초기화
     for (final taking in _takingList) {
       if (!_takingChecks.containsKey(taking.id)) {
         _takingChecks[taking.id] = List.generate(
@@ -80,9 +78,7 @@ class TakingRepository {
     bool alarmEnabled,
     String alarmTime,
   ) async {
-    // 비회원 모드 체크
     if (await TokenManager.instance.isGuestMode()) {
-      print('비회원 모드 - 로컬에서만 저장');
       final id = DateTime.now().millisecondsSinceEpoch.toString();
       final newTaking = TakingModel(
         id: id,
@@ -105,7 +101,6 @@ class TakingRepository {
         alarm: alarmEnabled,
       );
 
-      // 복용 시간들을 개별적으로 추가
       final List<int> newTimeIds = [];
       for (final time in times) {
         try {
@@ -117,12 +112,10 @@ class TakingRepository {
             newTimeIds.add(timeId);
           }
         } catch (timeError) {
-          print('복용 시간 추가 실패 (시간: $time): $timeError');
-          // 개별 시간 추가 실패는 무시하고 계속 진행
+          continue;
         }
       }
 
-      // API 응답의 times가 있으면 사용, 없으면 로컬에서 설정한 times 사용
       final finalTimes = newTaking.times.isNotEmpty ? newTaking.times : times;
       final finalTimeIds = newTimeIds.isNotEmpty
           ? newTimeIds
@@ -135,7 +128,7 @@ class TakingRepository {
         times: finalTimes,
         timeIds: finalTimeIds,
         alarmEnabled: newTaking.alarmEnabled,
-        alarmTime: alarmTime, // 로컬에서 설정한 알람 시간 사용
+        alarmTime: alarmTime,
         createdAt: newTaking.createdAt,
         updatedAt: newTaking.updatedAt,
       );
@@ -147,9 +140,6 @@ class TakingRepository {
       );
       await saveToStorage();
     } catch (e) {
-      print('API 추가 실패, 로컬에서만 저장: $e');
-
-      // 서버 오류인 경우 로컬에 저장하고 사용자에게 알림
       final id = DateTime.now().millisecondsSinceEpoch.toString();
       final newTaking = TakingModel(
         id: id,
@@ -164,7 +154,6 @@ class TakingRepository {
       _takingChecks[id] = List.generate(times.length, (_) => false);
       await saveToStorage();
 
-      // 서버 오류 메시지 반환
       if (e.toString().contains('서버 내부 오류')) {
         throw Exception('서버 연결에 실패했습니다. 로컬에 저장되었으며, 나중에 동기화됩니다.');
       } else if (e.toString().contains('이미 존재하는 약물명')) {
@@ -187,9 +176,7 @@ class TakingRepository {
     if (index >= 0 && index < _takingList.length) {
       final oldId = _takingList[index].id;
 
-      // 비회원 모드 체크
       if (await TokenManager.instance.isGuestMode()) {
-        print('비회원 모드 - 로컬에서만 저장');
         _takingList[index] = TakingModel(
           id: oldId,
           name: name,
@@ -201,7 +188,6 @@ class TakingRepository {
           updatedAt: DateTime.now(),
         );
 
-        // 체크 상태 업데이트
         if (_takingChecks.containsKey(oldId)) {
           final currentChecks = _takingChecks[oldId]!;
           if (currentChecks.length != times.length) {
@@ -224,18 +210,12 @@ class TakingRepository {
           alarm: alarmEnabled,
         );
         
-        // 복용 시간이 변경된 경우 기존 시간들을 전체 삭제하고 새로운 시간들을 추가
-        // 1) 기존 시간 전부 삭제
         try {
           await TakingApi.deleteAllMedicationTimes(int.parse(updatedTaking.id));
-          print('기존 시간 전체 삭제 성공');
         } catch (deleteError) {
-          print('기존 시간 전체 삭제 실패: $deleteError');
-          // 삭제 실패 시 예외를 다시 던져서 로컬 저장으로 처리
           throw Exception('기존 시간 삭제에 실패했습니다: $deleteError');
         }
         
-        // 2) 새 시간들 추가
         final List<int> newTimeIds = [];
         for (final newTime in times) {
           try {
@@ -244,12 +224,10 @@ class TakingRepository {
               newTimeIds.add(timeId);
             }
           } catch (timeError) {
-            print('복용 시간 추가 실패 (시간: $newTime): $timeError');
-            // 개별 시간 추가 실패는 무시하고 계속 진행
+            continue;
           }
         }
 
-        // 3) 서버에서 최신 데이터 재조회 (timeIds 동기화)
         TakingModel? refreshed;
         try {
           refreshed = await TakingApi.getMedication(
@@ -257,7 +235,6 @@ class TakingRepository {
           );
         } catch (_) {}
 
-        // API 응답의 times가 있으면 사용, 없으면 로컬에서 설정한 times 사용
         final finalTimes = (refreshed != null && refreshed.times.isNotEmpty)
             ? refreshed.times
             : (updatedTaking.times.isNotEmpty ? updatedTaking.times : times);
@@ -277,16 +254,13 @@ class TakingRepository {
           times: finalTimes,
           timeIds: finalTimeIds,
           alarmEnabled: updatedTaking.alarmEnabled,
-          alarmTime: alarmTime, // 로컬에서 설정한 알람 시간 사용
+          alarmTime: alarmTime,
           createdAt: updatedTaking.createdAt,
           updatedAt: DateTime.now(),
         );
 
         _takingList[index] = takingWithTimes;
       } catch (e) {
-        print('API 수정 실패, 로컬에서만 저장: $e');
-
-        // 서버 오류인 경우 로컬에 저장하고 사용자에게 알림
         _takingList[index] = TakingModel(
           id: oldId,
           name: name,
@@ -298,7 +272,6 @@ class TakingRepository {
           updatedAt: DateTime.now(),
         );
 
-        // 서버 오류 메시지 반환
         if (e.toString().contains('서버 내부 오류')) {
           throw Exception('서버 연결에 실패했습니다. 로컬에 저장되었으며, 나중에 동기화됩니다.');
         } else if (e.toString().contains('이미 존재하는 약물명')) {
@@ -312,7 +285,6 @@ class TakingRepository {
         }
       }
 
-      // 체크 상태 업데이트
       if (_takingChecks.containsKey(oldId)) {
         final currentChecks = _takingChecks[oldId]!;
         if (currentChecks.length != times.length) {
@@ -332,9 +304,7 @@ class TakingRepository {
     if (index >= 0 && index < _takingList.length) {
       final id = _takingList[index].id;
 
-      // 비회원 모드 체크
       if (await TokenManager.instance.isGuestMode()) {
-        print('비회원 모드 - 로컬에서만 삭제');
         _takingList.removeAt(index);
         _takingChecks.remove(id);
         await saveToStorage();
@@ -347,14 +317,10 @@ class TakingRepository {
         _takingChecks.remove(id);
         await saveToStorage();
       } catch (e) {
-        print('API 삭제 실패, 로컬에서만 삭제: $e');
-
-        // 서버 오류인 경우에도 로컬에서 삭제
         _takingList.removeAt(index);
         _takingChecks.remove(id);
         await saveToStorage();
 
-        // 서버 오류 메시지 반환
         if (e.toString().contains('서버 내부 오류')) {
           throw Exception('서버 연결에 실패했습니다. 로컬에서 삭제되었으며, 나중에 동기화됩니다.');
         } else if (e.toString().contains('약물을 찾을 수 없습니다')) {
@@ -409,34 +375,25 @@ class TakingRepository {
 
   int getTakingCount() => _takingList.length;
 
-  /// API에서 모든 약물 데이터 동기화
   Future<void> syncFromApi() async {
-    // 비회원 모드 체크
     if (await TokenManager.instance.isGuestMode()) {
-      print('비회원 모드 - API 동기화 건너뛰기');
       return;
     }
 
     try {
       final apiMedications = await TakingApi.getAllMedications();
-      print('API에서 가져온 약물 개수: ${apiMedications.length}');
 
-      // API 데이터를 우선으로 하는 새로운 리스트 생성
       final List<TakingModel> newTakingList = [];
       final Map<String, TakingModel> processedIds = {};
       final Map<String, TakingModel> processedNames = {};
 
-      // 1단계: API 데이터 처리
       for (final apiMedication in apiMedications) {
         try {
-          // 기존 로컬 데이터에서 같은 ID를 가진 것 찾기
           final existingLocal = _takingList
               .where((item) => item.id == apiMedication.id)
               .firstOrNull;
 
           if (existingLocal != null) {
-            // 기존 로컬 데이터가 있으면 times와 alarmTime 정보 유지
-            // API에서 times가 비어있지 않으면 API 데이터 사용, 아니면 로컬 데이터 사용
             final finalTimes = apiMedication.times.isNotEmpty
                 ? apiMedication.times
                 : existingLocal.times;
@@ -448,18 +405,14 @@ class TakingRepository {
                   ? apiMedication.timeIds
                   : existingLocal.timeIds,
               alarmEnabled: apiMedication.alarmEnabled,
-              alarmTime: existingLocal.alarmTime, // 로컬에서 설정한 알람 시간 유지
+              alarmTime: existingLocal.alarmTime,
               createdAt: apiMedication.createdAt,
               updatedAt: apiMedication.updatedAt ?? existingLocal.updatedAt,
             );
             newTakingList.add(mergedMedication);
             processedIds[apiMedication.id] = mergedMedication;
             processedNames[apiMedication.name.toLowerCase()] = mergedMedication;
-            print(
-              '기존 약물 업데이트: ${apiMedication.name} (ID: ${apiMedication.id})',
-            );
           } else {
-            // 새로운 API 데이터 추가
             final finalTimes = apiMedication.times.isNotEmpty
                 ? apiMedication.times
                 : ['08:00', '12:00', '18:00'];
@@ -471,37 +424,28 @@ class TakingRepository {
                   ? apiMedication.timeIds
                   : List.generate(finalTimes.length, (index) => index + 1),
               alarmEnabled: apiMedication.alarmEnabled,
-              alarmTime: '08:00', // 기본 알람 시간
+              alarmTime: '08:00',
               createdAt: apiMedication.createdAt,
               updatedAt: apiMedication.updatedAt,
             );
             newTakingList.add(newMedication);
             processedIds[apiMedication.id] = newMedication;
             processedNames[apiMedication.name.toLowerCase()] = newMedication;
-            print('새로운 약물 추가: ${apiMedication.name} (ID: ${apiMedication.id})');
           }
         } catch (itemError) {
-          print('개별 약물 데이터 처리 실패 (ID: ${apiMedication.id}): $itemError');
           continue;
         }
       }
 
-      // 2단계: 로컬에만 있는 데이터 추가 (API에 없는 것만)
       for (final localMedication in _takingList) {
-        // 이미 처리된 ID나 이름이 아닌 경우만 추가
         if (!processedIds.containsKey(localMedication.id) &&
             !processedNames.containsKey(localMedication.name.toLowerCase())) {
           newTakingList.add(localMedication);
-          print(
-            '로컬 전용 약물 유지: ${localMedication.name} (ID: ${localMedication.id})',
-          );
         }
       }
 
-      print('최종 약물 개수: ${newTakingList.length}');
       _takingList = newTakingList;
 
-      // 체크 상태 초기화
       for (final medication in _takingList) {
         if (!_takingChecks.containsKey(medication.id)) {
           _takingChecks[medication.id] = List.generate(
@@ -513,12 +457,10 @@ class TakingRepository {
 
       await saveToStorage();
     } catch (e) {
-      print('API 동기화 실패: $e');
       // API 실패 시 로컬 데이터 유지
     }
   }
 
-  /// 마지막 동기화 시간 확인
   Future<DateTime?> getLastSyncTime() async {
     final prefs = await SharedPreferences.getInstance();
     final timestamp = prefs.getInt(_lastSyncKey);
@@ -527,21 +469,17 @@ class TakingRepository {
         : null;
   }
 
-  /// 모든 복약 알림을 재설정합니다
   Future<void> rescheduleAllNotifications() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isEnabled = prefs.getBool('medication_notification') ?? true;
 
       if (!isEnabled) {
-        // 알림이 비활성화되어 있으면 아무것도 하지 않음
         return;
       }
 
-      // 알람이 활성화된 모든 복약 조회
       for (final taking in _takingList) {
         if (taking.alarmEnabled) {
-          // 각 복용 시간마다 알람 설정
           for (int i = 0; i < taking.times.length; i++) {
             final timeStr = taking.times[i];
             final timeParts = timeStr.split(':');
@@ -557,13 +495,10 @@ class TakingRepository {
               minute,
             );
 
-            // 이미 지난 시간이면 다음 날로 설정
             if (alarmTime.isBefore(now)) {
               alarmTime = alarmTime.add(const Duration(days: 1));
             }
 
-            // 알람 ID는 20000번대 사용 (복약용)
-            // hashCode를 0-9999 범위로 제한하여 20000-29999 사이가 되도록 함
             final alarmId = 20000 + (taking.id.hashCode % 9990).abs() + i;
 
             await AlarmUtility.setDailyAlarm(

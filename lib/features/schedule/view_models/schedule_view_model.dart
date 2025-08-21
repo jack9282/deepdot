@@ -1064,8 +1064,16 @@ class ScheduleViewModel with ChangeNotifier {
     bool alarm120Before = false,
   }) async {
     try {
-      // taskId를 숫자로 변환 (알림 ID 생성용)
-      final baseId = taskId.hashCode.abs() % 1000000;
+      // 더 안정적인 baseId 생성
+      int baseId;
+      final numericId = int.tryParse(taskId);
+      if (numericId != null) {
+        // 숫자 ID면 Schedule ID 범위 사용
+        baseId = 3000 + (numericId.abs() % 1000);
+      } else {
+        // 문자열 ID면 고유한 스케줄 ID 생성
+        baseId = AlarmIdGenerator.generateScheduleId();
+      }
 
       // 사용자 이름 가져오기
       final userName = await _getUserName();
@@ -1080,13 +1088,14 @@ class ScheduleViewModel with ChangeNotifier {
       if (alarm30Before) {
         final alarmTime = startDate.subtract(const Duration(minutes: 30));
         if (alarmTime.isAfter(DateTime.now())) {
-          final alarmId = baseId * 10 + 0; // 30분전 = 0
+          final alarmId = baseId * 10 + 1; // 30분전 = 1
           await AlarmUtility.setAlarm(
             id: alarmId,
             scheduledTime: alarmTime,
             title: '$userName님 $title 30분전이에요!',
             body: '$formattedTime $priorityText',
           );
+          print('30분 전 스케줄 알람 설정: ID=$alarmId');
         }
       }
 
@@ -1094,13 +1103,14 @@ class ScheduleViewModel with ChangeNotifier {
       if (alarm60Before) {
         final alarmTime = startDate.subtract(const Duration(hours: 1));
         if (alarmTime.isAfter(DateTime.now())) {
-          final alarmId = baseId * 10 + 1; // 1시간전 = 1
+          final alarmId = baseId * 10 + 2; // 1시간전 = 2
           await AlarmUtility.setAlarm(
             id: alarmId,
             scheduledTime: alarmTime,
             title: '$userName님 $title 1시간전이에요!',
             body: '$formattedTime $priorityText',
           );
+          print('1시간 전 스케줄 알람 설정: ID=$alarmId');
         }
       }
 
@@ -1108,13 +1118,14 @@ class ScheduleViewModel with ChangeNotifier {
       if (alarm120Before) {
         final alarmTime = startDate.subtract(const Duration(hours: 2));
         if (alarmTime.isAfter(DateTime.now())) {
-          final alarmId = baseId * 10 + 2; // 2시간전 = 2
+          final alarmId = baseId * 10 + 3; // 2시간전 = 3
           await AlarmUtility.setAlarm(
             id: alarmId,
             scheduledTime: alarmTime,
             title: '$userName님 $title 2시간전이에요!',
             body: '$formattedTime $priorityText',
           );
+          print('2시간 전 스케줄 알람 설정: ID=$alarmId');
         }
       }
     } catch (e) {
@@ -1125,12 +1136,27 @@ class ScheduleViewModel with ChangeNotifier {
   // 일정 알림 취소
   Future<void> _cancelScheduleAlarms(String taskId) async {
     try {
-      final baseId = taskId.hashCode.abs() % 1000000;
+      // 새로운 baseId 생성 방식과 동일하게 적용
+      int baseId;
+      final numericId = int.tryParse(taskId);
+      if (numericId != null) {
+        baseId = 3000 + (numericId.abs() % 1000);
+      } else {
+        // 문자열 ID의 경우 실제 설정된 ID를 찾기 어려우므로 범위로 삭제
+        final pendingAlarms = await AlarmUtility.getPendingAlarms();
+        for (final alarm in pendingAlarms) {
+          if (alarm.id >= 30000 && alarm.id < 40000) {
+            await AlarmUtility.cancelAlarm(alarm.id);
+          }
+        }
+        return;
+      }
 
-      // 모든 가능한 알림 취소 (30분전, 1시간전, 2시간전)
-      for (int i = 0; i < 3; i++) {
+      // 모든 가능한 알림 취소 (30분전=1, 1시간전=2, 2시간전=3)
+      for (int i = 1; i <= 3; i++) {
         final alarmId = baseId * 10 + i;
         await AlarmUtility.cancelAlarm(alarmId);
+        print('스케줄 알람 취소: ID=$alarmId');
       }
     } catch (e) {
       print('일정 알림 취소 중 오류: $e');
