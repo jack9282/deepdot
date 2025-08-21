@@ -87,6 +87,8 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
 
   // 추가: 약 이름 에러 상태
   bool _showNameError = false;
+  bool _showDuplicateError = false;
+  bool _showTimeError = false;
 
   void _addRecentSearch(String name) {
     final now = DateTime.now();
@@ -115,6 +117,40 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
     });
   }
 
+  void _checkDuplicateName() {
+    final takingVM = context.read<TakingViewModel>();
+    final currentName = _nameController.text.trim().toLowerCase();
+    
+    if (currentName.isEmpty) {
+      setState(() {
+        _showDuplicateError = false;
+      });
+      return;
+    }
+
+    // 수정 모드일 때는 현재 편집 중인 항목을 제외하고 체크
+    if (widget.editIndex != null) {
+      final currentItem = takingVM.takingList[widget.editIndex!];
+      final hasDuplicate = takingVM.takingList.any((item) => 
+        item.id != currentItem.id && 
+        item.name.toLowerCase() == currentName
+      );
+      
+      setState(() {
+        _showDuplicateError = hasDuplicate;
+      });
+    } else {
+      // 새로 추가하는 경우
+      final hasDuplicate = takingVM.takingList.any((item) => 
+        item.name.toLowerCase() == currentName
+      );
+      
+      setState(() {
+        _showDuplicateError = hasDuplicate;
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -140,6 +176,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
         final timeParts = item.alarmTime.split(':');
         _selectedHour = timeParts[0];
         _selectedMinute = timeParts[1];
+        _showDuplicateError = false; // 수정 모드에서는 초기에 중복 에러 숨김
       });
     }
   }
@@ -161,6 +198,9 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
           : _medicationTemplates
                 .where((med) => med.toLowerCase().contains(query))
                 .toList();
+      
+      // 중복 체크
+      _checkDuplicateName();
     });
   }
 
@@ -192,24 +232,45 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
   }
 
   void _removeTime(int idx) {
-    if (_takingTimes.length > 1) {
-      setState(() {
-        _takingTimes.removeAt(idx);
-      });
-    }
+    setState(() {
+      _takingTimes.removeAt(idx);
+    });
   }
 
   void _onComplete() async {
+    bool hasError = false;
+    
+    // 약 이름 체크
     if (_nameController.text.trim().isEmpty) {
       setState(() {
         _showNameError = true;
       });
-      return;
+      hasError = true;
+    } else {
+      setState(() {
+        _showNameError = false;
+      });
     }
-    setState(() {
-      _showNameError = false;
-    });
+    
+    // 중복 체크
+    _checkDuplicateName();
+    if (_showDuplicateError) {
+      hasError = true;
+    }
+    
+    // 시간 체크
     if (_takingTimes.isEmpty) {
+      setState(() {
+        _showTimeError = true;
+      });
+      hasError = true;
+    } else {
+      setState(() {
+        _showTimeError = false;
+      });
+    }
+    
+    if (hasError) {
       return;
     }
 
@@ -293,7 +354,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
         ),
         title: Text(
           widget.editIndex != null ? '복용이력 수정' : '복용이력 작성',
-          style: const TextStyle(color: Colors.black),
+          style: const TextStyle(color: AppTheme.textBlackColor),
         ),
         centerTitle: true,
         toolbarHeight: 56,
@@ -313,7 +374,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: AppTheme.textBlackColor,
               ),
             ),
             const SizedBox(height: 16),
@@ -322,14 +383,14 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                 color: const Color(0xFFF2F2F2),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: _showNameError ? Colors.red : Colors.transparent,
+                  color: (_showNameError || _showDuplicateError) ? Colors.red : Colors.transparent,
                   width: 1.5,
                 ),
               ),
               child: TextField(
                 controller: _nameController,
                 focusNode: _searchFocusNode,
-                style: const TextStyle(fontSize: 18, color: Colors.black),
+                style: const TextStyle(fontSize: 18, color: AppTheme.textBlackColor),
                 decoration: InputDecoration(
                   hintText: '예시) 타이레놀, 이지엔6',
                   hintStyle: TextStyle(color: AppTheme.greyPrimaryColor),
@@ -358,6 +419,14 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                   style: TextStyle(color: Colors.red, fontSize: 12),
                 ),
               ),
+            if (_showDuplicateError)
+              Padding(
+                padding: const EdgeInsets.only(left: 4, top: 4),
+                child: Text(
+                  '이미 존재하는 약 이름입니다',
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ),
             // 최근 검색어 UI
             if (_recentSearches.isNotEmpty && _searchFocusNode.hasFocus) ...[
               const SizedBox(height: 18),
@@ -369,7 +438,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black,
+                      color: AppTheme.textBlackColor,
                     ),
                   ),
                   GestureDetector(
@@ -402,7 +471,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                               item['name']!,
                               style: const TextStyle(
                                 fontSize: 16,
-                                color: Colors.black,
+                                color: AppTheme.textBlackColor,
                               ),
                             ),
                           ),
@@ -454,7 +523,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                       return ListTile(
                         title: Text(
                           _filteredMedications[index],
-                          style: const TextStyle(color: Colors.black),
+                          style: const TextStyle(color: AppTheme.textBlackColor),
                         ),
                         onTap: () =>
                             _selectMedication(_filteredMedications[index]),
@@ -469,7 +538,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: AppTheme.textBlackColor,
               ),
             ),
             const SizedBox(height: 16),
@@ -478,7 +547,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: Colors.black,
+                color: AppTheme.textBlackColor,
               ),
             ),
             const SizedBox(height: 12),
@@ -500,9 +569,9 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                         child: DropdownButton<String>(
                           value: _selectedHour,
                           dropdownColor: Colors.white,
-                          iconEnabledColor: Colors.black,
+                          iconEnabledColor: AppTheme.textBlackColor,
                           style: const TextStyle(
-                            color: Colors.black,
+                            color: AppTheme.textBlackColor,
                             fontSize: 16,
                           ),
                           items: _hourOptions
@@ -511,7 +580,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                                   value: hour,
                                   child: Text(
                                     '${hour}시',
-                                    style: const TextStyle(color: Colors.black),
+                                    style: const TextStyle(color: AppTheme.textBlackColor),
                                   ),
                                 ),
                               )
@@ -538,9 +607,9 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                         child: DropdownButton<String>(
                           value: _selectedMinute,
                           dropdownColor: Colors.white,
-                          iconEnabledColor: Colors.black,
+                          iconEnabledColor: AppTheme.textBlackColor,
                           style: const TextStyle(
-                            color: Colors.black,
+                            color: AppTheme.textBlackColor,
                             fontSize: 16,
                           ),
                           items: _minuteOptions
@@ -549,7 +618,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                                   value: minute,
                                   child: Text(
                                     '${minute}분',
-                                    style: const TextStyle(color: Colors.black),
+                                    style: const TextStyle(color: AppTheme.textBlackColor),
                                   ),
                                 ),
                               )
@@ -604,11 +673,10 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFF5F5F5),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE0E0E0)),
                   ),
                   child: Row(
                     children: [
-                                             Text(
+                      Text(
                          '${hour}시 ${minute}분',
                          style: TextStyle(
                            color: AppTheme.primaryColor,
@@ -617,31 +685,38 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                          ),
                        ),
                       const Spacer(),
-                                             if (_takingTimes.length > 1)
-                         GestureDetector(
-                           onTap: () => _removeTime(idx),
-                           child: Container(
-                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                             decoration: BoxDecoration(
-                               color: Colors.white,
-                               borderRadius: BorderRadius.circular(16),
-                               border: Border.all(color: Colors.red),
-                             ),
-                             child: const Text(
-                               '삭제',
-                               style: TextStyle(
-                                 color: Colors.red,
-                                 fontSize: 14,
-                                 fontWeight: FontWeight.w500,
-                               ),
-                             ),
-                           ),
-                         ),
+                      GestureDetector(
+                        onTap: () => _removeTime(idx),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.red, width: 1.5),
+                          ),
+                          child: const Text(
+                            '삭제',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 );
               }),
             ),
+            if (_showTimeError)
+              Padding(
+                padding: const EdgeInsets.only(left: 4, top: 8),
+                child: Text(
+                  '최소 하나의 복용 시간을 추가해주세요',
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ),
             const SizedBox(height: 48),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -651,7 +726,7 @@ class _AddTakingScreenBodyState extends State<_AddTakingScreenBody> {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: AppTheme.textBlackColor,
                   ),
                 ),
                 Switch(

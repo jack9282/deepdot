@@ -212,7 +212,6 @@ class TakingViewModel with ChangeNotifier {
 
       TakingRepository().clearAllData();
       _loadTakingList();
-      print('모든 복용 데이터 및 알람 초기화 완료');
     } catch (e) {
       print('복용 데이터 초기화 실패: $e');
       _setError('데이터 초기화 중 오류가 발생했습니다: $e');
@@ -232,45 +231,59 @@ class TakingViewModel with ChangeNotifier {
   Future<void> _setupAlarms(TakingModel taking, List<String> times) async {
     try {
       final baseAlarmId = AlarmIdGenerator.generateTakingId();
+      int successCount = 0;
+      int failCount = 0;
 
       for (int i = 0; i < times.length; i++) {
         final alarmKey = '${taking.id}_$i';
 
-        // 이미 설정된 알람이 있는지 확인 (메모리 + 실제 시스템 상태)
+        // 이미 설정된 알람이 있는지 확인
         if (_alarmIds.containsKey(alarmKey)) {
           final existingAlarmId = _alarmIds[alarmKey];
           final pendingAlarms = await AlarmUtility.getPendingAlarms();
           final hasActiveAlarm = pendingAlarms.any((alarm) => alarm.id == existingAlarmId);
           
           if (hasActiveAlarm) {
-            print('복용 알람이 이미 설정되어 있습니다: TakingID=${taking.id}, TimeIndex=$i, AlarmID=$existingAlarmId');
+            print('이미 설정된 복용 알람 스킵: ${taking.name}, 시간: ${times[i]}');
             continue;
           }
         }
 
         final timeParts = times[i].split(':');
         if (timeParts.length == 2) {
-          final scheduledTime = DateTime(
-            DateTime.now().year,
-            DateTime.now().month,
-            DateTime.now().day,
-            int.parse(timeParts[0]),
-            int.parse(timeParts[1]),
-          );
+          try {
+            final scheduledTime = DateTime(
+              DateTime.now().year,
+              DateTime.now().month,
+              DateTime.now().day,
+              int.parse(timeParts[0]),
+              int.parse(timeParts[1]),
+            );
 
-          final alarmId = AlarmIdGenerator.generateTakingIdWithIndex(baseAlarmId, i);
-          _alarmIds[alarmKey] = alarmId;
+            final alarmId = AlarmIdGenerator.generateTakingIdWithIndex(baseAlarmId, i);
+            _alarmIds[alarmKey] = alarmId;
 
-          final userName = _authRepository.currentUser?.name ?? _authRepository.currentUser?.username ?? '사용자';
-          await AlarmUtility.setDailyAlarm(
-            id: alarmId,
-            scheduledTime: scheduledTime,
-            title: '복용 알림',
-            body: AlarmUtility.generateTakingMessage(userName, scheduledTime),
-          );
-          
-          print('복용 알람 설정 완료: TakingID=${taking.id}, TimeIndex=$i, AlarmID=$alarmId, 시간=${scheduledTime.hour}:${scheduledTime.minute}');
+            final userName = _authRepository.currentUser?.name ?? _authRepository.currentUser?.username ?? '사용자';
+            await AlarmUtility.setDailyAlarm(
+              id: alarmId,
+              scheduledTime: scheduledTime,
+              title: '복용 알림',
+              body: AlarmUtility.generateTakingMessage(userName, scheduledTime),
+            );
+            
+            successCount++;
+            print('복용 알람 설정 성공: ${taking.name}, 시간: ${times[i]}, ID: $alarmId');
+          } catch (e) {
+            failCount++;
+            print('복용 알람 설정 실패: ${taking.name}, 시간: ${times[i]}, 오류: $e');
+          }
         }
+      }
+      
+      if (failCount > 0) {
+        _setError('일부 알림 설정에 실패했습니다. ($successCount개 성공, $failCount개 실패)');
+      } else if (successCount > 0) {
+        print('복용 알람 설정 완료: ${taking.name}, $successCount개 알람 설정됨');
       }
     } catch (e) {
       print('복용 알람 설정 실패: ${taking.name}, 오류: $e');
@@ -286,44 +299,45 @@ class TakingViewModel with ChangeNotifier {
           if (alarmId != null) {
             await AlarmUtility.cancelAlarm(alarmId);
             _alarmIds.remove('${taking.id}_$i');
-            print('복용 알람 제거 완료: TakingID=${taking.id}, TimeIndex=$i, AlarmID=$alarmId');
           }
         }
       }
     } catch (e) {
-      print('복용 알람 제거 실패: TakingID=${taking.id}, 오류: $e');
+      print('복용 알람 제거 실패: ${taking.name}, 오류: $e');
     }
   }
 
   /// 모든 약물 복용 알람 제거
   Future<void> _removeAllTakingAlarms() async {
     try {
-      await AlarmUtility.cancelAllAlarms();
+      // 모든 알람을 삭제하는 대신 복용 알람만 삭제
+      final pendingAlarms = await AlarmUtility.getPendingAlarms();
+      
+      // 1000-1999 범위의 복용 알람만 취소
+      for (final alarm in pendingAlarms) {
+        if (alarm.id >= 1000 && alarm.id < 2000) {
+          await AlarmUtility.cancelAlarm(alarm.id);
+        }
+      }
+      
       _alarmIds.clear();
-      print('모든 복용 알람 제거 완료');
     } catch (e) {
-      print('모든 복용 알람 제거 실패: $e');
+      print('복용 알람 제거 실패: $e');
     }
   }
 
-  /// 모든 약물 복용 알람 복원 (중복 방지)
+  /// 모든 약물 복용 알람 복원
   Future<void> _restoreAllTakingAlarms() async {
     try {
-      print('복용 알람 복원 시작...');
-      
       // 기존 알람 모두 제거
       await _removeAllTakingAlarms();
       
       // 활성화된 복용들의 알람만 설정
-      int restoredCount = 0;
       for (final taking in _takingList) {
         if (taking.alarmEnabled) {
           await _setupAlarms(taking, taking.times);
-          restoredCount++;
         }
       }
-      
-      print('복용 알람 복원 완료: $restoredCount개 복용 알람 설정됨');
     } catch (e) {
       print('복용 알람 복원 실패: $e');
       _setError('알림 복원 중 오류가 발생했습니다.');
@@ -346,10 +360,9 @@ class TakingViewModel with ChangeNotifier {
     }
   }
 
-  /// 알람 동기화를 위한 별도 메서드 (필요시 호출)
+  /// 알람 동기화를 위한 별도 메서드
   Future<void> syncAlarms() async {
     try {
-      print('복용 알람 동기화 시작...');
       await _restoreAllTakingAlarms();
     } catch (e) {
       print('복용 알람 동기화 실패: $e');

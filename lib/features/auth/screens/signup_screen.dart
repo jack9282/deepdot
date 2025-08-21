@@ -65,7 +65,6 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 40),
                         // ID 입력 섹션
                         const Text(
                           '아이디',

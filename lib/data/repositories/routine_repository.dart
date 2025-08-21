@@ -10,12 +10,14 @@ class RoutineRepository extends ChangeNotifier {
   static const String _routineListKey = 'routine_list';
   static const String _lastSyncKey = 'routine_last_sync_timestamp';
   static const String _availableGoalsKey = 'available_goals';
+  static const String _routineCheckStatesKey = 'routine_check_states';
 
   static final RoutineRepository _instance = RoutineRepository._internal();
   factory RoutineRepository() => _instance;
   RoutineRepository._internal();
 
   List<RoutineModel> _routineList = [];
+  Map<int, List<bool>> _routineCheckStates = {};
   List<Map<String, dynamic>> _availableGoals = [
     {'goalId': '1', 'name': '아침루틴', 'inUse': false},
     {'goalId': '2', 'name': '개강까지 -5KG', 'inUse': false},
@@ -25,8 +27,11 @@ class RoutineRepository extends ChangeNotifier {
   List<RoutineModel> get routineList => List.unmodifiable(_routineList);
   List<Map<String, dynamic>> get availableGoals =>
       List.unmodifiable(_availableGoals);
+  
+  List<bool> getRoutineCheckStates(int routineId) {
+    return _routineCheckStates[routineId] ?? List.generate(7, (_) => false);
+  }
 
-  // Helpers
   Future<bool> _isGuest() => TokenManager.instance.isGuestMode();
 
   bool _hasSelectedDays({
@@ -98,6 +103,24 @@ class RoutineRepository extends ChangeNotifier {
             .toList();
       }
 
+      final checkStatesJson = prefs.getString(_routineCheckStatesKey);
+      if (checkStatesJson != null) {
+        try {
+          final Map<String, dynamic> jsonMap = jsonDecode(checkStatesJson);
+          _routineCheckStates = jsonMap.map(
+            (key, value) => MapEntry(int.parse(key), List<bool>.from(value)),
+          );
+        } catch (e) {
+          _routineCheckStates = {};
+        }
+      }
+
+      for (final routine in _routineList) {
+        if (routine.routineId != null && !_routineCheckStates.containsKey(routine.routineId!)) {
+          _routineCheckStates[routine.routineId!] = List.generate(7, (_) => false);
+        }
+      }
+
       final goalsJson = prefs.getString(_availableGoalsKey);
       if (goalsJson != null) {
         try {
@@ -116,6 +139,12 @@ class RoutineRepository extends ChangeNotifier {
       _routineListKey,
       jsonEncode(_routineList.map((e) => e.toJson()).toList()),
     );
+    
+    final checkStatesJson = _routineCheckStates.map(
+      (key, value) => MapEntry(key.toString(), value),
+    );
+    await prefs.setString(_routineCheckStatesKey, jsonEncode(checkStatesJson));
+    
     await prefs.setString(_availableGoalsKey, jsonEncode(_availableGoals));
     await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
   }
@@ -502,23 +531,19 @@ class RoutineRepository extends ChangeNotifier {
     bool isChecked,
   ) async {
     try {
-      final index = _routineList.indexWhere(
-        (routine) => routine.routineId == routineId,
-      );
-      if (index != -1) {
-        final currentCheckStates = List<bool>.from(
-          _routineList[index].checkStates,
-        );
-        if (dayIndex >= 0 && dayIndex < currentCheckStates.length) {
-          currentCheckStates[dayIndex] = isChecked;
-          _routineList[index] = _routineList[index].copyWith(
-            checkStates: currentCheckStates,
-          );
-          await saveToStorage();
-          notifyListeners();
-        }
+      if (!_routineCheckStates.containsKey(routineId)) {
+        _routineCheckStates[routineId] = List.generate(7, (_) => false);
       }
-    } catch (_) {}
+      
+      if (dayIndex >= 0 && dayIndex < 7) {
+        _routineCheckStates[routineId]![dayIndex] = isChecked;
+        
+        await saveToStorage();
+        notifyListeners();
+      }
+    } catch (e) {
+      // 체크 상태 업데이트 실패 시 무시
+    }
   }
 
   String? _getGoalNameById(int goalId) {
@@ -546,23 +571,19 @@ class RoutineRepository extends ChangeNotifier {
     }
   }
 
-  /// 모든 루틴 알림을 재설정합니다
   Future<void> rescheduleAllNotifications() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isEnabled = prefs.getBool('routine_notification') ?? true;
 
       if (!isEnabled) {
-        // 알림이 비활성화되어 있으면 아무것도 하지 않음
         return;
       }
 
-      // 활성화된 모든 루틴에 대해 알림 설정
       for (final routine in _routineList) {
         if (routine.active &&
             routine.startTime.containsKey('hour') &&
             routine.startTime.containsKey('minute')) {
-          // 선택된 요일들 추출
           final List<int> weekdays = [];
           if (routine.mon) weekdays.add(1);
           if (routine.tue) weekdays.add(2);
@@ -580,8 +601,6 @@ class RoutineRepository extends ChangeNotifier {
               minute: minute,
             );
 
-            // 알람 ID는 30000번대 사용 (루틴용)
-            // hashCode를 0-19999 범위로 제한하여 30000-49999 사이가 되도록 함
             final baseId = 30000 + (routine.routineId.hashCode % 20000).abs();
 
             await AlarmUtility.setWeeklyAlarm(
@@ -595,7 +614,7 @@ class RoutineRepository extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print('루틴 알림 재설정 중 오류: $e');
+      // 루틴 알림 재설정 실패 시 무시
     }
   }
 }

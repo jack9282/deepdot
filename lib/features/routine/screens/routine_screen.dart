@@ -292,36 +292,38 @@ class _RoutineScreenBodyState extends State<_RoutineScreenBody>
                                 ),
                               )
                             else
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: goals.asMap().entries.map((entry) {
-                                    final index = entry.key;
-                                    final goal = entry.value;
-                                    return Padding(
-                                      padding: const EdgeInsets.only(right: 8),
-                                      child: _GoalTabButton(
-                                        text: goal,
-                                        selected: _selectedGoal == goal,
-                                        colorIndex: index,
-                                        onTap: () async {
-                                          if (_selectedGoal == goal)
-                                            return; // 같은 목표 선택 시 무시
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: goals.asMap().entries.map((entry) {
+                                      final index = entry.key;
+                                      final goal = entry.value;
+                                      return Padding(
+                                        padding: const EdgeInsets.only(right: 8),
+                                        child: _GoalTabButton(
+                                          text: goal,
+                                          selected: _selectedGoal == goal,
+                                          colorIndex: index,
+                                          onTap: () async {
+                                            if (_selectedGoal == goal)
+                                              return; // 같은 목표 선택 시 무시
 
-                                          setState(() {
-                                            _selectedGoal = goal;
-                                          });
+                                            setState(() {
+                                              _selectedGoal = goal;
+                                            });
 
-                                          // 선택된 목표의 루틴을 서버에서 새로 불러오기
-                                          final routineVM = context
-                                              .read<RoutineViewModel>();
-                                          await routineVM.loadRoutinesForGoal(
-                                            goal,
-                                          );
-                                        },
-                                      ),
-                                    );
-                                  }).toList(),
+                                            // 선택된 목표의 루틴을 서버에서 새로 불러오기
+                                            final routineVM = context
+                                                .read<RoutineViewModel>();
+                                            await routineVM.loadRoutinesForGoal(
+                                              goal,
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
                                 ),
                               ),
                           ],

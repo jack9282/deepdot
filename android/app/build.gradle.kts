@@ -36,12 +36,20 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
-            isMinifyEnabled = true
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {
             isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            res.srcDirs("src/main/res")
         }
     }
 }
@@ -53,4 +61,8 @@ flutter {
 dependencies {
     // Other dependencies you might have...
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    
+    // Google Play Core 라이브러리 추가
+    implementation("com.google.android.play:core:1.10.3")
+    implementation("com.google.android.play:core-ktx:1.8.1")
 }

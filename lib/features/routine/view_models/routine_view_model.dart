@@ -43,7 +43,6 @@ class RoutineViewModel extends ChangeNotifier {
       _loadRoutineList();
       _isInitialized = true;
       
-      // 알람 복원은 한 번만 실행 (초기화 시에만)
       if (!_isAlarmRestoring) {
         _isAlarmRestoring = true;
         await restoreAllRoutineAlarms();
@@ -252,9 +251,6 @@ class RoutineViewModel extends ChangeNotifier {
       await RoutineRepository().loadFromStorage();
       await _syncWithApi();
       _loadRoutineList();
-      
-      // 새로고침 시에는 알람 복원하지 않음 (초기화에서만 실행)
-      // 필요시 별도 메서드로 알람 동기화 가능
     } catch (e) {
       _setError('데이터 새로고침 중 오류가 발생했습니다: $e');
     } finally {
@@ -323,7 +319,6 @@ class RoutineViewModel extends ChangeNotifier {
         
         final newRoutines = routinesData.map((data) => RoutineModel.fromJson(data)).toList();
         
-        // 기존 루틴 제거 (알람도 함께 제거)
         final routinesToRemove = _routineList.where((routine) => routine.goalName == goalName).toList();
         for (final routine in routinesToRemove) {
           if (routine.routineId != null) {
@@ -334,7 +329,13 @@ class RoutineViewModel extends ChangeNotifier {
         _routineList.removeWhere((routine) => routine.goalName == goalName);
         _routineList.addAll(newRoutines);
         
-        // 새로운 루틴들의 알람 설정
+        final repository = RoutineRepository();
+        for (final routine in newRoutines) {
+          if (routine.routineId != null) {
+            repository.getRoutineCheckStates(routine.routineId!);
+          }
+        }
+        
         for (final routine in newRoutines) {
           if (routine.active && routine.days.isNotEmpty) {
             await setupRoutineAlarm(routine);
@@ -382,19 +383,16 @@ class RoutineViewModel extends ChangeNotifier {
     }
 
     try {
-      // 이미 설정된 알람이 있는지 확인 (메모리 + 실제 시스템 상태)
       if (routine.routineId != null && _routineAlarmIds.containsKey(routine.routineId!)) {
         final existingAlarmId = _routineAlarmIds[routine.routineId!];
         final pendingAlarms = await AlarmUtility.getPendingAlarms();
         final hasActiveAlarm = pendingAlarms.any((alarm) => alarm.id == existingAlarmId);
         
         if (hasActiveAlarm) {
-          print('알람이 이미 설정되어 있습니다: RoutineID=${routine.routineId}, AlarmID=$existingAlarmId');
           return;
         }
       }
 
-      // 안정적인 baseId 결정: 저장된 alarmId > routineId 기반 > 신규 생성 순
       int baseId;
       if (routine.alarmId != null) {
         baseId = routine.alarmId!;
@@ -404,7 +402,6 @@ class RoutineViewModel extends ChangeNotifier {
         baseId = AlarmIdGenerator.generateRoutineId();
       }
 
-      // 기존 동일 baseId의 주간 알람 정리 후 설정
       await AlarmUtility.cancelAllWeeklyAlarmsForBaseId(baseId);
 
       final time = _parseTimeString(routine.startTimeString);
@@ -421,13 +418,9 @@ class RoutineViewModel extends ChangeNotifier {
       
       if (routine.routineId != null) {
         _routineAlarmIds[routine.routineId!] = baseId;
-        // 모델에도 영구 저장
         await RoutineRepository().updateRoutineAlarmId(routine.routineId!, baseId);
-        print('루틴 알람 설정 완료: RoutineID=${routine.routineId}, AlarmID=$baseId, 시간=${time.hour}:${time.minute}');
       }
     } catch (e) {
-      print('루틴 알람 설정 실패: ${routine.name}, 오류: $e');
-      // 사용자에게 알림 설정 실패 피드백 제공
       _setError('알림 설정에 실패했습니다. 알림 권한을 확인해주세요.');
     }
   }
@@ -436,7 +429,6 @@ class RoutineViewModel extends ChangeNotifier {
     try {
       int? alarmId = _routineAlarmIds[routineId];
       if (alarmId == null) {
-        // 모델의 alarmId로 보조 취소
         final routine = _routineList.firstWhere(
           (r) => r.routineId == routineId,
           orElse: () => RoutineModel(
@@ -463,10 +455,9 @@ class RoutineViewModel extends ChangeNotifier {
       if (alarmId != null) {
         await AlarmUtility.cancelAllWeeklyAlarmsForBaseId(alarmId);
         _routineAlarmIds.remove(routineId);
-        print('루틴 알람 제거 완료: RoutineID=$routineId, AlarmID=$alarmId');
       }
     } catch (e) {
-      print('루틴 알람 제거 실패: RoutineID=$routineId, 오류: $e');
+      // 알람 제거 실패 시 무시
     }
   }
 
@@ -474,9 +465,8 @@ class RoutineViewModel extends ChangeNotifier {
     try {
       await AlarmUtility.cancelAllAlarms();
       _routineAlarmIds.clear();
-      print('모든 루틴 알람 제거 완료');
     } catch (e) {
-      print('모든 루틴 알람 제거 실패: $e');
+      // 알람 제거 실패 시 무시
     }
   }
 
@@ -493,23 +483,34 @@ class RoutineViewModel extends ChangeNotifier {
     
     try {
       _isAlarmRestoring = true;
-      print('루틴 알람 복원 시작...');
       
-      // 기존 알람 모두 제거
-      await removeAllRoutineAlarms();
+      final pendingAlarms = await AlarmUtility.getPendingAlarms();
+      int removedCount = 0;
       
-      // 활성화된 루틴들의 알람만 설정
-      int restoredCount = 0;
-      for (final routine in _routineList) {
-        if (routine.active && routine.days.isNotEmpty) {
-          await setupRoutineAlarm(routine);
-          restoredCount++;
+      for (final alarm in pendingAlarms) {
+        if ((alarm.id >= 2000 && alarm.id < 3000) || 
+            (alarm.id >= 20000 && alarm.id < 30000)) {
+          await AlarmUtility.cancelAlarm(alarm.id);
+          removedCount++;
         }
       }
       
-      print('루틴 알람 복원 완료: $restoredCount개 알람 설정됨');
+      _routineAlarmIds.clear();
+      
+      int restoredCount = 0;
+      int skippedCount = 0;
+      
+      for (final routine in _routineList) {
+        if (routine.active && routine.days.isNotEmpty) {
+          try {
+            await setupRoutineAlarm(routine);
+            restoredCount++;
+          } catch (e) {
+            skippedCount++;
+          }
+        }
+      }
     } catch (e) {
-      print('루틴 알람 복원 실패: $e');
       _setError('알림 복원 중 오류가 발생했습니다.');
     } finally {
       _isAlarmRestoring = false;
@@ -554,12 +555,29 @@ class RoutineViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> updateRoutineCheckState(int routineId, int dayIndex, bool isChecked) async {
-    await RoutineRepository().updateRoutineCheckState(routineId, dayIndex, isChecked);
-    _loadRoutineList();
+  List<bool> getRoutineCheckStates(int routineId) {
+    return RoutineRepository().getRoutineCheckStates(routineId);
   }
 
-  /// 알람 동기화를 위한 별도 메서드 (필요시 호출)
+  bool getRoutineCheckState(int routineId, int dayIndex) {
+    final checkStates = getRoutineCheckStates(routineId);
+    return dayIndex >= 0 && dayIndex < checkStates.length ? checkStates[dayIndex] : false;
+  }
+
+  Future<void> updateRoutineCheckState(int routineId, int dayIndex, bool isChecked) async {
+    try {
+      if (dayIndex < 0 || dayIndex >= 7) {
+        return;
+      }
+      
+      await RoutineRepository().updateRoutineCheckState(routineId, dayIndex, isChecked);
+      
+      notifyListeners();
+    } catch (e) {
+      // 체크 상태 업데이트 실패 시 무시
+    }
+  }
+
   Future<void> syncAlarms() async {
     if (_isAlarmRestoring) return;
     
@@ -567,7 +585,7 @@ class RoutineViewModel extends ChangeNotifier {
       _isAlarmRestoring = true;
       await restoreAllRoutineAlarms();
     } catch (e) {
-      print('알람 동기화 실패: $e');
+      // 알람 동기화 실패 시 무시
     } finally {
       _isAlarmRestoring = false;
     }

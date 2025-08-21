@@ -26,6 +26,9 @@ class RoutineListItem extends StatefulWidget {
 }
 
 class _RoutineListItemState extends State<RoutineListItem> {
+  // 게스트 모드에서 사용할 임시 체크 상태
+  List<bool> _guestCheckStates = List.generate(7, (_) => false);
+  
   @override
   void initState() {
     super.initState();
@@ -72,18 +75,25 @@ class _RoutineListItemState extends State<RoutineListItem> {
               ...List.generate(7, (dayIndex) {
                 final bool isDayActive = _isDayActive(dayIndex, mon, tue, wed, thu, fri, sat, sun);
                 final routineId = widget.routine['routineId'] as int?;
-                final checkStates = routineId != null 
-                    ? widget.routineVM.getRoutineById(routineId)?.checkStates ?? List.generate(7, (_) => false)
-                    : List.generate(7, (_) => false);
-                final bool isChecked = dayIndex < checkStates.length ? checkStates[dayIndex] : false;
+                
+                // routineId가 null인 경우 widget.index를 대신 사용
+                final bool isChecked = routineId != null 
+                    ? widget.routineVM.getRoutineCheckState(routineId, dayIndex)
+                    : _guestCheckStates[dayIndex]; // 게스트 모드에서는 로컬 상태 사용
                 
                 return Expanded(
                   child: Center(
                     child: isDayActive
                         ? GestureDetector(
-                            onTap: () {
+                            onTap: () async {
+                              // routineId가 있는 경우에만 체크 상태 업데이트
                               if (routineId != null) {
-                                widget.routineVM.updateRoutineCheckState(routineId, dayIndex, !isChecked);
+                                await widget.routineVM.updateRoutineCheckState(routineId, dayIndex, !isChecked);
+                              } else {
+                                // 게스트 모드에서는 로컬 상태 업데이트
+                                setState(() {
+                                  _guestCheckStates[dayIndex] = !isChecked;
+                                });
                               }
                             },
                             child: AnimatedContainer(
