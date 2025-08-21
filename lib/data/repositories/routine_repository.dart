@@ -27,7 +27,7 @@ class RoutineRepository extends ChangeNotifier {
   List<RoutineModel> get routineList => List.unmodifiable(_routineList);
   List<Map<String, dynamic>> get availableGoals =>
       List.unmodifiable(_availableGoals);
-  
+
   List<bool> getRoutineCheckStates(int routineId) {
     return _routineCheckStates[routineId] ?? List.generate(7, (_) => false);
   }
@@ -116,8 +116,12 @@ class RoutineRepository extends ChangeNotifier {
       }
 
       for (final routine in _routineList) {
-        if (routine.routineId != null && !_routineCheckStates.containsKey(routine.routineId!)) {
-          _routineCheckStates[routine.routineId!] = List.generate(7, (_) => false);
+        if (routine.routineId != null &&
+            !_routineCheckStates.containsKey(routine.routineId!)) {
+          _routineCheckStates[routine.routineId!] = List.generate(
+            7,
+            (_) => false,
+          );
         }
       }
 
@@ -139,12 +143,12 @@ class RoutineRepository extends ChangeNotifier {
       _routineListKey,
       jsonEncode(_routineList.map((e) => e.toJson()).toList()),
     );
-    
+
     final checkStatesJson = _routineCheckStates.map(
       (key, value) => MapEntry(key.toString(), value),
     );
     await prefs.setString(_routineCheckStatesKey, jsonEncode(checkStatesJson));
-    
+
     await prefs.setString(_availableGoalsKey, jsonEncode(_availableGoals));
     await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
   }
@@ -534,10 +538,10 @@ class RoutineRepository extends ChangeNotifier {
       if (!_routineCheckStates.containsKey(routineId)) {
         _routineCheckStates[routineId] = List.generate(7, (_) => false);
       }
-      
+
       if (dayIndex >= 0 && dayIndex < 7) {
         _routineCheckStates[routineId]![dayIndex] = isChecked;
-        
+
         await saveToStorage();
         notifyListeners();
       }

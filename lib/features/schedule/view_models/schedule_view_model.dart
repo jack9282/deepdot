@@ -273,36 +273,10 @@ class ScheduleViewModel with ChangeNotifier {
         return false;
       }
 
-      // Schedule API 먼저 시도 (회원인 경우)
-      String taskId = 'task_${DateTime.now().millisecondsSinceEpoch}';
-      
-      try {
-        final schedule = ScheduleModel(
-          title: title,
-          time: time,
-          startDate: _formatDate(startDate),
-          endDate: _formatDate(endDate),
-          type: type.value,
-          location: location,
-          memo: memo,
-          image: image ?? '📅',
-          alarm30Before: alarm30Before,
-          alarm60Before: alarm60Before,
-          alarm120Before: alarm120Before,
-          isRecurring: isRecurring,
-        );
-        
-        // API 호출하고 scheduleId 받기
-        final scheduleId = await _scheduleRepository.createSchedule(schedule);
-        // API 성공하면 음수 ID 사용
-        taskId = scheduleId.toString();
-        print('[ScheduleViewModel] Schedule API 생성 성공 - scheduleId: $scheduleId');
-      } catch (e) {
-        // API 실패 시 로컬 ID 유지
-        print('[ScheduleViewModel] Schedule API 생성 실패, 로컬 ID 사용: $e');
-      }
+      // 로컬용 고유 ID 생성 (회원/비회원 모두 동일)
+      final taskId = 'task_${DateTime.now().millisecondsSinceEpoch}';
 
-      // 로컬에 저장 (API ID 또는 로컬 ID 사용)
+      // 로컬에 먼저 저장하기 위한 TaskModel 생성
       final task = TaskModel(
         id: taskId,
         title: title,
@@ -322,10 +296,40 @@ class ScheduleViewModel with ChangeNotifier {
         alarm120Before: alarm120Before,
       );
 
-      final success = await _taskRepository.addTask(task);
-      if (!success) {
+      // 로컬에 먼저 저장 (회원/비회원 모두)
+      final localSaveSuccess = await _taskRepository.addTask(task);
+      if (!localSaveSuccess) {
+        print('[ScheduleViewModel] 로컬 저장 실패 - taskId: $taskId');
         _setError('일정 추가에 실패했습니다');
         return false;
+      }
+      print('[ScheduleViewModel] 로컬 저장 성공 - taskId: $taskId');
+
+      // Schedule API 시도 (회원인 경우에만 동작, 백그라운드)
+      try {
+        final schedule = ScheduleModel(
+          title: title,
+          time: time,
+          startDate: _formatDate(startDate),
+          endDate: _formatDate(endDate),
+          type: type.value,
+          location: location,
+          memo: memo,
+          image: image ?? '📅',
+          alarm30Before: alarm30Before,
+          alarm60Before: alarm60Before,
+          alarm120Before: alarm120Before,
+          isRecurring: isRecurring,
+        );
+
+        // API 호출 (백그라운드에서 처리)
+        final serverScheduleId = await _scheduleRepository.createSchedule(schedule);
+        print(
+          '[ScheduleViewModel] Schedule API 생성 성공 - serverScheduleId: $serverScheduleId, localId: $taskId',
+        );
+      } catch (e) {
+        // API 실패는 무시 (로컬은 이미 저장됨)
+        print('[ScheduleViewModel] Schedule API 생성 실패 (무시): $e');
       }
 
       // 알림 설정
@@ -375,7 +379,7 @@ class ScheduleViewModel with ChangeNotifier {
         type: type.value,
         location: location,
         memo: memo,
-        image: image ?? '📅',
+        image: image ?? '😊',
         alarm30Before: alarm30Before,
         alarm60Before: alarm60Before,
         alarm120Before: alarm120Before,
@@ -734,21 +738,24 @@ class ScheduleViewModel with ChangeNotifier {
         final isGuest = await TokenManager.instance.isGuestMode();
         if (!isGuest) {
           final scheduleId = int.tryParse(updatedTask.id);
-          if (scheduleId != null && scheduleId < 0) { // 음수 ID는 서버 일정
+          if (scheduleId != null && scheduleId < 0) {
+            // 음수 ID는 서버 일정
             try {
               final type = _priorityToScheduleType(updatedTask.priority);
               final schedule = ScheduleModel(
                 scheduleId: scheduleId.abs(), // 양수로 변환
                 title: updatedTask.title,
                 time: updatedTask.startTime,
-                startDate: updatedTask.calendarDate ?? 
+                startDate:
+                    updatedTask.calendarDate ??
                     '${updatedTask.startDate?.year.toString().padLeft(4, '0')}-'
-                    '${updatedTask.startDate?.month.toString().padLeft(2, '0')}-'
-                    '${updatedTask.startDate?.day.toString().padLeft(2, '0')}',
-                endDate: updatedTask.calendarDate ?? 
+                        '${updatedTask.startDate?.month.toString().padLeft(2, '0')}-'
+                        '${updatedTask.startDate?.day.toString().padLeft(2, '0')}',
+                endDate:
+                    updatedTask.calendarDate ??
                     '${updatedTask.dueDate?.year.toString().padLeft(4, '0')}-'
-                    '${updatedTask.dueDate?.month.toString().padLeft(2, '0')}-'
-                    '${updatedTask.dueDate?.day.toString().padLeft(2, '0')}',
+                        '${updatedTask.dueDate?.month.toString().padLeft(2, '0')}-'
+                        '${updatedTask.dueDate?.day.toString().padLeft(2, '0')}',
                 type: type.value,
                 location: updatedTask.location,
                 memo: updatedTask.memo ?? updatedTask.description,
@@ -758,9 +765,14 @@ class ScheduleViewModel with ChangeNotifier {
                 alarm120Before: alarm120Before,
                 isRecurring: updatedTask.isRecurring,
               );
-              
-              await _scheduleRepository.updateSchedule(scheduleId.abs(), schedule);
-              print('[ScheduleViewModel] Schedule API 업데이트 완료 - scheduleId: ${scheduleId.abs()}');
+
+              await _scheduleRepository.updateSchedule(
+                scheduleId.abs(),
+                schedule,
+              );
+              print(
+                '[ScheduleViewModel] Schedule API 업데이트 완료 - scheduleId: ${scheduleId.abs()}',
+              );
             } catch (e) {
               print('[ScheduleViewModel] Schedule API 업데이트 실패: $e');
               // API 실패해도 로컬은 이미 업데이트됨
