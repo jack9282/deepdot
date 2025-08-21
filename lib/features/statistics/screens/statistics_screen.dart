@@ -12,25 +12,28 @@ class StatisticsScreen extends StatefulWidget {
   State<StatisticsScreen> createState() => _StatisticsScreenState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBindingObserver {
-  
+class _StatisticsScreenState extends State<StatisticsScreen>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
   }
-  
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
-  
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       // 앱이 다시 활성화되었을 때 통계 데이터 새로고침
-      final viewModel = Provider.of<StatisticsViewModel>(context, listen: false);
+      final viewModel = Provider.of<StatisticsViewModel>(
+        context,
+        listen: false,
+      );
       viewModel.loadCurrentWeekData();
     }
   }
@@ -45,7 +48,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
           children: [
             // 상단 헤더 (SafeArea 밖에 배치)
             _buildHeader(),
-            
+
             // 메인 콘텐츠 (SafeArea 안에 배치)
             Expanded(
               child: SafeArea(
@@ -55,12 +58,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                   child: Column(
                     children: [
                       const SizedBox(height: 14),
-                      
+
                       // 이번주 통계 카드
                       _buildWeeklyCard(),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       // 하루 집중시간 카드
                       _buildDailyCard(),
                     ],
@@ -98,10 +101,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
               // 뒤로가기 버튼
               IconButton(
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(
-                  minWidth: 24,
-                  minHeight: 24,
-                ),
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                 icon: const Icon(
                   Icons.arrow_back_ios,
                   color: Colors.black,
@@ -111,7 +111,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                   Navigator.of(context).pop();
                 },
               ),
-              
+
               // 제목 (중앙)
               Expanded(
                 child: const Center(
@@ -125,7 +125,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                   ),
                 ),
               ),
-              
+
               // 새로고침 버튼
               Consumer<StatisticsViewModel>(
                 builder: (context, viewModel, child) {
@@ -141,7 +141,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.grey,
+                              ),
                             ),
                           )
                         : const Icon(
@@ -170,7 +172,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
   }
 
   // 모든 집중시간 데이터 삭제 확인 다이얼로그
-  void _showClearDataDialog(BuildContext context, StatisticsViewModel viewModel) {
+  void _showClearDataDialog(
+    BuildContext context,
+    StatisticsViewModel viewModel,
+  ) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -189,9 +194,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                 Navigator.of(context).pop();
                 await _clearAllFocusData(viewModel);
               },
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
-              ),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('삭제'),
             ),
           ],
@@ -207,11 +210,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
       final focusRepository = FocusSessionRepository();
       await focusRepository.loadSessionsFromStorage();
       final success = await focusRepository.clearAllSessions();
-      
+
       if (success) {
         // 통계 데이터 새로고침
         await viewModel.loadCurrentWeekData();
-        
+
         // 성공 메시지 표시
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -273,7 +276,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                       viewModel.goToPreviousWeek();
                     },
                   ),
-                  
+
                   Column(
                     children: [
                       Text(
@@ -295,7 +298,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                       ),
                     ],
                   ),
-                  
+
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
@@ -314,13 +317,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 이번주 통계 카드
             Container(
               width: double.infinity,
-              height: 350, // 카드 높이 설정
+              height: 310, // 카드 높이 줄임 (350 → 310)
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
@@ -333,7 +336,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 1), // 하단 패딩 줄임
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -357,9 +360,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                           ),
                         ],
                       ),
-                    
+
                     const SizedBox(height: 4),
-                    
+
                     // 주간 집중시간 (우측 정렬)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -388,9 +391,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                         ),
                       ],
                     ),
-                    
-                    const SizedBox(height: 30),
-                    
+
+                    const SizedBox(height: 25), // 간격 줄임 (30 → 25)
                     // 주간 바 차트
                     _buildWeeklyBarChart(viewModel),
                   ],
@@ -407,14 +409,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
   Widget _buildWeeklyBarChart(StatisticsViewModel viewModel) {
     final days = ['월', '화', '수', '목', '금', '토', '일'];
     // 비율 기반 게이지에서는 maxValue 불필요 (달성률이 이미 0.0~1.0)
-    
+
     return Container(
-      height: 200, // 높이 증가
+      height: 180, // 높이 줄임 (200 → 180)
       child: Stack(
         children: [
           // 점선 기준선
           Positioned(
-            top: 110, // 중간 위치
+            top: 100, // 중간 위치 조정 (110 → 100)
             left: 0,
             right: 0,
             child: Container(
@@ -436,9 +438,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
             children: List.generate(7, (index) {
               final achievementRate = viewModel.weeklyAchievementRates[index];
               final focusMinutes = viewModel.weeklyData[index];
-              
+
               // 게이지 높이는 LayoutBuilder에서 동적으로 계산
-              
+
               return Column(
                 children: [
                   // 바 차트
@@ -447,10 +449,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                       builder: (context, constraints) {
                         // 실제 사용 가능한 높이 계산
                         final maxHeight = constraints.maxHeight;
-                        final displayHeight = achievementRate > 0 
-                            ? (maxHeight * achievementRate).clamp(8.0, maxHeight)
+                        final displayHeight = achievementRate > 0
+                            ? (maxHeight * achievementRate).clamp(
+                                8.0,
+                                maxHeight,
+                              )
                             : 0.0;
-                        
+
                         return Container(
                           width: 13, // 막대 너비 더 줄임
                           child: Stack(
@@ -471,19 +476,32 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                                 child: Container(
                                   height: displayHeight, // 동적으로 계산된 높이 사용
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF799EFF), // 단일색: 연한 파란색
+                                    color: const Color(
+                                      0xFF799EFF,
+                                    ), // 단일색: 연한 파란색
                                     borderRadius: BorderRadius.circular(10),
-                                    border: achievementRate > 0 && achievementRate < 0.2
-                                        ? Border.all(color: const Color(0xFF799EFF), width: 1) // 20% 미만일 때 테두리
+                                    border:
+                                        achievementRate > 0 &&
+                                            achievementRate < 0.2
+                                        ? Border.all(
+                                            color: const Color(0xFF799EFF),
+                                            width: 1,
+                                          ) // 20% 미만일 때 테두리
                                         : null,
                                   ),
                                   // 작은 게이지도 잘 보이게 내부에 컨테이너 추가
-                                  child: achievementRate > 0 && achievementRate < 0.3 
+                                  child:
+                                      achievementRate > 0 &&
+                                          achievementRate < 0.3
                                       ? Container(
                                           width: double.infinity,
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF799EFF).withOpacity(0.3),
-                                            borderRadius: BorderRadius.circular(8),
+                                            color: const Color(
+                                              0xFF799EFF,
+                                            ).withOpacity(0.3),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                           ),
                                         )
                                       : null,
@@ -495,7 +513,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                       },
                     ),
                   ),
-                  const SizedBox(height: 16), // 간격 더 늘림
+                  const SizedBox(height: 10), // 간격 줄임 (16 → 10)
                   // 요일 라벨
                   Text(
                     days[index],
@@ -538,28 +556,28 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                // 🔧 수정: 집중 기록이 없는 경우 빈 상태 표시
-                if (!viewModel.hasDailyFocusRecord())
-                  const Center(
-                    child: Column(
-                      children: [
-                        SizedBox(height: 40),
-                        Text(
-                          '집중 기록이 없습니다',
-                          style: TextStyle(
-                            color: Color(0xFFA7A7A7),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
+                  // 🔧 수정: 집중 기록이 없는 경우 빈 상태 표시
+                  if (!viewModel.hasDailyFocusRecord())
+                    const Center(
+                      child: Column(
+                        children: [
+                          SizedBox(height: 40),
+                          Text(
+                            '집중 기록이 없습니다',
+                            style: TextStyle(
+                              color: Color(0xFFA7A7A7),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 40),
-                      ],
-                    ),
-                  )
-                else
-                  // 🔧 수정: 하루 집중시간 총합 표시 및 진행률 아크 차트 (집중 루틴 달성률 포함)
-                  _buildDailyFocusContent(viewModel),
-              ],
+                          SizedBox(height: 40),
+                        ],
+                      ),
+                    )
+                  else
+                    // 🔧 수정: 하루 집중시간 총합 표시 및 진행률 아크 차트 (집중 루틴 달성률 포함)
+                    _buildDailyFocusContent(viewModel),
+                ],
               ),
             ),
           ),
@@ -572,7 +590,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
   Widget _buildDailyFocusContent(StatisticsViewModel viewModel) {
     final progress = viewModel.dailyAchievementRate;
     final percentage = (progress * 100).round();
-    
+
     return Column(
       children: [
         // 헤더 (아크차트 바로 위에 배치)
@@ -597,9 +615,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
             ),
           ],
         ),
-        
+
         const SizedBox(height: 30), // 헤더와 아크 차트 사이 여백 추가
-        
         // 스트로크 기반 아크 차트와 중앙 텍스트
         SizedBox(
           width: 180,
@@ -644,7 +661,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
           ),
         ),
         const SizedBox(height: 4),
-        
+
         // 범례
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -654,9 +671,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
             _buildLegendItem('하루시간', const Color(0xFFEFF4FF)),
           ],
         ),
-        
+
         const SizedBox(height: 16), // 범례와 집중 루틴 달성률 사이 여백
-        
         // 집중 루틴 달성률 정보 (회색 카드 제거, 직접 배치)
         Align(
           alignment: Alignment.centerLeft,
@@ -670,7 +686,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
           ),
         ),
         const SizedBox(height: 12),
-        
+
         // 좌우 배치: 좌측에 목표 달성률, 우측에 최장 집중 루틴
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -749,9 +765,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                 ),
               ),
             ),
-            
+
             const SizedBox(width: 16),
-            
+
             // 우측: 최장 집중 루틴
             Flexible(
               child: RichText(
@@ -800,16 +816,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
         Container(
           width: 16, // 8에서 12로 크기 증가
           height: 16, // 8에서 12로 크기 증가
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
         Text(
           label,
           style: const TextStyle(
-            color: Colors.black, 
+            color: Colors.black,
             fontSize: 15,
             fontWeight: FontWeight.w400,
           ),
@@ -822,7 +835,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
   Widget _buildProgressArc_unused(StatisticsViewModel viewModel) {
     final progress = viewModel.dailyAchievementRate;
     final percentage = (progress * 100).round();
-    
+
     return Center(
       child: Column(
         children: [
@@ -864,9 +877,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
               ],
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // 범례
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -885,10 +898,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                   const SizedBox(width: 4),
                   const Text(
                     '진행률',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.black),
                   ),
                 ],
               ),
@@ -907,10 +917,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
                   const SizedBox(width: 4),
                   Text(
                     '하루시간',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.black,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.black),
                   ),
                 ],
               ),
@@ -941,9 +948,9 @@ class StrokeArcPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height);
     final radius = (size.width - strokeWidth) / 2;
     final rect = Rect.fromCircle(center: center, radius: radius);
-    
+
     Paint paint;
-    
+
     if (useGradient) {
       // 그라데이션 생성 (#799EFF -> #1F5DFF)
       final gradient = SweepGradient(
@@ -955,7 +962,7 @@ class StrokeArcPainter extends CustomPainter {
         ],
         stops: const [0.0, 1.0],
       );
-      
+
       paint = Paint()
         ..shader = gradient.createShader(rect)
         ..strokeWidth = strokeWidth
@@ -982,8 +989,8 @@ class StrokeArcPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return oldDelegate is StrokeArcPainter && 
-           (oldDelegate.progress != progress || 
+    return oldDelegate is StrokeArcPainter &&
+        (oldDelegate.progress != progress ||
             oldDelegate.color != color ||
             oldDelegate.strokeWidth != strokeWidth ||
             oldDelegate.useGradient != useGradient);
@@ -1061,33 +1068,30 @@ class SemiCircleProgressClipper extends CustomClipper<Path> {
 
     // 반원 영역만 클리핑
     final rect = Rect.fromCircle(center: center, radius: radius);
-    
+
     // 먼저 전체 반원 영역을 만들고
     path.addArc(rect, math.pi, math.pi);
-    
+
     // 진행률에 따라 추가로 마스킹할 영역을 제거
     if (progress < 1.0) {
       final maskPath = Path();
-      
+
       // 진행률 끝점에서 중심으로의 선
       final endPoint = Offset(
         center.dx + radius * math.cos(endAngle),
         center.dy + radius * math.sin(endAngle),
       );
-      
+
       // 우측 하단점 (360도/0도 지점)
-      final rightPoint = Offset(
-        center.dx + radius,
-        center.dy,
-      );
-      
+      final rightPoint = Offset(center.dx + radius, center.dy);
+
       // 마스킹할 영역 (진행률 이후 부분)
       maskPath.moveTo(center.dx, center.dy);
       maskPath.lineTo(endPoint.dx, endPoint.dy);
       maskPath.arcTo(rect, endAngle, math.pi * (1 - progress), false);
       maskPath.lineTo(center.dx, center.dy);
       maskPath.close();
-      
+
       // 전체에서 마스킹 영역 제거
       path = Path.combine(PathOperation.difference, path, maskPath);
     }
@@ -1097,7 +1101,8 @@ class SemiCircleProgressClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) {
-    return oldClipper is SemiCircleProgressClipper && oldClipper.progress != progress;
+    return oldClipper is SemiCircleProgressClipper &&
+        oldClipper.progress != progress;
   }
 }
 
@@ -1120,9 +1125,9 @@ class HalfArcPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
     final rect = Rect.fromCircle(center: center, radius: radius);
-    
+
     Paint paint;
-    
+
     if (useGradient) {
       // 그라데이션 생성 (#799EFF -> #1F5DFF)
       final gradient = SweepGradient(
@@ -1134,7 +1139,7 @@ class HalfArcPainter extends CustomPainter {
         ],
         stops: const [0.0, 1.0],
       );
-      
+
       paint = Paint()
         ..shader = gradient.createShader(rect)
         ..strokeWidth = strokeWidth
@@ -1161,8 +1166,8 @@ class HalfArcPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return oldDelegate is HalfArcPainter && 
-           (oldDelegate.progress != progress || 
+    return oldDelegate is HalfArcPainter &&
+        (oldDelegate.progress != progress ||
             oldDelegate.color != color ||
             oldDelegate.strokeWidth != strokeWidth ||
             oldDelegate.useGradient != useGradient);
@@ -1186,9 +1191,9 @@ class ArcPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
     final rect = Rect.fromCircle(center: center, radius: radius);
-    
+
     Paint paint;
-    
+
     // 진행률 아크인 경우 그라데이션 적용, 배경 아크인 경우 단색 사용
     if (color == const Color(0xFF3A71FF)) {
       // 그라데이션 생성 (#799EFF -> #1F5DFF)
@@ -1201,7 +1206,7 @@ class ArcPainter extends CustomPainter {
         ],
         stops: const [0.0, 1.0],
       );
-      
+
       paint = Paint()
         ..shader = gradient.createShader(rect)
         ..strokeWidth = strokeWidth
@@ -1231,5 +1236,3 @@ class ArcPainter extends CustomPainter {
     return true;
   }
 }
-
- 

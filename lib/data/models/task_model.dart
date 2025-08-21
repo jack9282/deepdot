@@ -1,3 +1,5 @@
+import '../../common/constants/emoji_constants.dart';
+
 enum TaskPriority {
   urgentImportant, // 중요 & 긴급
   important,       // 중요
@@ -13,6 +15,9 @@ class TaskModel {
   final String? location; // API 연동을 위한 location 필드
   final TaskPriority priority; // 내부적으로는 enum 유지
   final bool alarm; // 알림 설정
+  final bool alarm30Before; // 30분 전 알림
+  final bool alarm60Before; // 1시간 전 알림
+  final bool alarm120Before; // 2시간 전 알림
   final bool isCompleted;
   final DateTime createdAt;
   final String? calendarDate; // yyyy-MM-dd 형식
@@ -40,6 +45,9 @@ class TaskModel {
     this.location,
     required this.priority,
     this.alarm = false,
+    this.alarm30Before = false,
+    this.alarm60Before = false,
+    this.alarm120Before = false,
     this.isCompleted = false,
     required this.createdAt,
     this.calendarDate,
@@ -67,6 +75,9 @@ class TaskModel {
     String? location,
     TaskPriority? priority,
     bool? alarm,
+    bool? alarm30Before,
+    bool? alarm60Before,
+    bool? alarm120Before,
     bool? isCompleted,
     DateTime? createdAt,
     String? calendarDate,
@@ -93,6 +104,9 @@ class TaskModel {
       location: location ?? this.location,
       priority: priority ?? this.priority,
       alarm: alarm ?? this.alarm,
+      alarm30Before: alarm30Before ?? this.alarm30Before,
+      alarm60Before: alarm60Before ?? this.alarm60Before,
+      alarm120Before: alarm120Before ?? this.alarm120Before,
       isCompleted: isCompleted ?? this.isCompleted,
       createdAt: createdAt ?? this.createdAt,
       calendarDate: calendarDate ?? this.calendarDate,
@@ -123,6 +137,9 @@ class TaskModel {
       'location': location,
       'priority': priority.index,
       'alarm': alarm,
+      'alarm30Before': alarm30Before,
+      'alarm60Before': alarm60Before,
+      'alarm120Before': alarm120Before,
       'isCompleted': isCompleted,
       'createdAt': createdAt.millisecondsSinceEpoch,
       'calendarDate': calendarDate,
@@ -153,6 +170,9 @@ class TaskModel {
       location: json['location'] as String?,
       priority: TaskPriority.values[json['priority'] as int],
       alarm: json['alarm'] as bool? ?? false,
+      alarm30Before: json['alarm30Before'] as bool? ?? false,
+      alarm60Before: json['alarm60Before'] as bool? ?? false,
+      alarm120Before: json['alarm120Before'] as bool? ?? false,
       isCompleted: json['isCompleted'] as bool,
       createdAt: json['createdAt'] is int 
           ? DateTime.fromMillisecondsSinceEpoch(json['createdAt'] as int)
@@ -207,24 +227,7 @@ class TaskModel {
 
   /// 아이콘 코드를 이모지로 변환
   static String? _iconToEmoji(String? icon) {
-    final iconToEmojiMap = {
-      'SMILE': '😀',
-      'HAPPY': '😃',
-      'JOY': '😄',
-      'GRIN': '😁',
-      'LAUGH': '😆',
-      'HAPPY_EYES': '😊',
-      'HEART_EYES': '😍',
-      'COOL': '😎',
-      'NOTE': '📝',
-      'ALARM': '⏰',
-      'COMPUTER': '🖥️',
-      'IDEA': '💡',
-      'HEART': '❤️',
-      'FIRE': '🔥',
-      // 기본값들
-    };
-    return iconToEmojiMap[icon] ?? '😊';
+    return EmojiConstants.convertIconCodeToEmoji(icon);
   }
 
   /// 날짜와 시간을 DateTime으로 결합
