@@ -97,7 +97,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
         title: Text(
           widget.existingRoutine != null ? '루틴 수정' : '루틴 생성',
           style: const TextStyle(
-            color: Colors.black,
+            color: AppTheme.textBlackColor,
             fontWeight: FontWeight.w600,
             fontSize: 18,
           ),
@@ -120,7 +120,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black,
+                        color: AppTheme.textBlackColor,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -153,7 +153,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                       ),
                       style: const TextStyle(
                         fontSize: 15,
-                        color: Colors.black,
+                        color: AppTheme.textBlackColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -181,7 +181,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black,
+                            color: AppTheme.textBlackColor,
                           ),
                         ),
                         IconButton(
@@ -261,7 +261,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black,
+                            color: AppTheme.textBlackColor,
                           ),
                         ),
                         Switch(
@@ -295,7 +295,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500,
-                                color: Colors.black,
+                                color: AppTheme.textBlackColor,
                               ),
                             ),
                             GestureDetector(
@@ -325,7 +325,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black,
+                        color: AppTheme.textBlackColor,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -404,7 +404,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                         ),
                         style: const TextStyle(
                           fontSize: 15,
-                          color: Colors.black,
+                          color: AppTheme.textBlackColor,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -615,7 +615,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: AppTheme.textBlackColor,
             ),
           ),
           content: Column(
@@ -655,7 +655,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                 ),
                 style: const TextStyle(
                   fontSize: 15,
-                  color: Colors.black,
+                  color: AppTheme.textBlackColor,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -732,7 +732,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: AppTheme.textBlackColor,
             ),
           ),
           content: TextField(
@@ -761,7 +761,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
             ),
             style: const TextStyle(
               fontSize: 15,
-              color: Colors.black,
+              color: AppTheme.textBlackColor,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -879,7 +879,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: AppTheme.textBlackColor,
             ),
           ),
           content: Column(
@@ -890,7 +890,7 @@ class _SetRoutineScreenState extends State<SetRoutineScreen> {
                 '정말로 "$goalName" 목표를 삭제하시겠습니까?',
                 style: const TextStyle(
                   fontSize: 16,
-                  color: Colors.black,
+                  color: AppTheme.textBlackColor,
                 ),
               ),
               const SizedBox(height: 8),
@@ -996,7 +996,7 @@ class _TimePickerBottomSheetState extends State<TimePickerBottomSheet> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: AppTheme.textBlackColor,
             ),
           ),
           const SizedBox(height: 20),

@@ -77,7 +77,6 @@ class _RoutineListItemState extends State<RoutineListItem> {
                 final routineId = widget.routine['routineId'] as int?;
                 
                 // routineId가 null인 경우 widget.index를 대신 사용
-                final effectiveId = routineId ?? widget.index;
                 final bool isChecked = routineId != null 
                     ? widget.routineVM.getRoutineCheckState(routineId, dayIndex)
                     : _guestCheckStates[dayIndex]; // 게스트 모드에서는 로컬 상태 사용
