@@ -323,7 +323,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             // 이번주 통계 카드
             Container(
               width: double.infinity,
-              height: 310, // 카드 높이 줄임 (350 → 310)
+              height: 270, // 카드 높이 줄여서 하단 테두리를 요일에 가깝게
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
